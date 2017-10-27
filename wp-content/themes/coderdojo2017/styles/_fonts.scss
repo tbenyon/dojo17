@@ -1,0 +1,9 @@
+$font_headings: 'Press Start 2P', cursive;
+$font_main: 'VT323', monospace;
+
+body, html {
+  font-family: $font_main;
+  h1, h2, h3, h4, h5 {
+    font-family: $font_headings;
+  }
+}
