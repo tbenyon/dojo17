@@ -2,7 +2,7 @@
 # This file is distributed under the same license as the WordPress - 4.9.x - Development - Administration - Network Admin package.
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2017-10-08 00:10:56+0000\n"
+"PO-Revision-Date: 2017-10-18 21:17:12+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -10,6 +10,11 @@ msgstr ""
 "X-Generator: GlotPress/2.4.0-alpha\n"
 "Language: en_GB\n"
 "Project-Id-Version: WordPress - 4.9.x - Development - Administration - Network Admin\n"
+
+#. translators: %s: DO_NOT_UPGRADE_GLOBAL_TABLES
+#: wp-admin/includes/network.php:107
+msgid "The constant %s cannot be defined when creating a network."
+msgstr "The constant %s cannot be defined when creating a network."
 
 #: wp-admin/network/sites.php:173
 msgid "You are about to delete the following sites:"
@@ -28,11 +33,11 @@ msgstr "The username and a link to set the password will be mailed to this email
 msgid "There is a pending change of the network admin email to %s."
 msgstr "There is a pending change of the network admin email to %s."
 
-#: wp-admin/includes/network.php:285
+#: wp-admin/includes/network.php:294
 msgid "Sub-domain Installation"
 msgstr "Sub-domain Installation"
 
-#: wp-admin/includes/network.php:260 wp-admin/includes/network.php:275
+#: wp-admin/includes/network.php:269 wp-admin/includes/network.php:284
 msgid "Sub-directory Installation"
 msgstr "Sub-directory Installation"
 
@@ -54,7 +59,7 @@ msgid "%s KB"
 msgstr "%s KB"
 
 #. translators: %s: Default network name
-#: wp-admin/includes/network.php:151
+#: wp-admin/includes/network.php:160
 msgid "%s Sites"
 msgstr "%s Sites"
 
@@ -101,13 +106,13 @@ msgstr "First Comment Email"
 #. is localized. You can check the localized release package or
 #. https://i18n.svn.wordpress.org/<locale code>/branches/<wp
 #. version>/dist/wp-config-sample.php
-#: wp-admin/includes/network.php:427
+#: wp-admin/includes/network.php:436
 msgid "That&#8217;s all, stop editing! Happy blogging."
 msgstr "That&#8217;s all, stop editing! Happy blogging."
 
 #. translators: 1: wp-config.php 2: location of wp-config file, 3: translated
 #. version of "That's all, stop editing! Happy blogging."
-#: wp-admin/includes/network.php:419
+#: wp-admin/includes/network.php:428
 msgid "Add the following to your %1$s file in %2$s <strong>above</strong> the line reading %3$s:"
 msgstr "Add the following to your %1$s file in %2$s <strong>above</strong> the line reading %3$s:"
 
@@ -132,67 +137,67 @@ msgid "Site Admin"
 msgstr "Site Admin"
 
 #. translators: 1: wp-config.php
-#: wp-admin/includes/network.php:470
+#: wp-admin/includes/network.php:479
 msgid "These unique authentication keys are also missing from your %s file."
 msgstr "These unique authentication keys are also missing from your %s file."
 
 #. translators: 1: wp-config.php
-#: wp-admin/includes/network.php:464
+#: wp-admin/includes/network.php:473
 msgid "This unique authentication key is also missing from your %s file."
 msgstr "This unique authentication key is also missing from your %s file."
 
 #. translators: 1: wp-config.php
-#: wp-admin/includes/network.php:408
+#: wp-admin/includes/network.php:417
 msgid "We recommend you back up your existing %s file."
 msgstr "We recommend you back up your existing %s file."
 
 #. translators: 1: wp-config.php 2: .htaccess
 #. translators: 1: wp-config.php 2: web.config
-#: wp-admin/includes/network.php:392 wp-admin/includes/network.php:400
+#: wp-admin/includes/network.php:401 wp-admin/includes/network.php:409
 msgid "We recommend you back up your existing %1$s and %2$s files."
 msgstr "We recommend you back up your existing %1$s and %2$s files."
 
 #. translators: 1: localhost 2: localhost.localdomain
-#: wp-admin/includes/network.php:264
+#: wp-admin/includes/network.php:273
 msgid "Because you are using %1$s, the sites in your WordPress network must use sub-directories. Consider using %2$s if you wish to use sub-domains."
 msgstr "Because you are using %1$s, the sites in your WordPress network must use sub-directories. Consider using %2$s if you wish to use sub-domains."
 
 #. translators: %s: host name
-#: wp-admin/includes/network.php:248 wp-admin/includes/network.php:297
+#: wp-admin/includes/network.php:257 wp-admin/includes/network.php:306
 msgid "The internet address of your network will be %s."
 msgstr "The internet address of your network will be %s."
 
 #. translators: 1: site url 2: host name 3. www
-#: wp-admin/includes/network.php:237
+#: wp-admin/includes/network.php:246
 msgid "We recommend you change your siteurl to %1$s before enabling the network feature. It will still be possible to visit your site using the %3$s prefix with an address like %2$s but any links will not have the %3$s prefix."
 msgstr "We recommend you change your siteurl to %1$s before enabling the network feature. It will still be possible to visit your site using the %3$s prefix with an address like %2$s but any links will not have the %3$s prefix."
 
-#: wp-admin/includes/network.php:203
+#: wp-admin/includes/network.php:212
 msgid "You cannot change this later."
 msgstr "You cannot change this later."
 
-#: wp-admin/includes/network.php:202
+#: wp-admin/includes/network.php:211
 msgid "Please choose whether you would like sites in your WordPress network to use sub-domains or sub-directories."
 msgstr "Please choose whether you would like sites in your WordPress network to use sub-domains or sub-directories."
 
 #. translators: 1: mod_rewrite, 2: mod_rewrite documentation URL, 3: Google
 #. search for mod_rewrite
-#: wp-admin/includes/network.php:191
+#: wp-admin/includes/network.php:200
 msgid "If %1$s is disabled, ask your administrator to enable that module, or look at the <a href=\"%2$s\">Apache documentation</a> or <a href=\"%3$s\">elsewhere</a> for help setting it up."
 msgstr "If %1$s is disabled, ask your administrator to enable that module, or look at the <a href=\"%2$s\">Apache documentation</a> or <a href=\"%3$s\">elsewhere</a> for help setting it up."
 
 #. translators: %s: mod_rewrite
-#: wp-admin/includes/network.php:182
+#: wp-admin/includes/network.php:191
 msgid "It looks like the Apache %s module is not installed."
 msgstr "It looks like the Apache %s module is not installed."
 
 #. translators: %s: mod_rewrite
-#: wp-admin/includes/network.php:175
+#: wp-admin/includes/network.php:184
 msgid "Please make sure the Apache %s module is installed as it will be used at the end of this installation."
 msgstr "Please make sure the Apache %s module is installed as it will be used at the end of this installation."
 
 #. translators: %s: port number
-#: wp-admin/includes/network.php:125
+#: wp-admin/includes/network.php:134
 msgid "You cannot use port numbers such as %s."
 msgstr "You cannot use port numbers such as %s."
 
@@ -559,7 +564,7 @@ msgid "Enable menus"
 msgstr "Enable menus"
 
 #. translators: 1: a filename like .htaccess. 2: a file path.
-#: wp-admin/includes/network.php:539 wp-admin/includes/network.php:579
+#: wp-admin/includes/network.php:548 wp-admin/includes/network.php:588
 msgid "Add the following to your %1$s file in %2$s, <strong>replacing</strong> other WordPress rules:"
 msgstr "Add the following to your %1$s file in %2$s, <strong>replacing</strong> other WordPress rules:"
 
@@ -649,8 +654,8 @@ msgstr ""
 "Address: %2$s\n"
 "Name: %3$s"
 
-#: wp-admin/includes/network.php:229 wp-admin/includes/network.php:545
-#: wp-admin/includes/network.php:585
+#: wp-admin/includes/network.php:238 wp-admin/includes/network.php:554
+#: wp-admin/includes/network.php:594
 msgid "Subdirectory networks may not be fully compatible with custom wp-content directories."
 msgstr "Subdirectory networks may not be fully compatible with custom wp-content directories."
 
@@ -839,11 +844,11 @@ msgstr "Enter the username and email."
 msgid "Once you add this code and refresh your browser, multisite should be enabled. This screen, now in the Network Admin navigation menu, will keep an archive of the added code. You can toggle between Network Admin and Site Admin by clicking on the Network Admin or an individual site name under the My Sites dropdown in the Toolbar."
 msgstr "Once you add this code and refresh your browser, multisite should be enabled. This screen, now in the Network Admin navigation menu, will keep an archive of the added code. You can toggle between Network Admin and Site Admin by clicking on the Network Admin or an individual site name under the My Sites dropdown in the Toolbar."
 
-#: wp-admin/includes/network.php:140
+#: wp-admin/includes/network.php:149
 msgid "ERROR: The network could not be created."
 msgstr "ERROR: The network could not be created."
 
-#: wp-admin/includes/network.php:216
+#: wp-admin/includes/network.php:225
 msgid "Sub-directories"
 msgstr "Sub-directories"
 
@@ -852,17 +857,19 @@ msgid "Network"
 msgstr "Network"
 
 #. translators: 1: hostname
-#: wp-admin/includes/network.php:211
+#: wp-admin/includes/network.php:220
 msgctxt "subdomain examples"
 msgid "like <code>site1.%1$s</code> and <code>site2.%1$s</code>"
 msgstr "like <code>site1.%1$s</code> and <code>site2.%1$s</code>"
 
-#: wp-admin/includes/network.php:201
+#: wp-admin/includes/network.php:210
 msgid "Addresses of Sites in your Network"
 msgstr "Addresses of Sites in your Network"
 
-#: wp-admin/includes/network.php:113 wp-admin/includes/network.php:373
-#: wp-admin/includes/network.php:545 wp-admin/includes/network.php:585
+#: wp-admin/includes/network.php:117 wp-admin/includes/network.php:189
+#: wp-admin/includes/network.php:238 wp-admin/includes/network.php:279
+#: wp-admin/includes/network.php:289 wp-admin/includes/network.php:382
+#: wp-admin/includes/network.php:554 wp-admin/includes/network.php:594
 msgid "Warning:"
 msgstr "Warning:"
 
@@ -870,7 +877,7 @@ msgstr "Warning:"
 msgid "The Network creation panel is not for WordPress MU networks."
 msgstr "The Network creation panel is not for WordPress MU networks."
 
-#: wp-admin/includes/network.php:128
+#: wp-admin/includes/network.php:137
 msgid "Return to Dashboard"
 msgstr "Return to Dashboard"
 
@@ -882,11 +889,12 @@ msgstr "Create a Network of WordPress Sites"
 msgid "This screen allows you to configure a network as having subdomains (<code>site1.example.com</code>) or subdirectories (<code>example.com/site1</code>). Subdomains require wildcard subdomains to be enabled in Apache and DNS records, if your host allows it."
 msgstr "This screen allows you to configure a network as having subdomains (<code>site1.example.com</code>) or subdirectories (<code>example.com/site1</code>). Subdomains require wildcard subdomains to be enabled in Apache and DNS records, if your host allows it."
 
-#: wp-admin/includes/network.php:113
+#. translators: %s: Plugins screen URL
+#: wp-admin/includes/network.php:119
 msgid "Please <a href=\"%s\">deactivate your plugins</a> before enabling the Network feature."
 msgstr "Please <a href=\"%s\">deactivate your plugins</a> before enabling the Network feature."
 
-#: wp-admin/includes/network.php:113
+#: wp-admin/includes/network.php:122
 msgid "Once the network is created, you may reactivate your plugins."
 msgstr "Once the network is created, you may reactivate your plugins."
 
@@ -894,19 +902,15 @@ msgstr "Once the network is created, you may reactivate your plugins."
 msgid "The choice of subdirectory sites is disabled if this setup is more than a month old because of permalink problems with &#8220;/blog/&#8221; from the main site. This disabling will be addressed in a future version."
 msgstr "The choice of subdirectory sites is disabled if this setup is more than a month old because of permalink problems with &#8220;/blog/&#8221; from the main site. This disabling will be addressed in a future version."
 
-#: wp-admin/includes/network.php:160
+#: wp-admin/includes/network.php:169
 msgid "Welcome to the Network installation process!"
 msgstr "Welcome to the Network installation process!"
 
-#: wp-admin/includes/network.php:256
+#: wp-admin/includes/network.php:265
 msgid "Network Details"
 msgstr "Network Details"
 
-#: wp-admin/includes/network.php:105
-msgid "The constant DO_NOT_UPGRADE_GLOBAL_TABLES cannot be defined when creating a network."
-msgstr "The constant DO_NOT_UPGRADE_GLOBAL_TABLES cannot be defined when creating a network."
-
-#: wp-admin/includes/network.php:594
+#: wp-admin/includes/network.php:603
 msgid "Once you complete these steps, your network is enabled and configured. You will have to log in again."
 msgstr "Once you complete these steps, your network is enabled and configured. You will have to log in again."
 
@@ -918,83 +922,78 @@ msgstr "The next screen for Network Setup will give you individually-generated l
 msgid "Choose subdomains or subdirectories; this can only be switched afterwards by reconfiguring your installation. Fill out the network details, and click Install. If this does not work, you may have to add a wildcard DNS record (for subdomains) or change to another setting in Permalinks (for subdirectories)."
 msgstr "Choose subdomains or subdirectories; this can only be switched afterwards by reconfiguring your installation. Fill out the network details, and click Install. If this does not work, you may have to add a wildcard DNS record (for subdomains) or change to another setting in Permalinks (for subdirectories)."
 
-#: wp-admin/includes/network.php:475
+#: wp-admin/includes/network.php:484
 msgid "To make your installation more secure, you should also add:"
 msgstr "To make your installation more secure, you should also add:"
 
-#: wp-admin/includes/network.php:208
+#: wp-admin/includes/network.php:217
 msgid "Sub-domains"
 msgstr "Sub-domains"
 
-#: wp-admin/includes/network.php:180 wp-admin/includes/network.php:229
-#: wp-admin/includes/network.php:270 wp-admin/includes/network.php:280
-msgid "Warning!"
-msgstr "Warning!"
-
-#: wp-admin/includes/network.php:204
+#: wp-admin/includes/network.php:213
 msgid "You will need a wildcard DNS record if you are going to use the virtual host (sub-domain) functionality."
 msgstr "You will need a wildcard DNS record if you are going to use the virtual host (sub-domain) functionality."
 
-#: wp-admin/includes/network.php:122
+#: wp-admin/includes/network.php:131
 msgid "You cannot install a network of sites with your server address."
 msgstr "You cannot install a network of sites with your server address."
 
-#: wp-admin/includes/network.php:161
+#: wp-admin/includes/network.php:170
 msgid "Fill in the information below and you&#8217;ll be on your way to creating a network of WordPress sites. We will create configuration files in the next step."
 msgstr "Fill in the information below and you&#8217;ll be on your way to creating a network of WordPress sites. We will create configuration files in the next step."
 
-#: wp-admin/includes/network.php:386
+#: wp-admin/includes/network.php:395
 msgid "Complete the following steps to enable the features for creating a network of sites."
 msgstr "Complete the following steps to enable the features for creating a network of sites."
 
-#: wp-admin/includes/network.php:385
+#: wp-admin/includes/network.php:394
 msgid "Enabling the Network"
 msgstr "Enabling the Network"
 
-#: wp-admin/includes/network.php:374
+#: wp-admin/includes/network.php:383
 msgid "Please complete the configuration steps. To create a new network, you will need to empty or remove the network database tables."
 msgstr "Please complete the configuration steps. To create a new network, you will need to empty or remove the network database tables."
 
-#: wp-admin/includes/network.php:373
+#: wp-admin/includes/network.php:382
 msgid "An existing WordPress network was detected."
 msgstr "An existing WordPress network was detected."
 
-#: wp-admin/includes/network.php:368
+#: wp-admin/includes/network.php:377
 msgid "The original configuration steps are shown here for reference."
 msgstr "The original configuration steps are shown here for reference."
 
-#: wp-admin/includes/network.php:317
+#: wp-admin/includes/network.php:326
 msgid "Your email address."
 msgstr "Your email address."
 
-#: wp-admin/includes/network.php:308
+#: wp-admin/includes/network.php:317
 msgid "What would you like to call your network?"
 msgstr "What would you like to call your network?"
 
-#: wp-admin/includes/network.php:304 wp-admin/network/settings.php:125
+#: wp-admin/includes/network.php:313 wp-admin/network/settings.php:125
 msgid "Network Title"
 msgstr "Network Title"
 
-#: wp-admin/includes/network.php:286
+#: wp-admin/includes/network.php:295
 msgid "Because your installation is not new, the sites in your WordPress network must use sub-domains."
 msgstr "Because your installation is not new, the sites in your WordPress network must use sub-domains."
 
-#: wp-admin/includes/network.php:277
+#: wp-admin/includes/network.php:286
 msgid "Because your installation is in a directory, the sites in your WordPress network must use sub-directories."
 msgstr "Because your installation is in a directory, the sites in your WordPress network must use sub-directories."
 
-#: wp-admin/includes/network.php:270 wp-admin/includes/network.php:280
-#: wp-admin/includes/network.php:287
+#: wp-admin/includes/network.php:279 wp-admin/includes/network.php:289
+#: wp-admin/includes/network.php:296
 msgid "The main site in a sub-directory installation will need to use a modified permalink structure, potentially breaking existing links."
 msgstr "The main site in a sub-directory installation will need to use a modified permalink structure, potentially breaking existing links."
 
-#: wp-admin/includes/network.php:234 wp-admin/includes/network.php:244
-#: wp-admin/includes/network.php:293
+#: wp-admin/includes/network.php:243 wp-admin/includes/network.php:253
+#: wp-admin/includes/network.php:302
 msgid "Server Address"
 msgstr "Server Address"
 
 #. translators: 1: hostname
-#: wp-admin/includes/network.php:219
+#: wp-admin/includes/network.php:228
 msgctxt "subdirectory examples"
 msgid "like <code>%1$s/site1</code> and <code>%1$s/site2</code>"
 msgstr "like <code>%1$s/site1</code> and <code>%1$s/site2</code>"
@@ -1273,7 +1272,7 @@ msgstr "The welcome email sent to new site owners."
 msgid "[%s] New Site Created"
 msgstr "[%s] New Site Created"
 
-#: wp-admin/includes/network.php:313 wp-admin/network/settings.php:132
+#: wp-admin/includes/network.php:322 wp-admin/network/settings.php:132
 msgid "Network Admin Email"
 msgstr "Network Admin Email"
 
