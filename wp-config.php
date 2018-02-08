@@ -37,6 +37,33 @@ define('DB_CHARSET', 'utf8mb4');
 /** The Database Collate type. Don't change this if in doubt. */
 define('DB_COLLATE', '');
 
+
+// ** EXTERNAL LOGIN SETTINGS ** //
+/** EXLOG - The External Database Name */
+define('EXTERNAL_LOGIN_OPTION_DB_NAME', getenv('EXTERNAL_LOGIN_OPTION_DB_NAME'));
+
+/** EXLOG - The External Database Host */
+define('EXTERNAL_LOGIN_OPTION_DB_HOST', getenv('EXTERNAL_LOGIN_OPTION_DB_HOST'));
+
+/** EXLOG - The External Database Username */
+define('EXTERNAL_LOGIN_OPTION_DB_USERNAME', getenv('EXTERNAL_LOGIN_OPTION_DB_USERNAME'));
+
+/** EXLOG - The External Database Password */
+define('EXTERNAL_LOGIN_OPTION_DB_PASSWORD', getenv('EXTERNAL_LOGIN_OPTION_DB_PASSWORD'));
+
+/** EXLOG - Hash Type */
+define('EXTERNAL_LOGIN_OPTION_HASH_ALGORITHM', getenv('EXTERNAL_LOGIN_OPTION_HASH_ALGORITHM'));
+
+/** EXLOG - Salting Method */
+define('EXTERNAL_LOGIN_OPTION_DB_SALTING_METHOD', getenv('EXTERNAL_LOGIN_OPTION_DB_SALTING_METHOD'));
+
+/** EXLOG - Salt Location */
+define('EXTERNAL_LOGIN_OPTION_DB_SALT_LOCATION', getenv('EXTERNAL_LOGIN_OPTION_DB_SALT_LOCATION'));
+
+/** EXLOG - Password Salt */
+define('EXTERNAL_LOGIN_OPTION_DB_SALT', getenv('EXTERNAL_LOGIN_OPTION_DB_SALT'));
+
+
 /**#@+
  * Authentication Unique Keys and Salts.
  *
