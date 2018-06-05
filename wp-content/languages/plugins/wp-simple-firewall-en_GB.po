@@ -1,0 +1,68 @@
+# Translation of Plugins - Shield WordPress Security - Stable (latest release) in English (UK)
+# This file is distributed under the same license as the Plugins - Shield WordPress Security - Stable (latest release) package.
+msgid ""
+msgstr ""
+"PO-Revision-Date: 2017-01-29 12:30:48+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: GlotPress/2.4.0-alpha\n"
+"Language: en_GB\n"
+"Project-Id-Version: Plugins - Shield WordPress Security - Stable (latest release)\n"
+
+#. Description of the plugin/theme
+msgid "Powerful, Easy-To-Use #1 Rated WordPress Security System"
+msgstr "Powerful, Easy-To-Use #1 Rated WordPress Security System"
+
+#. Plugin Name of the plugin/theme
+msgid "Shield"
+msgstr "Shield"
+
+#: src/features/base.php:986
+msgid "Save All Settings"
+msgstr "Save All Settings"
+
+#: src/features/base.php:985
+msgid "Plugin Activated Features Summary:"
+msgstr "Plugin Activated Features Summary:"
+
+#: src/features/base.php:984
+msgid "Blog"
+msgstr "Blog"
+
+#: src/features/base.php:983
+msgid "More Info"
+msgstr "More Info"
+
+#: src/features/base.php:982
+msgid "Off"
+msgstr "Off"
+
+#: src/features/base.php:981
+msgid "On"
+msgstr "On"
+
+#: src/features/base.php:980
+msgid "Settings"
+msgstr "Settings"
+
+#. Author URI of the plugin/theme
+msgid "http://icwp.io/2e"
+msgstr "http://icwp.io/2e"
+
+#. Author of the plugin/theme
+msgid "iControlWP"
+msgstr "iControlWP"
+
+#. Plugin URI of the plugin/theme
+msgid "http://icwp.io/2f"
+msgstr "http://icwp.io/2f"
+
+#: src/processors/loginprotect_wplogin.php:61
+msgid "Permalinks"
+msgstr "Permalinks"
+
+#: src/processors/base_plugin.php:59 src/processors/base_plugin.php:87
+msgid "Support Forums"
+msgstr "Support Forums"
