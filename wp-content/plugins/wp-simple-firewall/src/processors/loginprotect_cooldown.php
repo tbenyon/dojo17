@@ -4,9 +4,14 @@ if ( class_exists( 'ICWP_WPSF_Processor_LoginProtect_Cooldown', false ) ) {
 	return;
 }
 
-require_once( dirname(__FILE__).DIRECTORY_SEPARATOR.'loginprotect_base.php' );
+require_once( dirname(__FILE__ ).'/loginprotect_base.php' );
 
 class ICWP_WPSF_Processor_LoginProtect_Cooldown extends ICWP_WPSF_Processor_LoginProtect_Base {
+
+	/**
+	 * @var bool
+	 */
+	private $bCooldownUpdated = false;
 
 	/**
 	 */
@@ -31,7 +36,7 @@ class ICWP_WPSF_Processor_LoginProtect_Cooldown extends ICWP_WPSF_Processor_Logi
 	 * @return WP_User|WP_Error
 	 */
 	public function checkLoginInterval( $oUserOrError ) {
-		if ( !$this->loadWp()->isRequestUserLogin() ) {
+		if ( !$this->loadWp()->isRequestUserLogin() || $this->bCooldownUpdated ) {
 			return $oUserOrError;
 		}
 
@@ -90,6 +95,7 @@ class ICWP_WPSF_Processor_LoginProtect_Cooldown extends ICWP_WPSF_Processor_Logi
 	/**
 	 */
 	protected function updateLastLoginTime() {
+		$this->bCooldownUpdated = true;
 		$this->loadFS()->touch( $this->getLastLoginTimeFilePath(), $this->time() );
 	}
 

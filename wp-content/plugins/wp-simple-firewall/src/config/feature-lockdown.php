@@ -3,7 +3,7 @@
   "properties": {
     "slug": "lockdown",
     "name": "Lockdown",
-    "show_feature_menu_item": true,
+    "show_module_menu_item": true,
     "storage_key": "lockdown",
     "tagline": "Harden the more loosely controlled settings of your site",
     "show_central": true,
@@ -13,17 +13,8 @@
   },
   "sections": [
     {
-      "slug": "section_enable_plugin_feature_wordpress_lockdown",
+      "slug": "section_apixml",
       "primary": true,
-      "title": "Enable Plugin Feature: Lockdown",
-      "title_short": "Enable / Disable",
-      "summary": [
-        "Purpose - Lockdown helps secure-up certain loosely-controlled WordPress settings on your site.",
-        "Recommendation - Keep the Lockdown feature turned on."
-      ]
-    },
-    {
-      "slug": "section_system_lockdown",
       "title": "WordPress System Lockdown",
       "title_short": "System",
       "summary": [
@@ -50,6 +41,15 @@
       ]
     },
     {
+      "slug": "section_enable_plugin_feature_wordpress_lockdown",
+      "title": "Enable Module: Lockdown",
+      "title_short": "Disable Module",
+      "summary": [
+        "Purpose - Lockdown helps secure-up certain loosely-controlled WordPress settings on your site.",
+        "Recommendation - Keep the Lockdown feature turned on."
+      ]
+    },
+    {
       "slug": "section_non_ui",
       "hidden": true
     }
@@ -63,12 +63,12 @@
       "link_info": "http://icwp.io/4r",
       "link_blog": "",
       "name": "Enable Lockdown",
-      "summary": "Enable (or Disable) The Lockdown Feature",
-      "description": "Checking/Un-Checking this option will completely turn on/off the whole Lockdown feature"
+      "summary": "Enable (or Disable) The Lockdown module",
+      "description": "Un-Checking this option will completely disable the Lockdown module"
     },
     {
       "key": "disable_xmlrpc",
-      "section": "section_system_lockdown",
+      "section": "section_apixml",
       "default": "N",
       "type": "checkbox",
       "link_info": "",
@@ -79,14 +79,29 @@
     },
     {
       "key": "disable_anonymous_restapi",
-      "section": "section_system_lockdown",
+      "section": "section_apixml",
       "default": "N",
       "type": "checkbox",
       "link_info": "",
       "link_blog": "",
-      "name": "Disable Anonymous Rest API",
+      "name": "Anonymous Rest API",
       "summary": "Disable The Anonymous Rest API",
       "description": "Checking this option will completely turn off the whole Anonymous Rest API system."
+    },
+    {
+      "key":         "api_namespace_exclusions",
+      "section":     "section_non_ui",
+      "default":     [
+        "contact-form-7",
+        "jetpack",
+        "woocommerce"
+      ],
+      "type":        "array",
+      "link_info":   "",
+      "link_blog":   "",
+      "name":        "Rest API Exclusions",
+      "summary":     "Anonymous REST API Exclusions",
+      "description": "Any namespaces provided here will be excluded from the Anonymous API restriction."
     },
     {
       "key": "disable_file_editing",
@@ -142,6 +157,18 @@
       "name": "Block Username Fishing",
       "summary": "Block the ability to discover WordPress usernames based on author IDs",
       "description": "When enabled, any URL requests containing 'author=' will be killed. Warning: Enabling this option may interfere with expected operations of your site."
+    },
+    {
+      "key":          "insights_xml_block_at",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "default":      0
+    },
+    {
+      "key":          "insights_restapi_block_at",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "default":      0
     }
   ]
 }

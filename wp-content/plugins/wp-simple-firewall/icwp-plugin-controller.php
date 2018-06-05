@@ -2,11 +2,9 @@
 /**
  * Copyright (c) 2018 iControlWP <support@icontrolwp.com>
  * All rights reserved.
- *
  * "Shield" (formerly WordPress Simple Firewall) is distributed under the GNU
  * General Public License, Version 2, June 1991. Copyright (C) 1989, 1991 Free
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
- *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -94,6 +92,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @var boolean
 	 */
 	protected $bMeetsBasePermissions = false;
+
 	/**
 	 * @var string
 	 */
@@ -131,6 +130,13 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		$this->loadWpTrack();
 		$this->loadFactory(); // so we know it's loaded whenever we need it. Cuz we need it.
 		$this->doLoadTextDomain();
+
+		// Rather than rely on the play nice of other plugins (which they don't do) we now must
+		// forcefully use the autoloader. We do only if it's OUR module page and PHP version is supported.
+		// This was added in v6.7 because All-In-One Events Cal was forcing their crap TWIG setup upon us
+		if ( $this->isThisPluginModuleRequest() && $this->loadDP()->getPhpVersionIsAtLeast( '5.4' ) ) {
+			$this->loadAutoload();
+		}
 	}
 
 	/**
@@ -180,7 +186,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 
 		if ( !$bMeetsRequirements ) {
 			$this->aRequirementsMessages = $aRequirementsMessages;
-			add_action( 'admin_menu', array( $this, 'adminNoticeDoesNotMeetRequirements' ) );
+			add_action( 'admin_notices', array( $this, 'adminNoticeDoesNotMeetRequirements' ) );
 			add_action( 'network_admin_notices', array( $this, 'adminNoticeDoesNotMeetRequirements' ) );
 			throw new Exception( 'Plugin does not meet minimum requirements' );
 		}
@@ -225,6 +231,14 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * All our module page names are prefixed
+	 * @return bool
+	 */
+	public function isThisPluginModuleRequest() {
+		return strpos( $this->loadDP()->query( 'page' ), $this->prefix() ) === 0;
+	}
+
+	/**
 	 * @return array
 	 */
 	protected function getRequirementsMessages() {
@@ -246,14 +260,14 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	/**
 	 */
 	public function onWpDeactivatePlugin() {
-		if ( current_user_can( $this->getBasePermissions() ) && apply_filters( $this->doPluginPrefix( 'delete_on_deactivate' ), false ) ) {
-			do_action( $this->doPluginPrefix( 'delete_plugin' ) );
+		if ( current_user_can( $this->getBasePermissions() ) && apply_filters( $this->prefix( 'delete_on_deactivate' ), false ) ) {
+			do_action( $this->prefix( 'delete_plugin' ) );
 			$this->deletePluginControllerOptions();
 		}
 	}
 
 	public function onWpActivatePlugin() {
-		do_action( $this->doPluginPrefix( 'plugin_activate' ) );
+		do_action( $this->prefix( 'plugin_activate' ) );
 		$this->loadAllFeatures( true, true );
 	}
 
@@ -269,12 +283,17 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		add_action( 'admin_menu', array( $this, 'onWpAdminMenu' ) );
 		add_action( 'network_admin_menu', array( $this, 'onWpAdminMenu' ) );
 
+		if ( $this->loadWp()->isAjax() ) {
+			add_action( 'wp_ajax_'.$this->prefix(), array( $this, 'ajaxAction' ) );
+			add_action( 'wp_ajax_nopriv_'.$this->prefix(), array( $this, 'ajaxAction' ) );
+		}
+
 		add_filter( 'all_plugins', array( $this, 'filter_hidePluginFromTableList' ) );
 		add_filter( 'all_plugins', array( $this, 'doPluginLabels' ) );
-		add_filter( 'plugin_action_links_' . $this->getPluginBaseFile(), array( $this, 'onWpPluginActionLinks' ), 50, 1 );
+		add_filter( 'plugin_action_links_'.$this->getPluginBaseFile(), array( $this, 'onWpPluginActionLinks' ), 50, 1 );
 		add_filter( 'plugin_row_meta', array( $this, 'onPluginRowMeta' ), 50, 2 );
 		add_filter( 'site_transient_update_plugins', array( $this, 'filter_hidePluginUpdatesFromUI' ) );
-		add_action( 'in_plugin_update_message-' . $this->getPluginBaseFile(), array( $this, 'onWpPluginUpdateMessage' ) );
+		add_action( 'in_plugin_update_message-'.$this->getPluginBaseFile(), array( $this, 'onWpPluginUpdateMessage' ) );
 
 		add_filter( 'auto_update_plugin', array( $this, 'onWpAutoUpdate' ), 500, 2 );
 		add_filter( 'set_site_transient_update_plugins', array( $this, 'setUpdateFirstDetectedAt' ) );
@@ -282,9 +301,15 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		add_action( 'shutdown', array( $this, 'onWpShutdown' ) );
 		add_action( 'wp_logout', array( $this, 'onWpLogout' ) );
 
+		// GDPR
+		add_filter( 'wp_privacy_personal_data_exporters', array( $this, 'onWpPrivacyRegisterExporter' ) );
+		add_filter( 'wp_privacy_personal_data_erasers', array( $this, 'onWpPrivacyRegisterEraser' ) );
+
 		// outsource the collection of admin notices
 		if ( is_admin() ) {
-			$this->loadAdminNoticesProcessor()->setActionPrefix( $this->doPluginPrefix() );
+			$oNofics = $this->loadAdminNoticesProcessor();
+			$oNofics->setActionPrefix( $this->prefix() );
+			add_filter( $this->prefix( 'ajaxAuthAction' ), array( $oNofics, 'handleAuthAjax' ) );
 		}
 	}
 
@@ -327,15 +352,15 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	public function onWpDashboardSetup() {
 		if ( $this->getIsValidAdminArea() ) {
 			wp_add_dashboard_widget(
-				$this->doPluginPrefix( 'dashboard_widget' ),
-				apply_filters( $this->doPluginPrefix( 'dashboard_widget_title' ), $this->getHumanName() ),
+				$this->prefix( 'dashboard_widget' ),
+				apply_filters( $this->prefix( 'dashboard_widget_title' ), $this->getHumanName() ),
 				array( $this, 'displayDashboardWidget' )
 			);
 		}
 	}
 
 	public function displayDashboardWidget() {
-		$aContent = apply_filters( $this->doPluginPrefix( 'dashboard_widget_content' ), array() );
+		$aContent = apply_filters( $this->prefix( 'dashboard_widget_content' ), array() );
 		echo implode( '', $aContent );
 	}
 
@@ -345,10 +370,10 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	public function getHasPermissionToManage() {
-		if ( apply_filters( $this->doPluginPrefix( 'bypass_permission_to_manage' ), false ) ) {
+		if ( apply_filters( $this->prefix( 'bypass_permission_to_manage' ), false ) ) {
 			return true;
 		}
-		return ( $this->getMeetsBasePermissions() && apply_filters( $this->doPluginPrefix( 'has_permission_to_manage' ), true ) );
+		return ( $this->getMeetsBasePermissions() && apply_filters( $this->prefix( 'has_permission_to_manage' ), true ) );
 	}
 
 	/**
@@ -370,16 +395,35 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 */
 	private function downloadOptionsExport() {
 		$oDp = $this->loadDataProcessor();
-		if ( $oDp->FetchGet( 'icwp_shield_export' ) == 1 ) {
-			$aExportOptions = apply_filters( $this->doPluginPrefix( 'gather_options_for_export' ), array() );
+		if ( $oDp->query( 'icwp_shield_export' ) == 1 ) {
+			$aExportOptions = apply_filters( $this->prefix( 'gather_options_for_export' ), array() );
 			if ( !empty( $aExportOptions ) && is_array( $aExportOptions ) ) {
 				$oDp->downloadStringAsFile(
 					wp_json_encode( $aExportOptions ),
 					'shield_options_export-'
-					. $this->loadWp()->getHomeUrl( true )
-					. '-' . date( 'y-m-d__H-i-s' ) . '.txt'
+					.$this->loadWp()->getHomeUrl( true )
+					.'-'.date( 'y-m-d__H-i-s' ).'.txt'
 				);
 			}
+		}
+	}
+
+	public function ajaxAction() {
+		$sNonceAction = $this->loadDP()->request( 'exec' );
+		check_ajax_referer( $sNonceAction, 'exec_nonce' );
+
+		$sAction = $this->loadWpUsers()->isUserLoggedIn() ? 'ajaxAuthAction' : 'ajaxNonAuthAction';
+		$aResponse = apply_filters( $this->prefix( $sAction ), array() );
+		$aResponse = apply_filters( $this->prefix( 'ajaxAction' ), $aResponse );
+
+		if ( !empty( $aResponse ) && is_array( $aResponse ) && isset( $aResponse[ 'success' ] ) ) {
+			$bSuccess = $aResponse[ 'success' ];
+			wp_send_json(
+				array(
+					'success' => $bSuccess,
+					'data'    => $aResponse
+				)
+			);
 		}
 	}
 
@@ -420,22 +464,21 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 */
 	protected function createPluginMenu() {
 
-		$bHideMenu = apply_filters( $this->doPluginPrefix( 'filter_hidePluginMenu' ), !$this->getPluginSpec_Menu( 'show' ) );
+		$bHideMenu = apply_filters( $this->prefix( 'filter_hidePluginMenu' ), !$this->getPluginSpec_Menu( 'show' ) );
 		if ( $bHideMenu ) {
 			return true;
 		}
 
 		if ( $this->getPluginSpec_Menu( 'top_level' ) ) {
 
-			$aPluginLabels = $this->getPluginLabels();
-
-			$sMenuTitle = $this->getPluginSpec_Menu( 'title' );
+			$aLabels = $this->getPluginLabels();
+			$sMenuTitle = empty( $aLabels[ 'MenuTitle' ] ) ? $this->getPluginSpec_Menu( 'title' ) : $aLabels[ 'MenuTitle' ];
 			if ( is_null( $sMenuTitle ) ) {
 				$sMenuTitle = $this->getHumanName();
 			}
 
 			$sMenuIcon = $this->getPluginUrl_Image( $this->getPluginSpec_Menu( 'icon_image' ) );
-			$sIconUrl = empty( $aPluginLabels[ 'icon_url_16x16' ] ) ? $sMenuIcon : $aPluginLabels[ 'icon_url_16x16' ];
+			$sIconUrl = empty( $aLabels[ 'icon_url_16x16' ] ) ? $sMenuIcon : $aLabels[ 'icon_url_16x16' ];
 
 			$sFullParentMenuId = $this->getPluginPrefix();
 			add_menu_page(
@@ -449,12 +492,12 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 
 			if ( $this->getPluginSpec_Menu( 'has_submenu' ) ) {
 
-				$aPluginMenuItems = apply_filters( $this->doPluginPrefix( 'filter_plugin_submenu_items' ), array() );
+				$aPluginMenuItems = apply_filters( $this->prefix( 'filter_plugin_submenu_items' ), array() );
 				if ( !empty( $aPluginMenuItems ) ) {
 					foreach ( $aPluginMenuItems as $sMenuTitle => $aMenu ) {
-						list( $sMenuItemText, $sMenuItemId, $aMenuCallBack ) = $aMenu;
+						list( $sMenuItemText, $sMenuItemId, $aMenuCallBack, $bShowItem ) = $aMenu;
 						add_submenu_page(
-							$sFullParentMenuId,
+							$bShowItem ? $sFullParentMenuId : null,
 							$sMenuTitle,
 							$sMenuItemText,
 							$this->getBasePermissions(),
@@ -527,12 +570,22 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 						$sMethod = $aLink[ 'url_method_name' ];
 						if ( method_exists( $this, $sMethod ) ) {
 							$sSettingsLink = sprintf( $sLinkTemplate, $this->{$sMethod}(), "_top", $aLink[ 'name' ] );;
-							array_unshift( $aActionLinks, $sSettingsLink );
+							$aActionLinks = array_merge(
+								array(
+									$this->prefix( 'dashboard' ) => $sSettingsLink
+								),
+								$aActionLinks
+							);
 						}
 					}
 					else if ( !empty( $aLink[ 'href' ] ) ) {
-						$sSettingsLink = sprintf( $sLinkTemplate, $aLink[ 'href' ], "_blank", $aLink[ 'name' ] );;
-						array_unshift( $aActionLinks, $sSettingsLink );
+						$sSettingsLink = sprintf( $sLinkTemplate, $aLink[ 'href' ], "_blank", $aLink[ 'name' ] );
+						$aActionLinks = array_merge(
+							array(
+								$this->prefix( 'dashboard' ) => $sSettingsLink
+							),
+							$aActionLinks
+						);
 					}
 				}
 			}
@@ -545,8 +598,8 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		$aFrontendIncludes = $this->getPluginSpec_Include( 'frontend' );
 		if ( isset( $aFrontendIncludes[ 'css' ] ) && !empty( $aFrontendIncludes[ 'css' ] ) && is_array( $aFrontendIncludes[ 'css' ] ) ) {
 			foreach ( $aFrontendIncludes[ 'css' ] as $sCssAsset ) {
-				$sUnique = $this->doPluginPrefix( $sCssAsset );
-				wp_register_style( $sUnique, $this->getPluginUrl_Css( $sCssAsset . '.css' ), ( empty( $sDependent ) ? false : $sDependent ), $this->getVersion() );
+				$sUnique = $this->prefix( $sCssAsset );
+				wp_register_style( $sUnique, $this->getPluginUrl_Css( $sCssAsset.'.css' ), ( empty( $sDependent ) ? false : $sDependent ), $this->getVersion() );
 				wp_enqueue_style( $sUnique );
 				$sDependent = $sUnique;
 			}
@@ -560,10 +613,10 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 			if ( isset( $aAdminJs[ 'js' ] ) && !empty( $aAdminJs[ 'js' ] ) && is_array( $aAdminJs[ 'js' ] ) ) {
 				$sDependent = false;
 				foreach ( $aAdminJs[ 'css' ] as $sAsset ) {
-					$sUrl = $this->getPluginUrl_Js( $sAsset . '.js' );
+					$sUrl = $this->getPluginUrl_Js( $sAsset.'.js' );
 					if ( !empty( $sUrl ) ) {
-						$sUnique = $this->doPluginPrefix( $sAsset );
-						wp_register_script( $sUnique, $sUrl, $sDependent, $this->getVersion() . rand() );
+						$sUnique = $this->prefix( $sAsset );
+						wp_register_script( $sUnique, $sUrl, $sDependent, $this->getVersion().rand() );
 						wp_enqueue_script( $sUnique );
 						$sDependent = $sUnique;
 					}
@@ -576,9 +629,9 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 			if ( isset( $aAdminJs[ 'js' ] ) && !empty( $aAdminJs[ 'js' ] ) && is_array( $aAdminJs[ 'js' ] ) ) {
 				$sDependent = false;
 				foreach ( $aAdminJs[ 'js' ] as $sJsAsset ) {
-					$sUrl = $this->getPluginUrl_Js( $sJsAsset . '.js' );
+					$sUrl = $this->getPluginUrl_Js( $sJsAsset.'.js' );
 					if ( !empty( $sUrl ) ) {
-						$sUnique = $this->doPluginPrefix( $sJsAsset );
+						$sUnique = $this->prefix( $sJsAsset );
 						wp_register_script( $sUnique, $sUrl, $sDependent, $this->getVersion() );
 						wp_enqueue_script( $sUnique );
 						$sDependent = $sUnique;
@@ -595,10 +648,10 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 			if ( isset( $aAdminCss[ 'css' ] ) && !empty( $aAdminCss[ 'css' ] ) && is_array( $aAdminCss[ 'css' ] ) ) {
 				$sDependent = false;
 				foreach ( $aAdminCss[ 'css' ] as $sCssAsset ) {
-					$sUrl = $this->getPluginUrl_Css( $sCssAsset . '.css' );
+					$sUrl = $this->getPluginUrl_Css( $sCssAsset.'.css' );
 					if ( !empty( $sUrl ) ) {
-						$sUnique = $this->doPluginPrefix( $sCssAsset );
-						wp_register_style( $sUnique, $sUrl, $sDependent, $this->getVersion() . rand() );
+						$sUnique = $this->prefix( $sCssAsset );
+						wp_register_style( $sUnique, $sUrl, $sDependent, $this->getVersion().rand() );
 						wp_enqueue_style( $sUnique );
 						$sDependent = $sUnique;
 					}
@@ -611,10 +664,10 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 			if ( isset( $aAdminCss[ 'css' ] ) && !empty( $aAdminCss[ 'css' ] ) && is_array( $aAdminCss[ 'css' ] ) ) {
 				$sDependent = false;
 				foreach ( $aAdminCss[ 'css' ] as $sCssAsset ) {
-					$sUrl = $this->getPluginUrl_Css( $sCssAsset . '.css' );
+					$sUrl = $this->getPluginUrl_Css( $sCssAsset.'.css' );
 					if ( !empty( $sUrl ) ) {
-						$sUnique = $this->doPluginPrefix( $sCssAsset );
-						wp_register_style( $sUnique, $sUrl, $sDependent, $this->getVersion() . rand() );
+						$sUnique = $this->prefix( $sCssAsset );
+						wp_register_style( $sUnique, $sUrl, $sDependent, $this->getVersion().rand() );
 						wp_enqueue_style( $sUnique );
 						$sDependent = $sUnique;
 					}
@@ -628,7 +681,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 */
 	public function onWpPluginUpdateMessage() {
 		$sDefault = sprintf( 'Upgrade Now To Get The Latest Available %s Features.', $this->getHumanName() );
-		$sMessage = apply_filters( $this->doPluginPrefix( 'plugin_update_message' ), $sDefault );
+		$sMessage = apply_filters( $this->prefix( 'plugin_update_message' ), $sDefault );
 		if ( empty( $sMessage ) ) {
 			$sMessage = '';
 		}
@@ -651,7 +704,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	public function setUpdateFirstDetectedAt( $oPluginUpdateData ) {
 
 		if ( !empty( $oPluginUpdateData ) && !empty( $oPluginUpdateData->response )
-			&& isset( $oPluginUpdateData->response[ $this->getPluginBaseFile() ] ) ) {
+			 && isset( $oPluginUpdateData->response[ $this->getPluginBaseFile() ] ) ) {
 			// i.e. there's an update available
 
 			$sNewVersion = $this->loadWpPlugins()->getUpdateNewVersion( $this->getPluginBaseFile() );
@@ -716,7 +769,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 					if ( !empty( $sNewVersion ) ) {
 						$nFirstDetected = isset( $oConOptions->update_first_detected[ $sNewVersion ] ) ? $oConOptions->update_first_detected[ $sNewVersion ] : 0;
 						$nTimeUpdateAvailable = $this->loadDataProcessor()->time() - $nFirstDetected;
-						$bDoAutoUpdate = ( $nFirstDetected > 0 && ( $nTimeUpdateAvailable > DAY_IN_SECONDS * $nAutoupdateDays ) );
+						$bDoAutoUpdate = ( $nFirstDetected > 0 && ( $nTimeUpdateAvailable > DAY_IN_SECONDS*$nAutoupdateDays ) );
 					}
 					break;
 
@@ -761,15 +814,15 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return array
 	 */
 	public function getPluginLabels() {
-		return apply_filters( $this->doPluginPrefix( 'plugin_labels' ), $this->getPluginSpec_Labels() );
+		return array_map( 'stripslashes', apply_filters( $this->prefix( 'plugin_labels' ), $this->getPluginSpec_Labels() ) );
 	}
 
 	/**
 	 * Hooked to 'shutdown'
 	 */
 	public function onWpShutdown() {
-		do_action( $this->doPluginPrefix( 'pre_plugin_shutdown' ) );
-		do_action( $this->doPluginPrefix( 'plugin_shutdown' ) );
+		do_action( $this->prefix( 'pre_plugin_shutdown' ) );
+		do_action( $this->prefix( 'plugin_shutdown' ) );
 		$this->saveCurrentPluginControllerOptions();
 		$this->deleteFlags();
 	}
@@ -802,7 +855,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 */
 	public function filter_hidePluginFromTableList( $aPlugins ) {
 
-		$bHide = apply_filters( $this->doPluginPrefix( 'hide_plugin' ), false );
+		$bHide = apply_filters( $this->prefix( 'hide_plugin' ), false );
 		if ( !$bHide ) {
 			return $aPlugins;
 		}
@@ -828,7 +881,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		if ( $this->loadWp()->isCron() ) {
 			return $oPlugins;
 		}
-		if ( !apply_filters( $this->doPluginPrefix( 'hide_plugin_updates' ), false ) ) {
+		if ( !apply_filters( $this->prefix( 'hide_plugin_updates' ), false ) ) {
 			return $oPlugins;
 		}
 		if ( isset( $oPlugins->response[ $this->getPluginBaseFile() ] ) ) {
@@ -856,7 +909,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		}
 
 		// do all the plugin feature/options saving
-		do_action( $this->doPluginPrefix( 'form_submit' ) );
+		do_action( $this->prefix( 'form_submit' ) );
 
 		if ( $this->getIsPage_PluginAdmin() ) {
 			$oWp = $this->loadWp();
@@ -870,10 +923,10 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @param string $sGlue
 	 * @return string
 	 */
-	public function doPluginPrefix( $sSuffix = '', $sGlue = '-' ) {
+	public function prefix( $sSuffix = '', $sGlue = '-' ) {
 		$sPrefix = $this->getPluginPrefix( $sGlue );
 
-		if ( $sSuffix == $sPrefix || strpos( $sSuffix, $sPrefix . $sGlue ) === 0 ) { //it already has the full prefix
+		if ( $sSuffix == $sPrefix || strpos( $sSuffix, $sPrefix.$sGlue ) === 0 ) { //it already has the full prefix
 			return $sSuffix;
 		}
 
@@ -884,8 +937,8 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @param string $sSuffix
 	 * @return string
 	 */
-	public function doPluginOptionPrefix( $sSuffix = '' ) {
-		return $this->doPluginPrefix( $sSuffix, '_' );
+	public function prefixOption( $sSuffix = '' ) {
+		return $this->prefix( $sSuffix, '_' );
 	}
 
 	/**
@@ -1004,7 +1057,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getOptionStoragePrefix() {
-		return $this->getPluginPrefix( '_' ) . '_';
+		return $this->getPluginPrefix( '_' ).'_';
 	}
 
 	/**
@@ -1057,7 +1110,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 
 		$oDp = $this->loadDataProcessor();
 		foreach ( $aFormSubmitOptions as $sOption ) {
-			if ( !is_null( $oDp->FetchRequest( $sOption, false ) ) ) {
+			if ( !is_null( $oDp->request( $sOption, false ) ) ) {
 				return true;
 			}
 		}
@@ -1144,7 +1197,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		if ( empty( $this->sPluginUrl ) ) {
 			$this->sPluginUrl = plugins_url( '/', $this->getRootFile() );
 		}
-		return add_query_arg( array( 'ver' => $this->getVersion() ), $this->sPluginUrl . $sPath );
+		return add_query_arg( array( 'ver' => $this->getVersion() ), $this->sPluginUrl.$sPath );
 	}
 
 	/**
@@ -1155,7 +1208,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		$sUrl = '';
 		$sAssetPath = $this->getPath_Assets( $sAsset );
 		if ( $this->loadFS()->exists( $sAssetPath ) ) {
-			$sUrl = $this->getPluginUrl( $this->getPluginSpec_Path( 'assets' ) . '/' . $sAsset );
+			$sUrl = $this->getPluginUrl( $this->getPluginSpec_Path( 'assets' ).'/'.$sAsset );
 			return $this->loadWpIncludes()->addIncludeModifiedParam( $sUrl, $sAssetPath );
 		}
 		return $sUrl;
@@ -1166,7 +1219,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPluginUrl_Css( $sAsset ) {
-		return $this->getPluginUrl_Asset( 'css/' . $sAsset );
+		return $this->getPluginUrl_Asset( 'css/'.$sAsset );
 	}
 
 	/**
@@ -1174,7 +1227,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPluginUrl_Image( $sAsset ) {
-		return $this->getPluginUrl_Asset( 'images/' . $sAsset );
+		return $this->getPluginUrl_Asset( 'images/'.$sAsset );
 	}
 
 	/**
@@ -1182,7 +1235,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPluginUrl_Js( $sAsset ) {
-		return $this->getPluginUrl_Asset( 'js/' . $sAsset );
+		return $this->getPluginUrl_Asset( 'js/'.$sAsset );
 	}
 
 	/**
@@ -1197,7 +1250,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_Assets( $sAsset = '' ) {
-		return $this->getRootDir() . $this->getPluginSpec_Path( 'assets' ) . DIRECTORY_SEPARATOR . $sAsset;
+		return $this->getRootDir().$this->getPluginSpec_Path( 'assets' ).DIRECTORY_SEPARATOR.$sAsset;
 	}
 
 	/**
@@ -1205,7 +1258,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_Flags( $sFlag = '' ) {
-		return $this->getRootDir() . $this->getPluginSpec_Path( 'flags' ) . DIRECTORY_SEPARATOR . $sFlag;
+		return $this->getRootDir().$this->getPluginSpec_Path( 'flags' ).DIRECTORY_SEPARATOR.$sFlag;
 	}
 
 	/**
@@ -1214,9 +1267,9 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 */
 	public function getPath_Temp( $sTmpFile = '' ) {
 		$oFs = $this->loadFS();
-		$sTempPath = $this->getRootDir() . $this->getPluginSpec_Path( 'temp' ) . DIRECTORY_SEPARATOR;
+		$sTempPath = $this->getRootDir().$this->getPluginSpec_Path( 'temp' ).DIRECTORY_SEPARATOR;
 		if ( $oFs->mkdir( $sTempPath ) ) {
-			return $this->getRootDir() . $this->getPluginSpec_Path( 'temp' ) . DIRECTORY_SEPARATOR . $sTmpFile;
+			return $this->getRootDir().$this->getPluginSpec_Path( 'temp' ).DIRECTORY_SEPARATOR.$sTmpFile;
 		}
 		return null;
 	}
@@ -1226,7 +1279,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_AssetCss( $sAsset = '' ) {
-		return $this->getPath_Assets( 'css' . DIRECTORY_SEPARATOR . $sAsset );
+		return $this->getPath_Assets( 'css/'.$sAsset );
 	}
 
 	/**
@@ -1234,7 +1287,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_AssetJs( $sAsset = '' ) {
-		return $this->getPath_Assets( 'js' . DIRECTORY_SEPARATOR . $sAsset );
+		return $this->getPath_Assets( 'js/'.$sAsset );
 	}
 
 	/**
@@ -1242,7 +1295,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_AssetImage( $sAsset = '' ) {
-		return $this->getPath_Assets( 'images' . DIRECTORY_SEPARATOR . $sAsset );
+		return $this->getPath_Assets( 'images/'.$sAsset );
 	}
 
 	/**
@@ -1265,7 +1318,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_Languages() {
-		return $this->getRootDir() . $this->getPluginSpec_Path( 'languages' ) . DIRECTORY_SEPARATOR;
+		return $this->getRootDir().$this->getPluginSpec_Path( 'languages' ).DIRECTORY_SEPARATOR;
 	}
 
 	/**
@@ -1273,7 +1326,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_Source() {
-		return $this->getRootDir() . $this->getPluginSpec_Path( 'source' ) . DIRECTORY_SEPARATOR;
+		return $this->getRootDir().$this->getPluginSpec_Path( 'source' ).DIRECTORY_SEPARATOR;
 	}
 
 	/**
@@ -1282,7 +1335,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_SourceFile( $sSourceFile = '' ) {
-		return $this->getPath_Source() . $sSourceFile;
+		return $this->getPath_Source().$sSourceFile;
 	}
 
 	/**
@@ -1291,14 +1344,14 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_LibFile( $sLibFile = '' ) {
-		return $this->getPath_Source() . 'lib' . DIRECTORY_SEPARATOR . $sLibFile;
+		return $this->getPath_Source().'lib/'.$sLibFile;
 	}
 
 	/**
 	 * @return string
 	 */
 	public function getPath_Templates() {
-		return $this->getRootDir() . $this->getPluginSpec_Path( 'templates' ) . DIRECTORY_SEPARATOR;
+		return $this->getRootDir().$this->getPluginSpec_Path( 'templates' ).DIRECTORY_SEPARATOR;
 	}
 
 	/**
@@ -1306,14 +1359,14 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getPath_TemplatesFile( $sTemplate ) {
-		return $this->getPath_Templates() . $sTemplate;
+		return $this->getPath_Templates().$sTemplate;
 	}
 
 	/**
 	 * @return string
 	 */
 	private function getPathPluginSpec() {
-		return $this->getRootDir() . 'plugin-spec.php';
+		return $this->getRootDir().'plugin-spec.php';
 	}
 
 	/**
@@ -1321,7 +1374,7 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getRootDir() {
-		return dirname( $this->getRootFile() ) . DIRECTORY_SEPARATOR;
+		return dirname( $this->getRootFile() ).DIRECTORY_SEPARATOR;
 	}
 
 	/**
@@ -1397,9 +1450,9 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	protected function saveCurrentPluginControllerOptions() {
 		$oOptions = $this->getPluginControllerOptions();
 		if ( $this->sConfigOptionsHashWhenLoaded != md5( serialize( $oOptions ) ) ) {
-			add_filter( $this->doPluginPrefix( 'bypass_permission_to_manage' ), '__return_true' );
+			add_filter( $this->prefix( 'bypass_permission_to_manage' ), '__return_true' );
 			$this->loadWp()->updateOption( $this->getPluginControllerOptionsKey(), $oOptions );
-			remove_filter( $this->doPluginPrefix( 'bypass_permission_to_manage' ), '__return_true' );
+			remove_filter( $this->prefix( 'bypass_permission_to_manage' ), '__return_true' );
 		}
 	}
 
@@ -1475,7 +1528,8 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	public function getUniqueRequestId( $bSetSessionIfNeeded = true ) {
 		if ( !isset( self::$sRequestId ) ) {
 			$oDp = $this->loadDataProcessor();
-			self::$sRequestId = md5( $this->getSessionId( $bSetSessionIfNeeded ).$oDp->loadIpService()->getRequestIp().$oDp->time() );
+			self::$sRequestId = md5( $this->getSessionId( $bSetSessionIfNeeded ).$oDp->loadIpService()
+																					 ->getRequestIp().$oDp->time() );
 		}
 		return self::$sRequestId;
 	}
@@ -1492,10 +1546,11 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	 */
 	protected function setSessionCookie() {
 		$oWp = $this->loadWp();
-		$this->loadDataProcessor()->setCookie(
+		$oDP = $this->loadDP();
+		$oDP->setCookie(
 			$this->getPluginPrefix(),
 			$this->getSessionId(),
-			$this->loadDataProcessor()->time() + DAY_IN_SECONDS * 30,
+			$oDP->time() + DAY_IN_SECONDS*30,
 			$oWp->getCookiePath(),
 			$oWp->getCookieDomain(),
 			false
@@ -1537,13 +1592,13 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 			catch ( Exception $oE ) {
 				if ( $this->getIsValidAdminArea() ) {
 					$this->sAdminNoticeError = $oE->getMessage();
-					add_action( 'admin_menu', array( $this, 'adminNoticePluginFailedToLoad' ) );
+					add_action( 'admin_notices', array( $this, 'adminNoticePluginFailedToLoad' ) );
 					add_action( 'network_admin_notices', array( $this, 'adminNoticePluginFailedToLoad' ) );
 				}
 			}
 		}
 
-		do_action( $this->doPluginPrefix( 'run_processors' ) );
+		do_action( $this->prefix( 'run_processors' ) );
 
 		return $bSuccess;
 	}
@@ -1564,30 +1619,37 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param array $aFeatureProperties
+	 * @return ICWP_WPSF_FeatureHandler_Base[]
+	 */
+	public function getModules() {
+		return is_array( $this->aModules ) ? $this->aModules : array();
+	}
+
+	/**
+	 * @param array $aModProps
 	 * @param bool  $bRecreate
 	 * @param bool  $bFullBuild
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function loadFeatureHandler( $aFeatureProperties, $bRecreate = false, $bFullBuild = false ) {
+	public function loadFeatureHandler( $aModProps, $bRecreate = false, $bFullBuild = false ) {
 
-		$sFeatureSlug = $aFeatureProperties[ 'slug' ];
+		$sModSlug = $aModProps[ 'slug' ];
 
-		$oHandler = $this->getModule( $sFeatureSlug );
+		$oHandler = $this->getModule( $sModSlug );
 		if ( !empty( $oHandler ) ) {
 			return $oHandler;
 		}
 
-		$sFeatureName = str_replace( ' ', '', ucwords( str_replace( '_', ' ', $sFeatureSlug ) ) );
+		if ( !empty( $aModProps[ 'min_php' ] ) && !$this->loadDP()->getPhpVersionIsAtLeast( $aModProps[ 'min_php' ] ) ) {
+			return null;
+		}
+
+		$sFeatureName = str_replace( ' ', '', ucwords( str_replace( '_', ' ', $sModSlug ) ) );
 		$sOptionsVarName = sprintf( 'oFeatureHandler%s', $sFeatureName ); // e.g. oFeatureHandlerPlugin
 
-		$sSourceFile = $this->getPath_SourceFile(
-			sprintf(
-				'features/%s.php',
-				$sFeatureSlug
-			)
-		); // e.g. features/firewall.php
+		// e.g. features/firewall.php
+		$sSourceFile = $this->getPath_SourceFile( sprintf( 'features/%s.php', $sModSlug ) );
 		$sClassName = sprintf(
 			'%s_%s_FeatureHandler_%s',
 			strtoupper( $this->getParentSlug() ),
@@ -1600,19 +1662,89 @@ class ICWP_WPSF_Plugin_Controller extends ICWP_WPSF_Foundation {
 		$bClassExists = class_exists( $sClassName, false );
 		if ( $bClassExists ) {
 			if ( !isset( $this->{$sOptionsVarName} ) || $bRecreate ) {
-				$this->{$sOptionsVarName} = new $sClassName( $this, $aFeatureProperties );
+				$this->{$sOptionsVarName} = new $sClassName( $this, $aModProps );
 			}
 			if ( $bFullBuild ) {
 				$this->{$sOptionsVarName}->buildOptions();
 			}
 		}
 		else {
-			$sMessage = sprintf( 'Source file for feature %s %s. ', $sFeatureSlug, $bIncluded ? 'exists' : 'missing' );
+			$sMessage = sprintf( 'Source file for feature %s %s. ', $sModSlug, $bIncluded ? 'exists' : 'missing' );
 			$sMessage .= sprintf( 'Class "%s" %s', $sClassName, $bClassExists ? 'exists' : 'missing' );
 			throw new Exception( $sMessage );
 		}
 
-		$this->aModules[ $sFeatureSlug ] = $this->{$sOptionsVarName};
+		$this->aModules[ $sModSlug ] = $this->{$sOptionsVarName};
 		return $this->{$sOptionsVarName};
+	}
+
+	/**
+	 * @param array[] $aRegistered
+	 * @return array[]
+	 */
+	public function onWpPrivacyRegisterExporter( $aRegistered ) {
+		if ( !is_array( $aRegistered ) ) {
+			$aRegistered = array(); // account for crap plugins that do-it-wrong.
+		}
+
+		$aRegistered[] = array(
+			'exporter_friendly_name' => $this->getHumanName(),
+			'callback'               => array( $this, 'wpPrivacyExport' ),
+		);
+		return $aRegistered;
+	}
+
+	/**
+	 * @param array[] $aRegistered
+	 * @return array[]
+	 */
+	public function onWpPrivacyRegisterEraser( $aRegistered ) {
+		if ( !is_array( $aRegistered ) ) {
+			$aRegistered = array(); // account for crap plugins that do-it-wrong.
+		}
+
+		$aRegistered[] = array(
+			'eraser_friendly_name' => $this->getHumanName(),
+			'callback'             => array( $this, 'wpPrivacyErase' ),
+		);
+		return $aRegistered;
+	}
+
+	/**
+	 * @param string $sEmail
+	 * @param int    $nPage
+	 * @return array
+	 */
+	public function wpPrivacyExport( $sEmail, $nPage = 1 ) {
+
+		$bValid = $this->loadDP()->validEmail( $sEmail )
+				  && ( $this->loadWpUsers()->getUserByEmail( $sEmail ) instanceof WP_User );
+
+		return array(
+			'data' => $bValid ? apply_filters( $this->prefix( 'wpPrivacyExport' ), array(), $sEmail, $nPage ) : array(),
+			'done' => true,
+		);
+	}
+
+	/**
+	 * @param string $sEmail
+	 * @param int    $nPage
+	 * @return array
+	 */
+	public function wpPrivacyErase( $sEmail, $nPage = 1 ) {
+
+		$bValidUser = $this->loadDP()->validEmail( $sEmail )
+					  && ( $this->loadWpUsers()->getUserByEmail( $sEmail ) instanceof WP_User );
+
+		$aResult = array(
+			'items_removed'  => $bValidUser,
+			'items_retained' => false,
+			'messages'       => $bValidUser ? array() : array( 'Email address not valid or does not belong to a user.' ),
+			'done'           => true,
+		);
+		if ( $bValidUser ) {
+			$aResult = apply_filters( $this->prefix( 'wpPrivacyErase' ), $aResult, $sEmail, $nPage );
+		}
+		return $aResult;
 	}
 }

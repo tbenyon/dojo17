@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_FeatureHandler_Plugin', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 
 class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
@@ -13,10 +13,6 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		add_filter( $this->prefix( 'report_email_address' ), array( $this, 'getPluginReportEmail' ) );
 		add_filter( $this->prefix( 'globally_disabled' ), array( $this, 'filter_IsPluginGloballyDisabled' ) );
 		add_filter( $this->prefix( 'google_recaptcha_config' ), array( $this, 'supplyGoogleRecaptchaConfig' ), 10, 0 );
-
-		if ( !$this->isTrackingPermissionSet() ) {
-			add_action( 'wp_ajax_icwp_PluginTrackingPermission', array( $this, 'ajaxSetPluginTrackingPermission' ) );
-		}
 		$this->setVisitorIp();
 	}
 
@@ -29,18 +25,14 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
-	 * @return string
+	 * @return array
 	 */
-	protected function getContentCustomActions() {
-		if ( !$this->canDisplayOptionsForm() ) {
-			return parent::getContentCustomActions();
-		}
-
+	protected function getContentCustomActionsData() {
 		$bCanWizard = $this->canRunWizards();
 		$bCanWizardWelcome = $bCanWizard;
 		$bCanWizardImport = $bCanWizard && $this->isPremium();
 
-		$aData = array(
+		return array(
 			'strings' => $this->getDisplayStrings(),
 			'hrefs'   => array(
 				'wizard_welcome' => $bCanWizardWelcome ? $this->getUrl_Wizard( 'welcome' ) : 'javascript:{event.preventDefault();}',
@@ -55,7 +47,6 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 				'phpversion' => $this->loadDP()->getPhpVersion(),
 			)
 		);
-		return $this->renderTemplate( 'snippets/module-plugin-actions', $aData );
 	}
 
 	/**
@@ -71,7 +62,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return bool
 	 */
 	public function getLastCheckServerIpAtHasExpired() {
-		return ( ( $this->loadDataProcessor()->time() - $this->getLastCheckServerIpAt() ) > DAY_IN_SECONDS );
+		return ( ( $this->loadDP()->time() - $this->getLastCheckServerIpAt() ) > DAY_IN_SECONDS );
 	}
 
 	/**
@@ -90,11 +81,11 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		if ( $this->getLastCheckServerIpAtHasExpired() ) {
 			$oIp = $this->loadIpService();
 			$sThisServerIp = $oIp->whatIsMyIp();
-			if ( $oIp->isValidIp_PublicRemote( $sThisServerIp ) ) {
+			if ( !empty( $sThisServerIp ) ) {
 				$this->setOpt( 'this_server_ip', $sThisServerIp );
 			}
 			// we always update so we don't forever check on every single page load
-			$this->setOpt( 'this_server_ip_last_check_at', $this->loadDataProcessor()->time() );
+			$this->setOpt( 'this_server_ip_last_check_at', $this->loadDP()->time() );
 		}
 		return $sThisServerIp;
 	}
@@ -104,7 +95,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	public function isDisplayPluginBadge() {
 		return $this->getOptIs( 'display_plugin_badge', 'Y' )
-			   && ( $this->loadDataProcessor()->FetchCookie( $this->getCookieIdBadgeState() ) != 'closed' );
+			   && ( $this->loadDP()->cookie( $this->getCookieIdBadgeState() ) != 'closed' );
 	}
 
 	/**
@@ -168,10 +159,6 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		return $this->getVisitorAddressSource() == 'AUTO_DETECT_IP';
 	}
 
-	protected function frontEndAjaxHandlers() {
-		add_action( $this->prefixWpAjax( 'PluginBadgeClose' ), array( $this, 'ajaxPluginBadgeClose' ) );
-	}
-
 	/**
 	 * @return string
 	 */
@@ -180,24 +167,49 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
+	 * @param array $aAjaxResponse
+	 * @return array
 	 */
-	public function ajaxPluginBadgeClose() {
-		$bSuccess = $this->loadDataProcessor()
+	public function handleAjax( $aAjaxResponse ) {
+
+		if ( empty( $aAjaxResponse ) ) {
+			switch ( $this->loadDP()->request( 'exec' ) ) {
+				case 'plugin_badge_close':
+					$aAjaxResponse = $this->ajaxExec_PluginBadgeClose();
+					break;
+				case 'set_plugin_tracking_perm':
+					if ( !$this->isTrackingPermissionSet() ) {
+						$aAjaxResponse = $this->ajaxExec_SetPluginTrackingPerm();
+					}
+					break;
+			}
+		}
+		return parent::handleAjax( $aAjaxResponse );
+	}
+
+	/**
+	 * @return array
+	 */
+	public function ajaxExec_PluginBadgeClose() {
+		$bSuccess = $this->loadDP()
 						 ->setCookie(
 							 $this->getCookieIdBadgeState(),
 							 'closed',
 							 DAY_IN_SECONDS
 						 );
 		$sMessage = $bSuccess ? 'Badge Closed' : 'Badge Not Closed';
-		$this->sendAjaxResponse( $bSuccess, array( 'message' => $sMessage ) );
+		return array(
+			'success' => $bSuccess,
+			'message' => $sMessage
+		);
 	}
 
-	public function ajaxSetPluginTrackingPermission() {
-		$bValid = self::getConn()->getIsValidAdminArea() && $this->checkAjaxNonce();
-		if ( $bValid ) {
-			$this->setPluginTrackingPermission( (bool)$this->loadDP()->query( 'agree', false ) );
-		}
-		$this->sendAjaxResponse( $bValid );
+	/**
+	 * @return array
+	 */
+	public function ajaxExec_SetPluginTrackingPerm() {
+		$this->setPluginTrackingPermission( (bool)$this->loadDP()->query( 'agree', false ) );
+		return array( 'success' => true );
 	}
 
 	/**
@@ -247,13 +259,6 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 			}
 		}
 		return $aPluginFeatures;
-	}
-
-	/**
-	 * @return mixed
-	 */
-	public function getIsMainFeatureEnabled() {
-		return true;
 	}
 
 	/**
@@ -582,7 +587,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 				$sIp = $oDp->loadIpService()->getRequestIp();
 			}
 			else {
-				$sIp = $oDp->FetchServer( $sKey );
+				$sIp = $oDp->server( $sKey );
 			}
 			if ( empty( $sIp ) ) {
 				$aEmpties[] = sprintf( '%s- %s', $sKey, 'ip not available' );
@@ -600,10 +605,16 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	public function renderPluginBadge() {
 		$oCon = $this->getConn();
+
+		$aData = array(
+			'ajax' => array(
+				'plugin_badge_close' => $this->getAjaxActionData( 'plugin_badge_close', true ),
+			)
+		);
 		$sContents = $this->loadRenderer( $oCon->getPath_Templates() )
 						  ->setTemplateEnginePhp()
 						  ->clearRenderVars()
-						  ->setRenderVars( $this->getBaseAjaxActionRenderData( 'PluginBadgeClose' ) )
+						  ->setRenderVars( $aData )
 						  ->setTemplate( 'snippets/plugin_badge' )
 						  ->render();
 
@@ -628,10 +639,50 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return array
 	 */
 	protected function getDisplayStrings() {
-		return array(
-			'actions_title'   => _wpsf__( 'Plugin Actions' ),
-			'actions_summary' => _wpsf__( 'E.g. Import/Export' ),
+		return $this->loadDP()->mergeArraysRecursive(
+			parent::getDisplayStrings(),
+			array(
+				'actions_title'   => _wpsf__( 'Plugin Actions' ),
+				'actions_summary' => _wpsf__( 'E.g. Import/Export' ),
+			)
 		);
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isXmlrpcBypass() {
+		return $this->getOptIs( 'enable_xmlrpc_compatibility', 'Y' );
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getTestCronLastRunAt() {
+		return (int)$this->getOpt( 'insights_test_cron_last_run_at', 0 );
+	}
+
+	/**
+	 * @return $this
+	 */
+	public function updateTestCronLastRunAt() {
+		$this->setOptInsightsAt( 'test_cron_last_run_at' )
+			 ->savePluginOptions();
+		return $this;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function getCanAdminNotes() {
+		return true||$this->isPremium();
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getDbNameNotes() {
+		return $this->prefixOptionKey( $this->getDef( 'db_notes_name' ) );
 	}
 
 	/**
@@ -645,13 +696,16 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		switch ( $sSectionSlug ) {
 
 			case 'section_global_security_options' :
-				$sTitle = _wpsf__( 'Global Plugin Security Options' );
-				$sTitleShort = _wpsf__( 'Global Options' );
+				$sTitle = _wpsf__( 'Global Security Plugin Disable' );
+				$sTitleShort = sprintf( _wpsf__( 'Disable %s' ), $this->getConn()->getHumanName() );
 				break;
 
 			case 'section_defaults' :
 				$sTitle = _wpsf__( 'Plugin Defaults' );
 				$sTitleShort = _wpsf__( 'Plugin Defaults' );
+				$aSummary = array(
+					sprintf( _wpsf__( 'Purpose - %s' ), _wpsf__( 'Important default settings used throughout the plugin.' ) ),
+				);
 				break;
 
 			case 'section_importexport' :
@@ -703,14 +757,20 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		switch ( $sKey ) {
 
 			case 'global_enable_plugin_features' :
-				$sName = _wpsf__( 'Enable Plugin Features' );
-				$sSummary = _wpsf__( 'Global Plugin On/Off Switch' );
+				$sName = _wpsf__( 'Enable/Disable Plugin Modules' );
+				$sSummary = _wpsf__( 'Enable/Disable All Plugin Modules' );
 				$sDescription = sprintf( _wpsf__( 'Uncheck this option to disable all %s features.' ), self::getConn()
 																										   ->getHumanName() );
 				break;
 
+			case 'enable_notes' :
+				$sName = sprintf( _wpsf__( 'Enable %s' ), _wpsf__( 'Admin Notes' ) );
+				$sSummary = _wpsf__( 'Turn-On Admin Notes Section In Insights Dashboard' );
+				$sDescription = _wpsf__( 'When turned-on it enables administrators to enter custom notes in the Insights Dashboard.' );
+				break;
+
 			case 'enable_tracking' :
-				$sName = sprintf( _wpsf__( 'Enable %s' ), _wpsf__( 'Information Gathering' ) );
+				$sName = sprintf( _wpsf__( 'Enable %s Module' ), _wpsf__( 'Information Gathering' ) );
 				$sSummary = _wpsf__( 'Permit Anonymous Usage Information Gathering' );
 				$sDescription = _wpsf__( 'Allows us to gather information on statistics and features in-use across our client installations.' )
 								.' '._wpsf__( 'This information is strictly anonymous and contains no personally, or otherwise, identifiable data.' )
@@ -750,6 +810,12 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 				$sName = _wpsf__( 'Delete Plugin Settings' );
 				$sSummary = _wpsf__( 'Delete All Plugin Settings Upon Plugin Deactivation' );
 				$sDescription = _wpsf__( 'Careful: Removes all plugin options when you deactivate the plugin' );
+				break;
+
+			case 'enable_xmlrpc_compatibility' :
+				$sName = _wpsf__( 'XML-RPC Compatibility' );
+				$sSummary = _wpsf__( 'Allow Login Through XML-RPC To By-Pass Accounts Management Rules' );
+				$sDescription = _wpsf__( 'Enable this if you need XML-RPC functionality e.g. if you use the WordPress iPhone/Android App.' );
 				break;
 
 			case 'importexport_enable' :
@@ -857,17 +923,17 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		_wpsf__( 'Email' );
 		_wpsf__( 'Firewall' );
 		_wpsf__( 'Automatically block malicious URLs and data sent to your site' );
-		_wpsf__( 'Hack Protection' );
+		_wpsf__( 'Hack Guard' );
 		_wpsf__( 'HTTP Headers' );
 		_wpsf__( 'Control HTTP Security Headers' );
 		_wpsf__( 'IP Manager' );
 		_wpsf__( 'Manage Visitor IP Address' );
 		_wpsf__( 'Lockdown' );
 		_wpsf__( 'Harden the more loosely controlled settings of your site' );
-		_wpsf__( 'Login Protection' );
+		_wpsf__( 'Login Guard' );
 		_wpsf__( 'Block brute force attacks and secure user identities with Two-Factor Authentication' );
 		_wpsf__( 'Dashboard' );
-		_wpsf__( 'Overview of the plugin settings' );
+		_wpsf__( 'General Plugin Settings' );
 		_wpsf__( 'Statistics' );
 		_wpsf__( 'Summary of the main security actions taken by this plugin' );
 		_wpsf__( 'Stats Viewer' );

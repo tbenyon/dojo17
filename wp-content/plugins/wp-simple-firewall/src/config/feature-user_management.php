@@ -2,7 +2,7 @@
   "slug": "user_management",
   "properties": {
     "name": "User Management",
-    "show_feature_menu_item": true,
+    "show_module_menu_item": true,
     "storage_key": "user_management",
     "tagline": "Control user sessions, duration, timeouts and account sharing",
     "show_central": true,
@@ -13,21 +13,25 @@
   },
   "sections": [
     {
-      "slug": "section_enable_plugin_feature_user_accounts_management",
-      "primary": true,
-      "title": "Enable Plugin Feature: User Management",
-      "title_short": "Enable / Disable",
-      "summary": [
-        "Purpose - User Management offers real user sessions, finer control over user session time-out, and ensures users have logged-in in a correct manner.",
-        "Recommendation - Keep the User Management feature turned on."
-      ]
-    },
-    {
       "slug": "section_user_session_management",
+      "primary": true,
+      "primary": true,
       "title": "User Session Management",
       "title_short": "Session Options",
       "summary": [
         "Purpose - Allows you to better control user sessions on your site and expire idle sessions and prevent account sharing.",
+        "Recommendation - Use of this feature is highly recommend."
+      ]
+    },
+    {
+      "slug": "section_passwords",
+      "reqs" : {
+        "php_min": "5.4"
+      },
+      "title": "Password Policies",
+      "title_short": "Password Policies",
+      "summary": [
+        "Purpose - Have full control over passwords used by users on the site.",
         "Recommendation - Use of this feature is highly recommend."
       ]
     },
@@ -41,6 +45,15 @@
       ]
     },
     {
+      "slug": "section_enable_plugin_feature_user_accounts_management",
+      "title": "Enable Module: User Management",
+      "title_short": "Disable Module",
+      "summary": [
+        "Purpose - User Management offers real user sessions, finer control over user session time-out, and ensures users have logged-in in a correct manner.",
+        "Recommendation - Keep the User Management feature turned on."
+      ]
+    },
+    {
       "slug": "section_non_ui",
       "hidden": true
     }
@@ -49,24 +62,13 @@
     {
       "key": "enable_user_management",
       "section": "section_enable_plugin_feature_user_accounts_management",
-      "default": "N",
-      "type": "checkbox",
-      "link_info": "",
-      "link_blog": "",
-      "name": "Enable User Management",
-      "summary": "Enable (or Disable) The User Management Feature",
-      "description": "Checking/Un-Checking this option will completely turn on/off the whole User Management feature"
-    },
-    {
-      "key": "enable_xmlrpc_compatibility",
-      "section": "section_enable_plugin_feature_user_accounts_management",
       "default": "Y",
       "type": "checkbox",
       "link_info": "",
       "link_blog": "",
-      "name": "XML-RPC Compatibility",
-      "summary": "Allow Login Through XML-RPC To By-Pass Login Protection Rules",
-      "description": "Enable this if you need XML-RPC functionality e.g. if you use the WordPress iPhone/Android App."
+      "name": "Enable User Management",
+      "summary": "Enable (or Disable) The User Management module",
+      "description": "Un-Checking this option will completely disable the User Management module"
     },
     {
       "key": "enable_admin_login_email_notification",
@@ -125,11 +127,121 @@
       "description": "The number provided here is the maximum number of simultaneous, distinct, sessions allowed for any given username. Use '0' for no limits."
     },
     {
+      "key": "enable_password_policies",
+      "section": "section_passwords",
+      "type": "checkbox",
+      "default": "N",
+      "link_info": "http://icwp.io/c4",
+      "link_blog": "",
+      "name": "Enable Password Policies",
+      "summary": "Enable The Password Policies Below",
+      "description": "Turn on/off all password policies."
+    },
+    {
+      "key": "pass_prevent_pwned",
+      "section": "section_passwords",
+      "type": "checkbox",
+      "default": "Y",
+      "link_info": "http://icwp.io/by",
+      "link_blog": "",
+      "name": "Prevent Pwned Passwords",
+      "summary": "Prevent Use Of Pwned Passwords",
+      "description": "Prevents users from using any passwords found on the public available list of pwned passwords."
+    },
+    {
+      "key": "pass_min_length",
+      "premium": true,
+      "section": "section_passwords",
+      "premium": true,
+      "type": "integer",
+      "default": "12",
+      "link_info": "",
+      "link_blog": "",
+      "name": "Minimum Length",
+      "summary": "Minimum Password Length",
+      "description": "All passwords that a user sets must be at least this many characters in length."
+    },
+    {
+      "key": "pass_min_strength",
+      "premium": true,
+      "section": "section_passwords",
+      "premium": true,
+      "type":          "select",
+      "default": "4",
+      "value_options": [
+        {
+          "value_key": "0",
+          "text":      "Very Weak"
+        },
+        {
+          "value_key": "1",
+          "text":      "Weak"
+        },
+        {
+          "value_key": "2",
+          "text":      "Medium"
+        },
+        {
+          "value_key": "3",
+          "text":      "Strong"
+        },
+        {
+          "value_key": "4",
+          "text":      "Very Strong"
+        }
+      ],
+      "link_info": "",
+      "link_blog": "",
+      "name": "Minimum Strength",
+      "summary": "Minimum Password Strength",
+      "description": "All passwords that a user sets must meet this minimum strength."
+    },
+    {
+      "key": "pass_force_existing",
+      "premium": true,
+      "section": "section_passwords",
+      "premium": true,
+      "type": "checkbox",
+      "default": "N",
+      "link_info": "",
+      "link_blog": "",
+      "name": "Apply To Existing Users",
+      "summary": "Apply Password Policies To Existing Users and Their Passwords",
+      "description": "Forces existing users to update their passwords if they don't meet requirements, after they next login ."
+    },
+    {
+      "key": "pass_expire",
+      "premium": true,
+      "section": "section_passwords",
+      "premium": true,
+      "type": "integer",
+      "default": "60",
+      "link_info": "",
+      "link_blog": "",
+      "name": "Password Expiration",
+      "summary": "Passwords Expire After This Many Days",
+      "description": "Users will be forced to reset their passwords after the number of days specified."
+    },
+    {
       "key":          "autoadd_sessions_started_at",
       "transferable": false,
       "section":      "section_non_ui"
+    },
+    {
+      "key":          "insights_last_idle_logout_at",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "default":      0
+    },
+    {
+      "key":          "insights_last_password_block_at",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "default":      0
     }
   ],
   "definitions": {
+    "pwned_api_url_password_single": "https://api.pwnedpasswords.com/pwnedpassword/",
+    "pwned_api_url_password_range": "https://api.pwnedpasswords.com/range/"
   }
 }

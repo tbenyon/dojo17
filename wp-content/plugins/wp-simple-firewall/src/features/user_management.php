@@ -4,32 +4,18 @@ if ( class_exists( 'ICWP_WPSF_FeatureHandler_UserManagement', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 
 class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
 	/**
-	 * TODO: remove on next release
+	 * @return array
 	 */
-	protected function updateHandler() {
-		$oDb = $this->loadDbProcessor();
-		$sDbName = $oDb->getPrefix().$this->prefix( 'user_management', '_' );
-		if ( $oDb->getIfTableExists( $sDbName ) ) {
-			$oDb->doDropTable( $sDbName );
-		}
+	protected function getContentCustomActionsData() {
+		return $this->getUserSessionsData();
 	}
 
-	/**
-	 * @return string
-	 */
-	protected function getContentCustomActions() {
-		if ( $this->canDisplayOptionsForm() ) {
-			return $this->renderUserSessions();
-		}
-		return parent::getContentCustomActions();
-	}
-
-	protected function renderUserSessions() {
+	protected function getUserSessionsData() {
 		$aActiveSessions = $this->getActiveSessionsData();
 
 		$aFormatted = array();
@@ -53,13 +39,12 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		$oTable->display();
 		$sUserSessionsTable = ob_get_clean();
 
-		$aData = array(
+		return array(
 			'strings'            => $this->getDisplayStrings(),
 			'time_now'           => sprintf( _wpsf__( 'now: %s' ), date_i18n( $sTimeFormat.' '.$sDateFormat, $this->loadDP()
 																												  ->time() ) ),
 			'sUserSessionsTable' => $sUserSessionsTable
 		);
-		return $this->renderTemplate( 'snippets/module-user_management-sessions', $aData );
 	}
 
 	/**
@@ -68,7 +53,7 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	protected function getTableRendererForSessions() {
 		$this->requireCommonLib( 'Components/Tables/SessionsTable.php' );
 		/** @var ICWP_WPSF_Processor_UserManagement $oProc */
-		$oProc = $this->loadFeatureProcessor();
+		$oProc = $this->loadProcessor();
 //		$nCount = $oProc->countAuditEntriesForContext( $sContext );
 
 		$oTable = new SessionsTable();
@@ -78,7 +63,7 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	/**
 	 * @return ICWP_WPSF_SessionVO[]
 	 */
-	protected function getActiveSessionsData() {
+	public function getActiveSessionsData() {
 		return $this->getSessionsProcessor()
 					->queryGetActiveSessions();
 	}
@@ -118,17 +103,20 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return array
 	 */
 	protected function getDisplayStrings() {
-		return array(
-			'actions_title'   => _wpsf__( 'User Sessions' ),
-			'actions_summary' => _wpsf__( 'Review user sessions' ),
+		return $this->loadDP()->mergeArraysRecursive(
+			parent::getDisplayStrings(),
+			array(
+				'btn_actions'         => _wpsf__( 'User Sessions' ),
+				'btn_actions_summary' => _wpsf__( 'Review user sessions' ),
 
-			'um_current_user_settings'          => _wpsf__( 'Current User Sessions' ),
-			'um_username'                       => _wpsf__( 'Username' ),
-			'um_logged_in_at'                   => _wpsf__( 'Logged In At' ),
-			'um_last_activity_at'               => _wpsf__( 'Last Activity At' ),
-			'um_last_activity_uri'              => _wpsf__( 'Last Activity URI' ),
-			'um_login_ip'                       => _wpsf__( 'Login IP' ),
-			'um_need_to_enable_user_management' => _wpsf__( 'You need to enable the User Management feature to view and manage user sessions.' ),
+				'um_current_user_settings'          => _wpsf__( 'Current User Sessions' ),
+				'um_username'                       => _wpsf__( 'Username' ),
+				'um_logged_in_at'                   => _wpsf__( 'Logged In At' ),
+				'um_last_activity_at'               => _wpsf__( 'Last Activity At' ),
+				'um_last_activity_uri'              => _wpsf__( 'Last Activity URI' ),
+				'um_login_ip'                       => _wpsf__( 'Login IP' ),
+				'um_need_to_enable_user_management' => _wpsf__( 'You need to enable the User Management feature to view and manage user sessions.' ),
+			)
 		);
 	}
 
@@ -152,6 +140,113 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	}
 
 	/**
+	 * @return int days
+	 */
+	public function getPassExpireDays() {
+		return max( 0, (int)$this->getOpt( 'pass_expire' ) );
+	}
+
+	/**
+	 * @return int seconds
+	 */
+	public function getPassExpireTimeout() {
+		return $this->isPremium() ? $this->getPassExpireDays()*DAY_IN_SECONDS : 0;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getPassMinLength() {
+		return $this->isPremium() ? (int)$this->getOpt( 'pass_min_length' ) : 0;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getPassMinStrength() {
+		return $this->isPremium() ? (int)$this->getOpt( 'pass_min_strength' ) : 0;
+	}
+
+	/**
+	 * @param int $nStrength
+	 * @return int
+	 */
+	public function getPassStrengthName( $nStrength ) {
+		$aMap = array(
+			_wpsf__( 'Very Weak' ),
+			_wpsf__( 'Weak' ),
+			_wpsf__( 'Medium' ),
+			_wpsf__( 'Strong' ),
+			_wpsf__( 'Very Strong' ),
+		);
+		return $aMap[ max( 0, min( 4, $nStrength ) ) ];
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isPasswordPoliciesEnabled() {
+		return $this->getOptIs( 'enable_password_policies', 'Y' )
+			   && $this->getOptionsVo()->isOptReqsMet( 'enable_password_policies' );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isPassForceUpdateExisting() {
+		return $this->getOptIs( 'pass_force_existing', 'Y' );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isPassPreventPwned() {
+		return $this->getOptIs( 'pass_prevent_pwned', 'Y' );
+	}
+
+	/**
+	 * @param array $aAllNotices
+	 * @return array
+	 */
+	public function addInsightsNoticeData( $aAllNotices ) {
+		$oWpUsers = $this->loadWpUsers();
+
+		$aNotices = array(
+			'title'    => _wpsf__( 'Users' ),
+			'messages' => array()
+		);
+
+		{ //admin user
+			$oAdmin = $oWpUsers->getUserByUsername( 'admin' );
+			if ( !empty( $oAdmin ) && user_can( $oAdmin, 'manage_options' ) ) {
+				$aNotices[ 'messages' ][ 'admin' ] = array(
+					'title'   => 'Admin User',
+					'message' => sprintf( _wpsf__( "Default 'admin' user still available." ) ),
+					'href'    => '',
+					'rec'     => _wpsf__( "Default 'admin' user should be disabled or removed." )
+				);
+			}
+		}
+
+		{//password policies
+			if ( !$this->isPasswordPoliciesEnabled() ) {
+				$aNotices[ 'messages' ][ 'password' ] = array(
+					'title'   => 'Password Policies',
+					'message' => _wpsf__( "Strong password policies are not enforced." ),
+					'href'    => $this->getUrl_AdminPage(),
+					'action'  => sprintf( 'Go To %s', _wpsf__( 'Options' ) ),
+					'rec'     => _wpsf__( 'Password policies should be turned-on.' )
+				);
+			}
+		}
+
+		$aNotices[ 'count' ] = count( $aNotices[ 'messages' ] );
+
+		$aAllNotices[ 'users' ] = $aNotices;
+		return $aAllNotices;
+	}
+
+	/**
 	 * @param array $aOptionsParams
 	 * @return array
 	 * @throws Exception
@@ -162,21 +257,22 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		switch ( $sSectionSlug ) {
 
 			case 'section_enable_plugin_feature_user_accounts_management' :
-				$sTitle = sprintf( _wpsf__( 'Enable Plugin Feature: %s' ), $this->getMainFeatureName() );
+				$sTitle = sprintf( _wpsf__( 'Enable Module: %s' ), $this->getMainFeatureName() );
 				$aSummary = array(
 					sprintf( _wpsf__( 'Purpose - %s' ), _wpsf__( 'User Management offers real user sessions, finer control over user session time-out, and ensures users have logged-in in a correct manner.' ) ),
 					sprintf( _wpsf__( 'Recommendation - %s' ), sprintf( _wpsf__( 'Keep the %s feature turned on.' ), _wpsf__( 'User Management' ) ) )
 				);
-				$sTitleShort = sprintf( '%s / %s', _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
+				$sTitleShort = sprintf( _wpsf__( '%s/%s Module' ), _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
 				break;
 
-			case 'section_bypass_user_accounts_management' :
-				$sTitle = _wpsf__( 'By-Pass User Accounts Management' );
+			case 'section_passwords' :
+				$sTitle = _wpsf__( 'Password Policies' );
+				$sTitleShort = _wpsf__( 'Password Policies' );
 				$aSummary = array(
-					sprintf( _wpsf__( 'Purpose - %s' ), _wpsf__( 'Compatibility with XML-RPC services such as the WordPress iPhone and Android Apps.' ) ),
-					sprintf( _wpsf__( 'Recommendation - %s' ), _wpsf__( 'Keep this turned off unless you know you need it.' ) )
+					sprintf( _wpsf__( 'Purpose - %s' ), _wpsf__( 'Have full control over passwords used by users on the site.' ) ),
+					sprintf( _wpsf__( 'Recommendation - %s' ), _wpsf__( 'Use of this feature is highly recommend.' ) ),
+					sprintf( _wpsf__( 'Note - %s' ), _wpsf__( 'Requires PHP v5.4 and above.' ) )
 				);
-				$sTitleShort = _wpsf__( 'By-Pass' );
 				break;
 
 			case 'section_admin_login_notification' :
@@ -226,15 +322,9 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		switch ( $sKey ) {
 
 			case 'enable_user_management' :
-				$sName = sprintf( _wpsf__( 'Enable %s' ), $this->getMainFeatureName() );
-				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Feature' ), $this->getMainFeatureName() );
-				$sDescription = sprintf( _wpsf__( 'Checking/Un-Checking this option will completely turn on/off the whole %s feature.' ), $this->getMainFeatureName() );
-				break;
-
-			case 'enable_xmlrpc_compatibility' :
-				$sName = _wpsf__( 'XML-RPC Compatibility' );
-				$sSummary = _wpsf__( 'Allow Login Through XML-RPC To By-Pass Accounts Management Rules' );
-				$sDescription = _wpsf__( 'Enable this if you need XML-RPC functionality e.g. if you use the WordPress iPhone/Android App.' );
+				$sName = sprintf( _wpsf__( 'Enable %s Module' ), $this->getMainFeatureName() );
+				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Module' ), $this->getMainFeatureName() );
+				$sDescription = sprintf( _wpsf__( 'Un-Checking this option will completely disable the %s module.' ), $this->getMainFeatureName() );
 				break;
 
 			case 'enable_admin_login_email_notification' :
@@ -272,6 +362,45 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 				$sSummary = _wpsf__( 'Limit Simultaneous Sessions For The Same Username' );
 				$sDescription = _wpsf__( 'The number provided here is the maximum number of simultaneous, distinct, sessions allowed for any given username.' )
 								.'<br />'._wpsf__( "Zero (0) will allow unlimited simultaneous sessions." );
+				break;
+
+			case 'enable_password_policies' :
+				$sName = _wpsf__( 'Enable Password Policies' );
+				$sSummary = _wpsf__( 'Enable The Password Policies Detailed Below' );
+				$sDescription = _wpsf__( 'Turn on/off all password policy settings.' );
+				break;
+
+			case 'pass_prevent_pwned' :
+				$sName = _wpsf__( 'Prevent Pwned Passwords' );
+				$sSummary = _wpsf__( 'Prevent Use Of "Pwned" Passwords' );
+				$sDescription = _wpsf__( 'Prevents users from using any passwords found on the public available list of "pwned" passwords.' );
+				break;
+
+			case 'pass_min_length' :
+				$sName = _wpsf__( 'Minimum Length' );
+				$sSummary = _wpsf__( 'Minimum Password Length' );
+				$sDescription = _wpsf__( 'All passwords that a user sets must be at least this many characters in length.' )
+								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
+				break;
+
+			case 'pass_min_strength' :
+				$sName = _wpsf__( 'Minimum Strength' );
+				$sSummary = _wpsf__( 'Minimum Password Strength' );
+				$sDescription = _wpsf__( 'All passwords that a user sets must meet this minimum strength.' );
+				break;
+
+			case 'pass_force_existing' :
+				$sName = _wpsf__( 'Apply To Existing Users' );
+				$sSummary = _wpsf__( 'Apply Password Policies To Existing Users and Their Passwords' );
+				$sDescription = _wpsf__( "Forces existing users to update their passwords if they don't meet requirements, after they next login." )
+								.'<br/>'._wpsf__( 'Note: You may want to warn users prior to enabling this option.' );
+				break;
+
+			case 'pass_expire' :
+				$sName = _wpsf__( 'Password Expiration' );
+				$sSummary = _wpsf__( 'Passwords Expire After This Many Days' );
+				$sDescription = _wpsf__( 'Users will be forced to reset their passwords after the number of days specified.' )
+								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
 				break;
 
 			default:

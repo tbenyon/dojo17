@@ -28,7 +28,6 @@
 	color: rgb(103, 21, 0);
 	text-align: right;
 }
-
 .notice-icon {
 	display: none;
 	float: left;
@@ -46,7 +45,6 @@
 .notice-content p {
 	margin-left: 0;
 }
-
 @media (min-width: 884px) {
 	.notice-icon {
 		display: block;
@@ -55,7 +53,6 @@
 		margin-left: 62px;
 	}
 }
-
 .notice-icon-right {
 	float: right;
 	width: 74px;
@@ -71,11 +68,6 @@
 	text-shadow: none;
 	font-weight: bold;
 }
-
-
-
-
-
 ul.nav-tabs li a {
 	color: rgba(69, 119, 0, 1);
 }
@@ -226,8 +218,6 @@ tr.icwp-plugin-vulnerability dd {
 
 	visibility: hidden;
 
-	height: 20px;
-	max-height: 20px;
 	width: 0;
 	font-size: 18px;
 	color: #ffffff;
@@ -240,7 +230,7 @@ tr.icwp-plugin-vulnerability dd {
 	text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
 }
 .icwp-growl-notice.shown {
-	padding: 23px 20px;
+	padding: 23px 20px 15px;
 	width: 100%;
 	visibility: visible;
 }
@@ -277,7 +267,7 @@ tr.icwp-plugin-vulnerability dd {
 	width: 100vw;
 	top: 0;
 	left: 0;
-	background: rgba(0, 0, 0, 0.25);
+	background: rgba(0, 0, 0, 0.2);
 	z-index: 999999;
 }
 .icwp-waiting {
@@ -331,4 +321,7 @@ tr.icwp-plugin-vulnerability dd {
 }
 .icwpAjaxTableContainer table th.column-event {
 	width: 110px;
+}
+.icwp-wpsf-dialog h3 {
+	margin-top: 0;
 }

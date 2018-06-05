@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_Processor_HackProtect', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 
 class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -32,12 +32,18 @@ class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 		if ( $oFO->isWpvulnEnabled() ) {
 			$this->runWpVulnScan();
 		}
+		if ( $oFO->isIcEnabled() ) {
+			$this->getSubProcessorIntegrity()->run();
+		}
+		if ( $oFO->isPtgEnabled() ) {
+			$this->runPTGuard();
+		}
 	}
 
 	/**
 	 */
 	protected function runPluginVulnerabilities() {
-		require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'hackprotect_pluginvulnerabilities.php' );
+		require_once( dirname( __FILE__ ).'/hackprotect_pluginvulnerabilities.php' );
 		$oPv = new ICWP_WPSF_Processor_HackProtect_PluginVulnerabilities( $this->getFeature() );
 		$oPv->run();
 	}
@@ -73,12 +79,18 @@ class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 	}
 
 	/**
+	 */
+	protected function runPTGuard() {
+		$this->getSubProcessorGuard()->run();
+	}
+
+	/**
 	 * @return ICWP_WPSF_Processor_HackProtect_CoreChecksumScan
 	 */
 	public function getSubProcessorChecksumScan() {
 		$oProc = $this->getSubProcessor( 'checksum' );
 		if ( is_null( $oProc ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'hackprotect_corechecksumscan.php' );
+			require_once( dirname( __FILE__ ).'/hackprotect_corechecksumscan.php' );
 			$oProc = new ICWP_WPSF_Processor_HackProtect_CoreChecksumScan( $this->getFeature() );
 			$this->aSubProcessors[ 'checksum' ] = $oProc;
 		}
@@ -91,9 +103,31 @@ class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 	public function getSubProcessorFileCleanerScan() {
 		$oProc = $this->getSubProcessor( 'cleaner' );
 		if ( is_null( $oProc ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'hackprotect_filecleanerscan.php' );
+			require_once( dirname( __FILE__ ).'/hackprotect_filecleanerscan.php' );
 			$oProc = new ICWP_WPSF_Processor_HackProtect_FileCleanerScan( $this->getFeature() );
 			$this->aSubProcessors[ 'cleaner' ] = $oProc;
+		}
+		return $oProc;
+	}
+
+	/**
+	 * @return ICWP_WPSF_Processor_HackProtect_Integrity
+	 */
+	protected function getSubProcessorIntegrity() {
+		require_once( dirname( __FILE__ ).'/hackprotect_integrity.php' );
+		$oProc = new ICWP_WPSF_Processor_HackProtect_Integrity( $this->getFeature() );
+		return $oProc;
+	}
+
+	/**
+	 * @return ICWP_WPSF_Processor_HackProtect_PTGuard
+	 */
+	public function getSubProcessorGuard() {
+		$oProc = $this->getSubProcessor( 'ptguard' );
+		if ( is_null( $oProc ) ) {
+			require_once( dirname( __FILE__ ).'/hackprotect_ptguard.php' );
+			$oProc = new ICWP_WPSF_Processor_HackProtect_PTGuard( $this->getFeature() );
+			$this->aSubProcessors[ 'ptguard' ] = $oProc;
 		}
 		return $oProc;
 	}
@@ -104,7 +138,7 @@ class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 	protected function getSubProcessorWpVulnScan() {
 		$oProc = $this->getSubProcessor( 'vuln' );
 		if ( is_null( $oProc ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'hackprotect_wpvulnscan.php' );
+			require_once( dirname( __FILE__ ).'/hackprotect_wpvulnscan.php' );
 			$oProc = new ICWP_WPSF_Processor_HackProtect_WpVulnScan( $this->getFeature() );
 			$this->aSubProcessors[ 'vuln' ] = $oProc;
 		}
@@ -128,8 +162,8 @@ class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 	protected function revSliderPatch_LFI() {
 		$oDp = $this->loadDataProcessor();
 
-		$sAction = $oDp->FetchGet( 'action', '' );
-		$sFileExt = strtolower( $oDp->getExtension( $oDp->FetchGet( 'img', '' ) ) );
+		$sAction = $oDp->query( 'action', '' );
+		$sFileExt = strtolower( $oDp->getExtension( $oDp->query( 'img', '' ) ) );
 		if ( $sAction == 'revslider_show_image' && !empty( $sFileExt ) ) {
 			if ( !in_array( $sFileExt, array( 'jpg', 'jpeg', 'png', 'tiff', 'tif', 'gif' ) ) ) {
 				die( 'RevSlider Local File Inclusion Attempt' );
@@ -140,8 +174,8 @@ class ICWP_WPSF_Processor_HackProtect extends ICWP_WPSF_Processor_BaseWpsf {
 	protected function revSliderPatch_AFU() {
 		$oDp = $this->loadDataProcessor();
 
-		$sAction = strtolower( $oDp->FetchRequest( 'action', '' ) );
-		$sClientAction = strtolower( $oDp->FetchRequest( 'client_action', '' ) );
+		$sAction = strtolower( $oDp->request( 'action', '' ) );
+		$sClientAction = strtolower( $oDp->request( 'client_action', '' ) );
 		if ( ( strpos( $sAction, 'revslider_ajax_action' ) !== false || strpos( $sAction, 'showbiz_ajax_action' ) !== false ) && $sClientAction == 'update_plugin' ) {
 			die( 'RevSlider Arbitrary File Upload Attempt' );
 		}

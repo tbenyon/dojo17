@@ -46,6 +46,10 @@ class ICWP_WPSF_Foundation {
 	 */
 	private static $oIp;
 	/**
+	 * @var ICWP_WPSF_Ssl
+	 */
+	private static $oSsl;
+	/**
 	 * @var ICWP_WPSF_GoogleAuthenticator
 	 */
 	private static $oGA;
@@ -74,7 +78,7 @@ class ICWP_WPSF_Foundation {
 	 */
 	private static $oEdd;
 	/**
-	 * @var ICWP_APP_WpUpgrades
+	 * @var ICWP_WPSF_WpUpgrades
 	 */
 	private static $oUpgrades;
 
@@ -154,12 +158,12 @@ class ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @return ICWP_APP_WpUpgrades
+	 * @return ICWP_WPSF_WpUpgrades
 	 */
 	static public function loadWpUpgrades() {
 		if ( ! isset( self::$oUpgrades ) ) {
 			self::requireCommonLib( 'icwp-wpupgrades.php' );
-			self::$oUpgrades = ICWP_APP_WpUpgrades::GetInstance();
+			self::$oUpgrades = ICWP_WPSF_WpUpgrades::GetInstance();
 		}
 
 		return self::$oUpgrades;
@@ -192,6 +196,17 @@ class ICWP_WPSF_Foundation {
 			self::$oIp = ICWP_WPSF_Ip::GetInstance();
 		}
 		return self::$oIp;
+	}
+
+	/**
+	 * @return ICWP_WPSF_Ssl
+	 */
+	public function loadSslService() {
+		if ( !isset( self::$oSsl ) ) {
+			self::requireCommonLib( 'icwp-ssl.php' );
+			self::$oSsl = ICWP_WPSF_Ssl::GetInstance();
+		}
+		return self::$oSsl;
 	}
 
 	/**
@@ -249,7 +264,7 @@ class ICWP_WPSF_Foundation {
 		if ( !isset( self::$oRender ) ) {
 			self::requireCommonLib( 'icwp-render.php' );
 			self::$oRender = ICWP_WPSF_Render::GetInstance()
-											 ->setAutoloaderPath( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'Twig'.DIRECTORY_SEPARATOR.'Autoloader.php' );
+											 ->setAutoloaderPath( dirname( __FILE__ ).'/Twig'.DIRECTORY_SEPARATOR.'Autoloader.php' );
 		}
 		if ( !empty( $sTemplatePath ) ) {
 			self::$oRender->setTemplateRoot( $sTemplatePath );

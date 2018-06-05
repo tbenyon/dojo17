@@ -32,18 +32,13 @@ class ICWP_WPSF_Processor_HackProtect_WpVulnScan extends ICWP_WPSF_Processor_Bas
 	 */
 	public function run() {
 
-		if ( $this->loadDP()->FetchGet( 'force_wpvulnscan' ) == 1 ) {
-			$this->scanPlugins();
-			die();
-		}
-
 		// For display on the Plugins page
-		add_action( 'admin_init', array( $this, 'addPluginVulnerabilityRows' ), 10, 2 );
+		add_action( 'load-plugins.php', array( $this, 'addPluginVulnerabilityRows' ), 10, 2 );
 
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getFeature();
 		if ( $oFO->isWpvulnAutoupdatesEnabled() ) {
-			add_filter( 'auto_update_plugin', array( $this, 'autoupdateVulnerablePlugins' ), 100, 2 );
+			add_filter( 'auto_update_plugin', array( $this, 'autoupdateVulnerablePlugins' ), PHP_INT_MAX, 2 );
 		}
 
 		try {
@@ -95,7 +90,7 @@ class ICWP_WPSF_Processor_HackProtect_WpVulnScan extends ICWP_WPSF_Processor_Bas
 	}
 
 	public function addVulnerablePluginStatusView() {
-		if ( $this->loadDP()->FetchGet( 'plugin_status' ) == 'vulnerable' ) {
+		if ( $this->loadDP()->query( 'plugin_status' ) == 'vulnerable' ) {
 			global $status;
 			$status = 'vulnerable';
 		}
@@ -125,7 +120,7 @@ class ICWP_WPSF_Processor_HackProtect_WpVulnScan extends ICWP_WPSF_Processor_Bas
 	 * @return array
 	 */
 	public function filterPluginsToView( $aPlugins ) {
-		if ( $this->loadDP()->FetchGet( 'plugin_status' ) == 'vulnerable' ) {
+		if ( $this->loadDP()->query( 'plugin_status' ) == 'vulnerable' ) {
 			global $status;
 			$status = 'vulnerable';
 			$aPlugins = array_intersect_key( $aPlugins, $this->getVulnerablePlugins() );
@@ -222,7 +217,8 @@ class ICWP_WPSF_Processor_HackProtect_WpVulnScan extends ICWP_WPSF_Processor_Bas
 
 		$sSubject = sprintf( _wpsf__( 'Warning - %s' ), _wpsf__( 'Plugin(s) Discovered With Known Security Vulnerabilities.' ) );
 		$sRecipient = $this->getPluginDefaultRecipientAddress();
-		$bSendSuccess = $this->getEmailProcessor()->sendEmailTo( $sRecipient, $sSubject, $this->aNotifEmail );
+		$bSendSuccess = $this->getEmailProcessor()
+							 ->sendEmailTo( $sRecipient, $sSubject, $this->aNotifEmail );
 
 		if ( $bSendSuccess ) {
 			$this->addToAuditEntry( sprintf( _wpsf__( 'Successfully sent Plugin Vulnerability Notification email alert to: %s' ), $sRecipient ) );
@@ -234,8 +230,14 @@ class ICWP_WPSF_Processor_HackProtect_WpVulnScan extends ICWP_WPSF_Processor_Bas
 	}
 
 	public function cron_dailyWpVulnScan() {
+		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
+		$oFO = $this->getFeature();
+
 		$this->scanPlugins();
 		$this->scanThemes();
+
+		$this->getHasVulnerablePlugins() ? $oFO->setLastScanProblemAt( 'wpv' ) : $oFO->clearLastScanProblemAt( 'wpv' );
+		$oFO->setLastScanAt( 'wpv' );
 	}
 
 	protected function scanPlugins() {
@@ -343,14 +345,14 @@ class ICWP_WPSF_Processor_HackProtect_WpVulnScan extends ICWP_WPSF_Processor_Bas
 			$sUrl = $this->getApiRootUrl().'plugins/'.$sSlug;
 			$sFullContent = $this->loadFS()->getUrlContent( $sUrl );
 			if ( empty( $sFullContent ) ) {
-				$sFullContent = '';
+				$sFullContent = 'not available';
 			}
 		}
 
 		$oWp->setTransient( $sTransientKey, $sFullContent, DAY_IN_SECONDS );
 
 		$aVulns = array();
-		if ( !empty( $sFullContent ) ) {
+		if ( !empty( $sFullContent ) && $sFullContent != 'not available' ) {
 			$oData = @json_decode( $sFullContent );
 			if ( isset( $oData->{$sSlug} ) && !empty( $oData->{$sSlug}->vulnerabilities ) && is_array( $oData->{$sSlug}->vulnerabilities ) ) {
 				$aVulns = $oData->{$sSlug}->vulnerabilities;

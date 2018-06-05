@@ -12,13 +12,6 @@ require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 	/**
-	 * @return string[]
-	 */
-	protected function getSupportedWizards() {
-		return array( 'welcome', 'importexport' );
-	}
-
-	/**
 	 * @return string
 	 */
 	protected function getPageTitle() {
@@ -69,6 +62,14 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				$oResponse = $this->wizardOptin();
 				break;
 
+			case 'add-search-item':
+				$oResponse = $this->wizardAddSearchItem();
+				break;
+
+			case 'confirm-results-delete':
+				$oResponse = $this->wizardConfirmDelete();
+				break;
+
 			default:
 				$oResponse = parent::processWizardStep( $sStep );
 				break;
@@ -86,6 +87,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			case 'welcome':
 				$aSteps = $this->determineWizardSteps_Welcome();
 				break;
+			case 'gdpr':
+				$aSteps = $this->determineWizardSteps_Gdpr();
+				break;
 			case 'importexport':
 				$aSteps = $this->determineWizardSteps_Import();
 				break;
@@ -94,6 +98,18 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				break;
 		}
 		return array_values( array_intersect( array_keys( $this->getAllDefinedSteps() ), $aSteps ) );
+	}
+
+	/**
+	 * @return string[]
+	 */
+	private function determineWizardSteps_Gdpr() {
+		return array(
+			'start',
+			'search',
+			'results',
+			'finished',
+		);
 	}
 
 	/**
@@ -127,29 +143,29 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$aStepsSlugs[] = 'import';
 		}
 
-		if ( !$oConn->getModule( 'admin_access_restriction' )->getIsMainFeatureEnabled() ) {
+		if ( !$oConn->getModule( 'admin_access_restriction' )->isModuleEnabled() ) {
 			$aStepsSlugs[] = 'admin_access_restriction';
 		}
 
 		/** @var ICWP_WPSF_FeatureHandler_AuditTrail $oModule */
 		$oModule = $oConn->getModule( 'audit_trail' );
-		if ( !$oModule->getIsMainFeatureEnabled() ) {
+		if ( !$oModule->isModuleEnabled() ) {
 			$aStepsSlugs[] = 'audit_trail';
 		}
 
-		if ( !$oConn->getModule( 'ips' )->getIsMainFeatureEnabled() ) {
+		if ( !$oConn->getModule( 'ips' )->isModuleEnabled() ) {
 			$aStepsSlugs[] = 'ips';
 		}
 
 		/** @var ICWP_WPSF_FeatureHandler_LoginProtect $oModule */
 		$oModule = $oConn->getModule( 'login_protect' );
-		if ( !( $oModule->getIsMainFeatureEnabled() && $oModule->isEnabledGaspCheck() ) ) {
+		if ( !( $oModule->isModuleEnabled() && $oModule->isEnabledGaspCheck() ) ) {
 			$aStepsSlugs[] = 'login_protect';
 		}
 
 		/** @var ICWP_WPSF_FeatureHandler_CommentsFilter $oModule */
 		$oModule = $oConn->getModule( 'comments_filter' );
-		if ( !( $oModule->getIsMainFeatureEnabled() && $oModule->isEnabledGaspCheck() ) ) {
+		if ( !( $oModule->isModuleEnabled() && $oModule->isEnabledGaspCheck() ) ) {
 			$aStepsSlugs[] = 'comments_filter';
 		}
 
@@ -201,9 +217,18 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				case 'optin':
 					$oUser = $this->loadWpUsers()->getCurrentWpUser();
 					$aAdditional = array(
-						'data' => array(
+						'data'    => array(
 							'name'       => $oUser->first_name,
 							'user_email' => $oUser->user_email
+						),
+						'hrefs'   => array(
+							'privacy_policy' => $this->getModCon()->getDef( 'href_privacy_policy' )
+						),
+						'strings' => array(
+							'privacy_policy' => sprintf(
+								'I certify that I have read and agree to the <a href="%s" target="_blank">Privacy Policy</a>',
+								$this->getModCon()->getDef( 'href_privacy_policy' )
+							),
 						)
 					);
 					break;
@@ -217,24 +242,27 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 							'how_shield_works' => $oConn->getPluginUrl_Image( 'wizard/general-shield_where.png' ),
 							'modules'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_modules.png' ),
 							'options'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_options.png' ),
+							'wizards'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_wizards.png' ),
 							'help'             => $oConn->getPluginUrl_Image( 'wizard/general-shield_help.png' ),
 							'actions'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_actions.png' ),
-							'module_onoff'     => $oConn->getPluginUrl_Image( 'wizard/general-module_onoff.png' ),
 							'option_help'      => $oConn->getPluginUrl_Image( 'wizard/general-option_help.png' ),
+							'module_onoff'     => $oConn->getPluginUrl_Image( 'wizard/general-module_onoff.png' ),
 						),
 						'headings' => array(
 							'how_shield_works' => _wpsf__( 'Where to find Shield' ),
 							'modules'          => _wpsf__( 'Accessing Each Module' ),
 							'options'          => _wpsf__( 'Accessing Options' ),
+							'wizards'          => _wpsf__( 'Launching Wizards' ),
 							'help'             => _wpsf__( 'Finding Help' ),
 							'actions'          => _wpsf__( 'Actions (not Options)' ),
-							'module_onoff'     => _wpsf__( 'Module On/Off Switch' ),
 							'option_help'      => _wpsf__( 'Help For Each Option' ),
+							'module_onoff'     => _wpsf__( 'Module On/Off Switch' ),
 						),
 						'captions' => array(
-							'how_shield_works' => _wpsf__( "You'll find the main Shield Security setting in the left-hand WordPress menu." ),
+							'how_shield_works' => sprintf( _wpsf__( "You'll find the main %s settings in the left-hand WordPress menu." ), $oConn->getHumanName() ),
 							'modules'          => _wpsf__( 'Shield is split up into independent modules for accessing the options of each feature.' ),
 							'options'          => _wpsf__( 'When you load a module, you can access the options by clicking on the Options Panel link.' ),
+							'wizards'          => _wpsf__( 'Launch helpful walk-through wizards for modules that have them.' ),
 							'help'             => _wpsf__( 'Each module also has a brief overview help section - there is more in-depth help available.' ),
 							'actions'          => _wpsf__( 'Certain modules have extra actions and features, e.g. Audit Trail Viewer.' )
 												  .' '._wpsf__( 'Note: Not all modules have the actions section' ),
@@ -243,6 +271,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 						),
 					);
 					break;
+
 				default:
 					break;
 			}
@@ -256,6 +285,39 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 						),
 						'imgs'  => array(
 							'shieldnetworkmini' => $oConn->getPluginUrl_Image( 'shield/shieldnetworkmini.png' ),
+						)
+					);
+					break;
+				case 'results': //gdpr results
+
+					$aAdditional = array();
+					break;
+
+				default:
+					break;
+			}
+		}
+		else if ( $sCurrentWiz == 'gdpr' ) {
+			switch ( $sStep ) {
+
+				case 'results':
+					$aItems = $this->getGdprSearchItems();
+					$bHasSearchItems = !empty( $aItems );
+					$aResults = $this->runGdprSearch();
+
+					$nTotal = 0;
+					foreach ( $aResults as $aResult ) {
+						$nTotal += $aResult[ 'count' ];
+					}
+
+					$aAdditional = array(
+						'flags' => array(
+							'has_search_items' => $bHasSearchItems
+						),
+						'data'  => array(
+							'result'      => $this->runGdprSearch(),
+							'count_total' => $nTotal,
+							'has_results' => $nTotal > 0,
 						)
 					);
 					break;
@@ -312,28 +374,23 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 * @return \FernleafSystems\Utilities\Response
 	 */
 	private function wizardLicense() {
-		$sKey = $this->loadDP()->post( 'LicenseKey' );
 
 		$bSuccess = false;
-		if ( empty( $sKey ) ) {
-			$sMessage = 'License key was empty.';
+
+		/** @var ICWP_WPSF_FeatureHandler_License $oModule */
+		$oModule = $this->getPluginCon()->getModule( 'license' );
+		try {
+			$bSuccess = $oModule->verifyLicense( true )
+								->hasValidWorkingLicense();
+			if ( $bSuccess ) {
+				$sMessage = _wpsf__( 'License was found and successfully installed.' );
+			}
+			else {
+				$sMessage = _wpsf__( 'License could not be found.' );
+			}
 		}
-		else {
-			/** @var ICWP_WPSF_FeatureHandler_License $oModule */
-			$oModule = $this->getPluginCon()->getModule( 'license' );
-			try {
-				$oModule->activateOfficialLicense( $sKey, true );
-				if ( $oModule->hasValidWorkingLicense() ) {
-					$bSuccess = true;
-					$sMessage = _wpsf__( 'License key was accepted and installed successfully.' );
-				}
-				else {
-					$sMessage = _wpsf__( 'License key was not accepted.' );
-				}
-			}
-			catch ( Exception $oE ) {
-				$sMessage = _wpsf__( $oE->getMessage() );
-			}
+		catch ( Exception $oE ) {
+			$sMessage = _wpsf__( $oE->getMessage() );
 		}
 
 		$oResponse = new \FernleafSystems\Utilities\Response();
@@ -430,10 +487,10 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$oModule->setIsMainFeatureEnabled( $bEnabled )
 					->savePluginOptions();
 
-			$bSuccess = $oModule->getIsMainFeatureEnabled() === $bEnabled;
+			$bSuccess = $oModule->isModuleEnabled() === $bEnabled;
 			if ( $bSuccess ) {
 				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Audit Trail' ),
-					$oModule->getIsMainFeatureEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+					$oModule->isModuleEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
 				);
 			}
 			else {
@@ -463,10 +520,10 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$oModule->setIsMainFeatureEnabled( $bEnabled )
 					->savePluginOptions();
 
-			$bSuccess = $oModule->getIsMainFeatureEnabled() === $bEnabled;
+			$bSuccess = $oModule->isModuleEnabled() === $bEnabled;
 			if ( $bSuccess ) {
 				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'IP Manager' ),
-					$oModule->getIsMainFeatureEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+					$oModule->isModuleEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
 				);
 			}
 			else {
@@ -499,14 +556,14 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$oModule->setEnabledGaspCheck( $bEnabled )
 					->savePluginOptions();
 
-			$bSuccess = $oModule->getIsMainFeatureEnabled() === $bEnabled;
+			$bSuccess = $oModule->isEnabledGaspCheck() === $bEnabled;
 			if ( $bSuccess ) {
-				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Login Protection' ),
-					$oModule->getIsMainFeatureEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Login Guard' ),
+					$bEnabled ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
 				);
 			}
 			else {
-				$sMessage = sprintf( _wpsf__( '%s setting could not be changed at this time.' ), _wpsf__( 'Login Protection' ) );
+				$sMessage = sprintf( _wpsf__( '%s setting could not be changed at this time.' ), _wpsf__( 'Login Guard' ) );
 			}
 		}
 
@@ -537,7 +594,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				$sMessage = _wpsf__( 'Preferences have been saved.' );
 			}
 		}
-		else if ( $sForm == 'optin_badge' ) {
+		else if ( $sForm == 'optin_usage' ) {
 			$sInput = $oDP->post( 'AnonymousOption' );
 
 			if ( !empty( $sInput ) ) {
@@ -550,6 +607,79 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		$oResponse = new \FernleafSystems\Utilities\Response();
 		return $oResponse->setSuccessful( $bSuccess )
+						 ->setMessageText( $sMessage );
+	}
+
+	/**
+	 * @return \FernleafSystems\Utilities\Response
+	 */
+	private function wizardAddSearchItem() {
+		$oDP = $this->loadDP();
+		$sInput = esc_js( esc_html( trim( $oDP->post( 'SearchItem' ) ) ) );
+
+		$aItems = $this->getGdprSearchItems();
+
+		if ( !empty( $sInput ) ) {
+			if ( $sInput === 'CLEAR' ) {
+				$aItems = array();
+			}
+			else {
+				$aItems[] = $sInput;
+				if ( $oDP->validEmail( $sInput ) ) {
+					$oUser = $this->loadWpUsers()->getUserByEmail( $sInput );
+					if ( !is_null( $oUser ) ) {
+						$aItems[] = $oUser->user_login;
+					}
+				}
+				else {
+					$sUsername = sanitize_user( $sInput );
+					if ( !empty( $sUsername ) ) {
+						$oUser = $this->loadWpUsers()->getUserByUsername( $sUsername );
+						if ( $oUser instanceof WP_User ) {
+							$aItems[] = $oUser->user_email;
+						}
+					}
+				}
+			}
+		}
+
+		$aItems = $this->setGdprSearchItems( $aItems );
+
+		$sSearchList = 'Search list is empty';
+		if ( !empty( $aItems ) ) {
+			$sItems = implode( '</li><li>', $aItems );
+			$sSearchList = sprintf( '<ul><li>%s</li></ul>', $sItems );
+		}
+
+		$oResponse = new \FernleafSystems\Utilities\Response();
+		return $oResponse->setSuccessful( true )
+						 ->setData( [ 'sSearchList' => $sSearchList ] )
+						 ->setMessageText( _wpsf__( 'Search item added.' ) );
+	}
+
+	private function wizardConfirmDelete() {
+		$oDP = $this->loadDP();
+		$bDelete = $oDP->post( 'ConfirmDelete' ) === 'Y';
+		if ( $bDelete ) {
+			/** @var ICWP_WPSF_Processor_AuditTrail $oProc */
+			$oProc = $this->getPluginCon()->getModule( 'audit_trail' )->getProcessor();
+			$oDeleter = $oProc->getAuditTrailDelete();
+			foreach ( $this->getGdprSearchItems() as $sItem ) {
+				try {
+					$oDeleter->setTerm( $sItem )
+							 ->all();
+				}
+				catch ( Exception $oE ) {
+				}
+			}
+			$sMessage = _wpsf__( 'All entries were deleted' );
+		}
+		else {
+			$sMessage = _wpsf__( 'Please check the box to confirm deletion.' );
+		}
+
+		$oResponse = new \FernleafSystems\Utilities\Response();
+		return $oResponse->setSuccessful( $bDelete )
 						 ->setMessageText( $sMessage );
 	}
 
@@ -573,10 +703,10 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$oModule->setEnabledGasp( $bEnabled )
 					->savePluginOptions();
 
-			$bSuccess = $oModule->getIsMainFeatureEnabled() === $bEnabled;
+			$bSuccess = $oModule->isEnabledGaspCheck() === $bEnabled;
 			if ( $bSuccess ) {
 				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Comment SPAM Protection' ),
-					$oModule->getIsMainFeatureEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+					$bEnabled ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
 				);
 			}
 			else {
@@ -587,5 +717,63 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 		$oResponse = new \FernleafSystems\Utilities\Response();
 		return $oResponse->setSuccessful( $bSuccess )
 						 ->setMessageText( $sMessage );
+	}
+
+	/**
+	 * @return array
+	 */
+	private function getGdprSearchItems() {
+		$aItems = $this->loadWp()
+					   ->getTransient( $this->getPluginCon()->prefix( 'gdpr-items' ) );
+		if ( !is_array( $aItems ) ) {
+			$aItems = array();
+		}
+		return $aItems;
+	}
+
+	/**
+	 * @param array $aItems
+	 * @return array
+	 */
+	private function setGdprSearchItems( $aItems ) {
+		if ( !is_array( $aItems ) ) {
+			$aItems = array();
+		}
+		$aItems = array_filter( array_unique( $aItems ) );
+		$this->loadWp()
+			 ->setTransient(
+				 $this->getPluginCon()->prefix( 'gdpr-items' ),
+				 $aItems,
+				 MINUTE_IN_SECONDS*10
+			 );
+		return $aItems;
+	}
+
+	/**
+	 * @return array[]
+	 */
+	private function runGdprSearch() {
+		/** @var ICWP_WPSF_Processor_AuditTrail $oProc */
+		$oProc = $this->getPluginCon()->getModule( 'audit_trail' )->getProcessor();
+		$oFinder = $oProc->getAuditTrailFinder();
+
+		$aItems = array();
+		foreach ( $this->getGdprSearchItems() as $sItem ) {
+			try {
+				$aResults = $oFinder->setTerm( $sItem )
+									->setResultsAsVo( false )
+									->all();
+			}
+			catch ( Exception $oE ) {
+				$aResults = array();
+			}
+//			$aResults = array_intersect_key( $aResults, array_flip( [ 'wp_username', 'message' ] ) );
+			$aItems[ $sItem ] = array(
+				'entries' => $aResults,
+				'count'   => count( $aResults ),
+				'has'     => count( $aResults ) > 0,
+			);
+		}
+		return $aItems;
 	}
 }

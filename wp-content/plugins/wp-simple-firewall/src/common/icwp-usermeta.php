@@ -9,6 +9,9 @@ if ( class_exists( 'ICWP_UserMeta', false ) ) {
  * @property string $ga_secret
  * @property bool   $ga_validated
  * @property array  $hash_loginmfa
+ * @property string $pass_hash
+ * @property int    $pass_started_at
+ * @property int    $pass_check_failed_at
  * @property string $yubi_secret
  * @property bool   $yubi_validated
  * @property string $code_tfaemail
@@ -16,6 +19,7 @@ if ( class_exists( 'ICWP_UserMeta', false ) ) {
  * @property int    $login_intent_expires_at
  * @property string $prefix
  * @property int    $user_id
+ * @property bool   $wc_social_login_valid
  * Class ICWP_UserMeta
  */
 class ICWP_UserMeta extends ICWP_WPSF_Foundation {
@@ -31,12 +35,7 @@ class ICWP_UserMeta extends ICWP_WPSF_Foundation {
 	 */
 	public function __construct( $sPrefix, $nUserId = 0 ) {
 		$this->load( $sPrefix, $nUserId );
-	}
-
-	/**
-	 */
-	public function __destruct() {
-		$this->save();
+		add_action( 'shutdown', array( $this, 'save' ) );
 	}
 
 	/**

@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_Processor_Lockdown' ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 
 class ICWP_WPSF_Processor_Lockdown extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -50,14 +50,46 @@ class ICWP_WPSF_Processor_Lockdown extends ICWP_WPSF_Processor_BaseWpsf {
 		}
 
 		if ( $oFO->getOptIs( 'disable_xmlrpc', 'Y' ) ) {
-			add_filter( 'xmlrpc_enabled', '__return_false', 1000 );
-			add_filter( 'xmlrpc_methods', '__return_empty_array', 1000 );
+			add_filter( 'xmlrpc_enabled', array( $this, 'disableXmlrpc' ), 1000, 0 );
+			add_filter( 'xmlrpc_methods', array( $this, 'disableXmlrpc' ), 1000, 0 );
 		}
 
-		if ( $oFO->getIfRestApiDisabled() ) {
+		add_action( 'init', array( $this, 'onWpInit' ), 5 );
+	}
+
+	/**
+	 * @return array|false
+	 */
+	public function disableXmlrpc() {
+		/** @var ICWP_WPSF_FeatureHandler_Lockdown $oFO */
+		$oFO = $this->getFeature();
+		$oFO->setOptInsightsAt( 'xml_block_at' );
+		$this->setIpTransgressed();
+		return ( current_filter() == 'xmlrpc_enabled' ) ? false : array();
+	}
+
+	public function onWpInit() {
+		if ( $this->loadWp()->isRest() ) {
+			$this->processRestApi();
+		}
+	}
+
+	protected function processRestApi() {
+		if ( !$this->isRestApiAccessAllowed() ) {
 			// 99 so that we jump in just before the always-on WordPress cookie auth.
 			add_filter( 'rest_authentication_errors', array( $this, 'disableAnonymousRestApi' ), 99 );
 		}
+	}
+
+	/**
+	 * @return bool
+	 */
+	protected function isRestApiAccessAllowed() {
+		/** @var ICWP_WPSF_FeatureHandler_Lockdown $oFO */
+		$oFO = $this->getFeature();
+		return $oFO->isRestApiAnonymousAccessAllowed()
+			   || $this->loadWpUsers()->isUserLoggedIn()
+			   || in_array( $this->loadWp()->getRestNamespace(), $oFO->getRestApiAnonymousExclusions() );
 	}
 
 	/**
@@ -74,6 +106,11 @@ class ICWP_WPSF_Processor_Lockdown extends ICWP_WPSF_Processor_BaseWpsf {
 				sprintf( _wpsf__( 'Anonymous access to the WordPress Rest API has been restricted by %s.' ), $this->getController()
 																												  ->getHumanName() ),
 				array( 'status' => rest_authorization_required_code() ) );
+			$this->addToAuditEntry( 'Blocked Anonymous API Access', 1, 'anonymous_api' );
+
+			/** @var ICWP_WPSF_FeatureHandler_Lockdown $oFO */
+			$oFO = $this->getFeature();
+			$oFO->setOptInsightsAt( 'restapi_block_at' );
 		}
 		return $mCurrentStatus;
 	}
@@ -173,7 +210,7 @@ class ICWP_WPSF_Processor_Lockdown extends ICWP_WPSF_Processor_BaseWpsf {
 	public function interceptCanonicalRedirects() {
 
 		if ( $this->getIsOption( 'block_author_discovery', 'Y' ) && !$this->loadWpUsers()->isUserLoggedIn() ) {
-			$sAuthor = $this->loadDataProcessor()->FetchGet( 'author', '' );
+			$sAuthor = $this->loadDP()->query( 'author', '' );
 			if ( !empty( $sAuthor ) ) {
 				$this->loadWp()->wpDie( sprintf(
 					_wpsf__( 'The "author" query parameter has been blocked by %s to protect against user login name fishing.' )

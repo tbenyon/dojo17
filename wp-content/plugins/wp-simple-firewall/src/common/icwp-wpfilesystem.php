@@ -67,69 +67,66 @@ class ICWP_WPSF_WpFilesystem {
 			$sNeedle = strtolower( $sNeedle );
 		}
 
-		$oDirIt = null;
-		$bUseDirectoryIterator = class_exists( 'DirectoryIterator', false );
-		if ( $bUseDirectoryIterator ) {
-			try {
-				$oDirIt = new DirectoryIterator( $sDir );
-			}
-			catch ( Exception $oE ) { //  UnexpectedValueException, RuntimeException, Exception
-				$bUseDirectoryIterator = false; // Path doesn't exist or don't have access to open
-			}
-		}
+		//if the file you're searching for doesn't have an extension, then we don't include extensions in search
+		$nDotPosition = strpos( $sNeedle, '.' );
+		$bHasExtension = $nDotPosition !== false;
+		$bIncludeExtension = $bIncludeExtension && $bHasExtension;
 
-		if ( $bUseDirectoryIterator && $oDirIt ) {
+		$sNeedlePreExtension = $bHasExtension ? substr( $sNeedle, 0, $nDotPosition ) : $sNeedle;
 
-			//if the file you're searching for doesn't have an extension, then we don't include extensions in search
-			$nDotPosition = strpos( $sNeedle, '.' );
-			$bHasExtension = $nDotPosition !== false;
-			$bIncludeExtension = $bIncludeExtension && $bHasExtension;
+		$bFound = false;
+		foreach ( $this->getFilesInDir( $sDir ) as $oFileItem ) {
 
-			$sNeedlePreExtension = $bHasExtension ? substr( $sNeedle, 0, $nDotPosition ) : $sNeedle;
-
-			$bFound = false;
-			foreach ( $oDirIt as $oFileItem ) {
-				if ( !$oFileItem->isFile() ) {
-					continue;
-				}
-				$sFilename = $oFileItem->getFilename();
-				if ( !$bCaseSensitive ) {
-					$sFilename = strtolower( $sFilename );
-				}
-
-				if ( $bIncludeExtension ) {
-					$bFound = ( $sFilename == $sNeedle );
-				}
-				else {
-					// This is not entirely accurate as it only finds whether a file "starts" with needle, ignoring subsequent characters
-					$bFound = ( strpos( $sFilename, $sNeedlePreExtension ) === 0 );
-				}
-
-				if ( $bFound ) {
-					break;
-				}
+			$sFilename = $oFileItem->getFilename();
+			if ( !$bCaseSensitive ) {
+				$sFilename = strtolower( $sFilename );
 			}
 
-			return $bFound;
-		}
+			if ( $bIncludeExtension ) {
+				$bFound = ( $sFilename == $sNeedle );
+			}
+			else {
+				// This is not entirely accurate as it only finds whether a file "starts" with needle, ignoring subsequent characters
+				$bFound = ( strpos( $sFilename, $sNeedlePreExtension ) === 0 );
+			}
 
-		if ( $bCaseSensitive ) {
-			return $this->exists( $this->pathJoin( $sDir, $sNeedle ) );
-		}
-		$sNeedle = strtolower( $sNeedle );
-		if ( $oHandle = opendir( $sDir ) ) {
-
-			while ( false !== ( $sFileEntry = readdir( $oHandle ) ) ) {
-				if ( !$this->isFile( $this->pathJoin( $sDir, $sFileEntry ) ) ) {
-					continue;
-				}
-				if ( $sNeedle == strtolower( $sFileEntry ) ) {
-					return true;
-				}
+			if ( $bFound ) {
+				break;
 			}
 		}
 
-		return false;
+		return $bFound;
+	}
+
+	/**
+	 * @param string                     $sDir
+	 * @param int                        $nMaxDepth - set to zero for no max
+	 * @param RecursiveDirectoryIterator $oDirIterator
+	 * @return SplFileInfo[]
+	 */
+	public function getFilesInDir( $sDir, $nMaxDepth = 1, $oDirIterator = null ) {
+		$aList = array();
+
+		try {
+			if ( empty( $oDirIterator ) ) {
+				$oDirIterator = new RecursiveDirectoryIterator( $sDir );
+				if ( method_exists( $oDirIterator, 'setFlags' ) ) {
+					$oDirIterator->setFlags( RecursiveDirectoryIterator::SKIP_DOTS );
+				}
+			}
+
+			$oRecurIter = new RecursiveIteratorIterator( $oDirIterator );
+			$oRecurIter->setMaxDepth( $nMaxDepth - 1 ); //since they start at zero.
+
+			/** @var SplFileInfo $oFile */
+			foreach ( $oRecurIter as $oFile ) {
+				$aList[] = clone $oFile;
+			}
+		}
+		catch ( Exception $oE ) { //  UnexpectedValueException, RuntimeException, Exception
+		}
+
+		return $aList;
 	}
 
 	/**
@@ -144,7 +141,7 @@ class ICWP_WPSF_WpFilesystem {
 	protected function setWpConfigPath() {
 		$this->sWpConfigPath = ABSPATH.'wp-config.php';
 		if ( !$this->exists( $this->sWpConfigPath ) ) {
-			$this->sWpConfigPath = ABSPATH.'..'.DIRECTORY_SEPARATOR.'wp-config.php';
+			$this->sWpConfigPath = ABSPATH.'../wp-config.php';
 			if ( !$this->exists( $this->sWpConfigPath ) ) {
 				$this->sWpConfigPath = false;
 			}
@@ -184,6 +181,7 @@ class ICWP_WPSF_WpFilesystem {
 	/**
 	 * @param string $sUrl
 	 * @param array  $aRequestArgs
+	 * @param bool   $bAlwaysRawResponse
 	 * @return array|WP_Error|bool
 	 */
 	public function requestUrl( $sUrl, $aRequestArgs = array(), $bAlwaysRawResponse = false ) {
@@ -480,7 +478,7 @@ class ICWP_WPSF_WpFilesystem {
 	private function initFileSystem() {
 		if ( is_null( $this->oWpfs ) ) {
 			$this->oWpfs = false;
-			require_once( ABSPATH.'wp-admin'.DIRECTORY_SEPARATOR.'includes'.DIRECTORY_SEPARATOR.'file.php' );
+			require_once( ABSPATH.'wp-admin/includes/file.php' );
 			if ( WP_Filesystem() ) {
 				global $wp_filesystem;
 				if ( isset( $wp_filesystem ) && is_object( $wp_filesystem ) ) {

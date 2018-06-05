@@ -9,39 +9,53 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 	 * @var array
 	 */
 	protected $aOptionsValues;
+
+	/**
+	 * @var array
+	 */
+	protected $aOld;
+
 	/**
 	 * @var array
 	 */
 	protected $aRawOptionsConfigData;
+
 	/**
 	 * @var boolean
 	 */
 	protected $bNeedSave;
+
 	/**
 	 * @var boolean
 	 */
 	protected $bIsPremium;
+
 	/**
 	 * @var boolean
 	 */
 	protected $bRebuildFromFile = false;
+
 	/**
 	 * @var string
 	 */
 	protected $aOptionsKeys;
+
 	/**
 	 * @var string
 	 */
 	protected $sOptionsStorageKey;
+
 	/**
 	 *  by default we load from saved
 	 * @var string
 	 */
 	protected $bLoadFromSaved = true;
+
 	/**
 	 * @var string
 	 */
 	protected $sOptionsEncoding;
+
 	/**
 	 * @var string
 	 */
@@ -219,6 +233,69 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sSlug
+	 * @return array|null
+	 */
+	public function getSection( $sSlug ) {
+		$aSections = $this->getSections();
+		return isset( $aSections[ $sSlug ] ) ? $aSections[ $sSlug ] : null;
+	}
+
+	/**
+	 * @param bool $bIncludeHidden
+	 * @return array[]
+	 */
+	public function getSections( $bIncludeHidden = false ) {
+		$aSections = array();
+		foreach ( $this->getRawData_OptionsSections() as $aRawSection ) {
+			if ( $bIncludeHidden || !isset( $aRawSection[ 'hidden' ] ) || !$aRawSection[ 'hidden' ] ) {
+				$aSections[ $aRawSection[ 'slug' ] ] = $aRawSection;
+			}
+		}
+		return $aSections;
+	}
+
+	/**
+	 * @param string $sSlug
+	 * @return array
+	 */
+	public function getSection_Requirements( $sSlug ) {
+		$aSection = $this->getSection( $sSlug );
+		$aReqs = ( is_array( $aSection ) && isset( $aSection[ 'reqs' ] ) ) ? $aSection[ 'reqs' ] : array();
+		return array_merge(
+			array( 'php_min' => '5.2.4' ),
+			$aReqs
+		);
+	}
+
+	/**
+	 * @param string $sSlug
+	 * @return array|null
+	 */
+	public function getSectionHelpVideo( $sSlug ) {
+		$aSection = $this->getSection( $sSlug );
+		return ( is_array( $aSection ) && isset( $aSection[ 'help_video' ] ) ) ? $aSection[ 'help_video' ] : null;
+	}
+
+	/**
+	 * @param string $sSectionSlug
+	 * @return bool
+	 */
+	public function isSectionReqsMet( $sSectionSlug ) {
+		$aReqs = $this->getSection_Requirements( $sSectionSlug );
+		$bMet = $this->loadDP()->getPhpVersionIsAtLeast( $aReqs[ 'php_min' ] );
+		return $bMet;
+	}
+
+	/**
+	 * @param string $sOptKey
+	 * @return bool
+	 */
+	public function isOptReqsMet( $sOptKey ) {
+		return $this->isSectionReqsMet( $this->getOptProperty( $sOptKey, 'section' ) );
+	}
+
+	/**
 	 * @return array
 	 */
 	public function getOptionsForPluginUse() {
@@ -304,6 +381,14 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sKey
+	 * @return mixed|null
+	 */
+	public function getOldValue( $sKey ) {
+		return $this->isOptChanged( $sKey ) ? $this->aOld[ $sKey ] : null;
+	}
+
+	/**
 	 * @param string $sOptionKey
 	 * @param mixed  $mDefault
 	 * @return mixed
@@ -384,6 +469,13 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 	 */
 	public function getPathToConfig() {
 		return $this->sPathToConfig;
+	}
+
+	/**
+	 * @return string
+	 */
+	protected function getConfigModTime() {
+		return $this->loadFS()->getModifiedTime( $this->getPathToConfig() );
 	}
 
 	/**
@@ -498,6 +590,14 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sKey
+	 * @return bool
+	 */
+	public function isOptChanged( $sKey ) {
+		return is_array( $this->aOld ) && isset( $this->aOld[ $sKey ] );
+	}
+
+	/**
 	 * @param string $sOptionKey
 	 * @return bool true if premium is set and true, false otherwise.
 	 */
@@ -595,29 +695,94 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param string $sOptionKey
+	 * @param string $sOptKey
 	 * @param mixed  $mValue
 	 * @return mixed
 	 */
-	public function setOpt( $sOptionKey, $mValue ) {
+	public function setOpt( $sOptKey, $mValue ) {
 
 		// We can't use getOpt() to find the current value since we'll create an infinite loop
 		$aOptionsValues = $this->getAllOptionsValues();
-		$mCurrent = isset( $aOptionsValues[ $sOptionKey ] ) ? $aOptionsValues[ $sOptionKey ] : null;
+		$mCurrent = isset( $aOptionsValues[ $sOptKey ] ) ? $aOptionsValues[ $sOptKey ] : null;
 
-		if ( serialize( $mCurrent ) !== serialize( $mValue ) ) {
+		$mValue = $this->ensureOptValueState( $sOptKey, $mValue );
+		if ( serialize( $mCurrent ) !== serialize( $mValue ) && $this->verifyCanSet( $sOptKey, $mValue ) ) {
 			$this->setNeedSave( true );
 
 			//Load the config and do some pre-set verification where possible. This will slowly grow.
-			$aOption = $this->getRawData_SingleOption( $sOptionKey );
+			$aOption = $this->getRawData_SingleOption( $sOptKey );
 			if ( !empty( $aOption[ 'type' ] ) ) {
 				if ( $aOption[ 'type' ] == 'boolean' && !is_bool( $mValue ) ) {
-					return $this->resetOptToDefault( $sOptionKey );
+					return $this->resetOptToDefault( $sOptKey );
 				}
 			}
-			$this->aOptionsValues[ $sOptionKey ] = $mValue;
+			$this->setOldOptValue( $sOptKey, $mCurrent );
+			$this->aOptionsValues[ $sOptKey ] = $mValue;
 		}
 		return true;
+	}
+
+	/**
+	 * Ensures that set options values are of the correct type
+	 * @param string $sOptKey
+	 * @param mixed  $mValue
+	 * @return mixed
+	 */
+	private function ensureOptValueState( $sOptKey, $mValue ) {
+		switch ( $this->getOptionType( $sOptKey ) ) {
+			case 'integer':
+				$mValue = (int)$mValue;
+				break;
+
+			case 'text':
+			case 'email':
+				$mValue = (string)$mValue;
+				break;
+		}
+		return $mValue;
+	}
+
+	/**
+	 * @param string $sOptKey
+	 * @param mixed  $mPotentialValue
+	 * @return bool
+	 */
+	private function verifyCanSet( $sOptKey, $mPotentialValue ) {
+		$bValid = true;
+
+		switch ( $this->getOptionType( $sOptKey ) ) {
+
+			case 'integer':
+				$nMin = $this->getOptProperty( $sOptKey, 'min' );
+				if ( !is_null( $nMin ) ) {
+					$bValid = $mPotentialValue >= $nMin;
+				}
+				$nMax = $this->getOptProperty( $sOptKey, 'max' );
+				if ( !is_null( $nMax ) ) {
+					$bValid = $mPotentialValue <= $nMax;
+				}
+				break;
+
+			case 'email':
+				$bValid = empty( $mPotentialValue ) || $this->loadDP()->validEmail( $mPotentialValue );
+				break;
+		}
+		return $bValid;
+	}
+
+	/**
+	 * @param string $sOptionKey
+	 * @param mixed  $mValue
+	 * @return $this
+	 */
+	private function setOldOptValue( $sOptionKey, $mValue ) {
+		if ( !is_array( $this->aOld ) ) {
+			$this->aOld = array();
+		}
+		if ( !isset( $this->aOld[ $sOptionKey ] ) ) {
+			$this->aOld[ $sOptionKey ] = $mValue;
+		}
+		return $this;
 	}
 
 	/**
@@ -685,7 +850,16 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 		$sTransientKey = $this->getSpecTransientStorageKey();
 		$aConfig = $oWp->getTransient( $sTransientKey );
 
-		if ( $this->getRebuildFromFile() || empty( $aConfig ) ) {
+		$bRebuild = $this->getRebuildFromFile() || empty( $aConfig );
+		if ( !$bRebuild && !empty( $aConfig ) && is_array( $aConfig ) ) {
+
+			if ( !isset( $aConfig[ 'meta_modts' ] ) ) {
+				$aConfig[ 'meta_modts' ] = 0;
+			}
+			$bRebuild = $this->getConfigModTime() != $aConfig[ 'meta_modts' ];
+		}
+
+		if ( $bRebuild ) {
 
 			try {
 				$aConfig = $this->readConfigurationJson();
@@ -696,6 +870,7 @@ class ICWP_WPSF_OptionsVO extends ICWP_WPSF_Foundation {
 				}
 				$aConfig = array();
 			}
+			$aConfig[ 'meta_modts' ] = $this->getConfigModTime();
 			$oWp->setTransient( $sTransientKey, $aConfig, DAY_IN_SECONDS );
 		}
 		return $aConfig;

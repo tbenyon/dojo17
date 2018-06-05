@@ -2,7 +2,7 @@
 
 if ( !class_exists( 'ICWP_WPSF_Processor_HackProtect_PluginVulnerabilities', false ) ):
 
-	require_once( dirname(__FILE__).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+	require_once( dirname(__FILE__ ).'/base_wpsf.php' );
 
 	class ICWP_WPSF_Processor_HackProtect_PluginVulnerabilities extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -108,7 +108,8 @@ if ( !class_exists( 'ICWP_WPSF_Processor_HackProtect_PluginVulnerabilities', fal
 
 			$sEmailSubject = sprintf( _wpsf__( 'Warning - %s' ), _wpsf__( 'Plugin(s) Discovered With Known Security Vulnerabilities.' ) );
 
-			$bSendSuccess = $this->getEmailProcessor()->sendEmailTo( $sRecipient, $sEmailSubject, $this->aEmailContents );
+			$bSendSuccess = $this->getEmailProcessor()
+								 ->sendEmailTo( $sRecipient, $sEmailSubject, $this->aEmailContents );
 
 			if ( $bSendSuccess ) {
 				$this->addToAuditEntry( sprintf( _wpsf__( 'Successfully sent Plugin Vulnerability Notification email alert to: %s' ), $sRecipient ) );
@@ -160,7 +161,7 @@ if ( !class_exists( 'ICWP_WPSF_Processor_HackProtect_PluginVulnerabilities', fal
 					),
 					'nColspan' => $this->nColumnsCount
 				);
-				echo $this->getFeature()->renderTemplate( 'snippets'.DIRECTORY_SEPARATOR.'plugin-vulnerability.php', $aRenderData );
+				echo $this->getFeature()->renderTemplate( 'snippets/plugin-vulnerability.php', $aRenderData );
 			}
 		}
 

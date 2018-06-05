@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_Processor_Ips', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'basedb.php' );
+require_once( dirname( __FILE__ ).'/basedb.php' );
 
 class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 
@@ -23,17 +23,6 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	public function __construct( ICWP_WPSF_FeatureHandler_Ips $oFeatureOptions ) {
 		parent::__construct( $oFeatureOptions, $oFeatureOptions->getIpListsTableName() );
-	}
-
-	/**
-	 * Resets the object values to be re-used anew
-	 */
-	public function init() {
-		parent::init();
-
-		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
-		$oFO = $this->getFeature();
-		$this->setAutoExpirePeriod( $oFO->getAutoExpireTime() );
 	}
 
 	/**
@@ -59,16 +48,12 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		if ( $oFO->getIsAutoBlackListFeatureEnabled() ) {
 			add_filter( $oFO->prefix( 'firewall_die_message' ), array( $this, 'fAugmentFirewallDieMessage' ) );
 			add_action( $oFO->prefix( 'pre_plugin_shutdown' ), array( $this, 'action_blackMarkIp' ) );
-			add_action( 'wp_login_failed', array( $this, 'doBlackMarkIp' ), 10, 0 );
+			add_action( 'wp_login_failed', array( $this, 'setIpTransgressed' ), 10, 0 );
 		}
 
 		add_filter( 'authenticate', array( $this, 'addLoginFailedWarningMessage' ), 10000, 1 );
 		add_filter( $oFO->prefix( 'has_permission_to_manage' ), array( $this, 'fGetIsVisitorWhitelisted' ) );
-		add_action( 'wp', array( $this, 'doTrack404' ) );
-	}
-
-	public function doBlackMarkIp() {
-		add_filter( $this->getFeature()->prefix( 'ip_black_mark' ), '__return_true' );
+		add_action( 'template_redirect', array( $this, 'doTrack404' ) );
 	}
 
 	public function doTrack404() {
@@ -76,7 +61,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		$oFO = $this->getFeature();
 		if ( $oFO->is404Tracking() && is_404() ) {
 			if ( $oFO->getOptTracking404() == 'assign-transgression' ) {
-				$this->doBlackMarkIp();
+				$this->setIpTransgressed(); // We now black mark this IP
 			}
 			$this->addToAuditEntry(
 				sprintf( _wpsf__( '404 detected at "%s"' ), $this->loadDataProcessor()->getRequestPath() ),
@@ -112,7 +97,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 					'title'             => sprintf( _wpsf__( '%s is ignoring you' ), $oCon->getHumanName() ),
 					'your_ip'           => sprintf( _wpsf__( 'Your IP address is: %s' ), $this->ip() ),
 					'notice_message'    => _wpsf__( 'Your IP address is whitelisted and NO features you activate apply to you.' ),
-					'including_message' => _wpsf__( 'Including the Rename WP Login feature.' )
+					'including_message' => _wpsf__( 'Including the hiding the WP Login page.' )
 				)
 			);
 			$this->insertAdminNotice( $aRenderData );
@@ -180,7 +165,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		}
 
 		if ( $bBlackMark ) {
-			$this->doBlackMarkIp();
+			$this->setIpTransgressed(); // We now black mark this IP
 
 			if ( !is_wp_error( $oUserOrError ) ) {
 				$oUserOrError = new WP_Error();
@@ -247,6 +232,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			$sAuditMessage = sprintf( _wpsf__( 'Visitor was found to be on the Black List with IP address "%s" and their connection was killed.' ), $sIp );
 			$this->addToAuditEntry( $sAuditMessage, 3, 'black_list_connection_killed' );
 			$this->doStatIncrement( 'ip.connection.killed' );
+			$oFO->setOptInsightsAt( 'last_ip_block_at' );
 
 			$this->query_updateLastAccessForAutoBlackListIp( $sIp );
 
@@ -284,15 +270,16 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
 		$oFO = $this->getFeature();
 
-		// Never black mark IPs that are on the whitelist
-		if ( $oFO->isPluginDeleting() || !$oFO->getIsAutoBlackListFeatureEnabled()
-			 || $this->getIsVisitorWhitelisted() ) {
-			return;
-		}
+		if ( apply_filters( $oFO->prefix( 'ip_black_mark' ), false ) ) {
 
-		$bDoBlackMark = apply_filters( $oFO->prefix( 'ip_black_mark' ), false );
-		if ( $bDoBlackMark ) {
-			$this->blackMarkIp( $this->ip() );
+			// Never black mark IPs that are on the whitelist
+			$oIP = $this->loadIpService();
+			$bCanBlackMark = !$oFO->isPluginDeleting() && $oFO->getIsAutoBlackListFeatureEnabled()
+							 && !$this->getIsVisitorWhitelisted() && ( $oIP->whatIsMyIp() !== $this->ip() );
+
+			if ( $bCanBlackMark ) {
+				$this->blackMarkIp( $this->ip() );
+			}
 		}
 	}
 
@@ -300,6 +287,10 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 	 * @param string $sIp
 	 */
 	protected function blackMarkIp( $sIp ) {
+		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
+		$oFO = $this->getFeature();
+		$oFO->setOptInsightsAt( 'last_transgression_at' );
+		$this->doStatIncrement( 'ip.transgression.incremented' );
 
 		$aIpBlackListData = $this->getIpHasTransgressions( $sIp, true );
 		if ( count( $aIpBlackListData ) > 0 ) {
@@ -319,7 +310,6 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			);
 			$this->addToAuditEntry( $sAuditMessage, 2, 'transgression_counter_started' );
 		}
-		$this->doStatIncrement( 'ip.transgression.incremented' );
 	}
 
 	/**
@@ -702,5 +692,14 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			ICWP_WPSF_FeatureHandler_Ips::LIST_AUTO_BLACK
 		);
 		return $this->loadDbProcessor()->doSql( $sQuery );
+	}
+
+	/**
+	 * @return int
+	 */
+	protected function getAutoExpirePeriod() {
+		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
+		$oFO = $this->getFeature();
+		return $oFO->getAutoExpireTime();
 	}
 }

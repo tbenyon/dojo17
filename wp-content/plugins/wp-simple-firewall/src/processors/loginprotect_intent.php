@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_Processor_LoginProtect_Intent', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 
 class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -16,8 +16,28 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	/**
 	 */
 	public function run() {
+		/** @var ICWP_WPSF_FeatureHandler_LoginProtect $oFO */
+		$oFO = $this->getFeature();
 		add_action( 'init', array( $this, 'onWpInit' ), 0 );
 		add_action( 'wp_logout', array( $this, 'onWpLogout' ) );
+
+		if ( $oFO->getIfSupport3rdParty() ) {
+			add_action( 'wc_social_login_before_user_login', array( $this, 'onWcSocialLogin' ) );
+		}
+	}
+
+	/**
+	 * @param int $nUserId
+	 */
+	public function onWcSocialLogin( $nUserId ) {
+		/** @var ICWP_WPSF_FeatureHandler_LoginProtect $oFO */
+		$oFO = $this->getFeature();
+
+		$oUser = new WP_User( $nUserId );
+		if ( $oUser->ID != 0 ) { // i.e. said user id exists.
+			$oMeta = $oFO->getUserMeta( $oUser );
+			$oMeta->wc_social_login_valid = true;
+		}
 	}
 
 	public function onWpInit() {
@@ -82,7 +102,7 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 		if ( $this->hasValidLoginIntent() ) { // ie. valid login intent present
 			$oDp = $this->loadDP();
 
-			$bIsLoginIntentSubmission = $oDp->FetchRequest( $oFO->getLoginIntentRequestFlag() ) == 1;
+			$bIsLoginIntentSubmission = $oDp->request( $oFO->getLoginIntentRequestFlag() ) == 1;
 			if ( $bIsLoginIntentSubmission ) {
 
 				if ( $oDp->post( 'cancel' ) == 1 ) {
@@ -109,6 +129,8 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 					$this->removeLoginIntent();
 					$this->loadAdminNoticesProcessor()->addFlashMessage(
 						_wpsf__( 'Success' ).'! '._wpsf__( 'Thank you for authenticating your login.' ) );
+
+					$oFO->setOptInsightsAt( 'last_idle_logout_at' );
 				}
 				else {
 					$this->loadAdminNoticesProcessor()->addFlashMessage(
@@ -134,7 +156,15 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	/**
 	 */
 	public function onWpLogout() {
+		/** @var ICWP_WPSF_FeatureHandler_LoginProtect $oFO */
+		$oFO = $this->getFeature();
+
 		$this->resetLoginIntent();
+
+		// support for WooCommerce Social Login
+		if ( $oFO->getIfSupport3rdParty() ) {
+			$oFO->getCurrentUserMeta()->wc_social_login_valid = false;
+		}
 	}
 
 	/**
@@ -184,8 +214,10 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	 * @return $this
 	 */
 	protected function setLoginIntentExpiresAt( $nExpirationTime, $oUser ) {
-		$oMeta = $this->loadWpUsers()->metaVoForUser( $this->prefix(), $oUser->ID );
-		$oMeta->login_intent_expires_at = max( 0, (int)$nExpirationTime );
+		if ( $oUser instanceof WP_User ) {
+			$oMeta = $this->loadWpUsers()->metaVoForUser( $this->prefix(), $oUser->ID );
+			$oMeta->login_intent_expires_at = max( 0, (int)$nExpirationTime );
+		}
 		return $this;
 	}
 
@@ -274,8 +306,8 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 			),
 			'hrefs'   => array(
 				'form_action'   => $this->loadDataProcessor()->getRequestUri(),
-				'css_bootstrap' => $oCon->getPluginUrl_Css( 'bootstrap3.min.css' ),
-				'js_bootstrap'  => $oCon->getPluginUrl_Js( 'bootstrap3.min.js' ),
+				'css_bootstrap' => $oCon->getPluginUrl_Css( 'bootstrap4.min.css' ),
+				'js_bootstrap'  => $oCon->getPluginUrl_Js( 'bootstrap4.min.js' ),
 				'shield_logo'   => 'https://ps.w.org/wp-simple-firewall/assets/banner-772x250.png',
 				'redirect_to'   => $sRedirectTo,
 				'what_is_this'  => 'https://icontrolwp.freshdesk.com/support/solutions/articles/3000064840',
@@ -298,7 +330,7 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	 * @return ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth
 	 */
 	protected function getProcessorTwoFactor() {
-		require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'loginprotect_twofactorauth.php' );
+		require_once( dirname( __FILE__ ).'/loginprotect_twofactorauth.php' );
 		/** @var ICWP_WPSF_FeatureHandler_LoginProtect $oFO */
 		$oFO = $this->getFeature();
 		$oProc = new ICWP_WPSF_Processor_LoginProtect_TwoFactorAuth( $oFO );
@@ -309,7 +341,7 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	 * @return ICWP_WPSF_Processor_LoginProtect_Yubikey
 	 */
 	protected function getProcessorYubikey() {
-		require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'loginprotect_yubikey.php' );
+		require_once( dirname( __FILE__ ).'/loginprotect_yubikey.php' );
 		$oProc = new ICWP_WPSF_Processor_LoginProtect_Yubikey( $this->getFeature() );
 		return $oProc->setLoginTrack( $this->getLoginTrack() );
 	}
@@ -318,7 +350,7 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	 * @return ICWP_WPSF_Processor_LoginProtect_GoogleAuthenticator
 	 */
 	public function getProcessorGoogleAuthenticator() {
-		require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'loginprotect_googleauthenticator.php' );
+		require_once( dirname( __FILE__ ).'/loginprotect_googleauthenticator.php' );
 		$oProc = new ICWP_WPSF_Processor_LoginProtect_GoogleAuthenticator( $this->getFeature() );
 		return $oProc->setLoginTrack( $this->getLoginTrack() );
 	}
@@ -328,7 +360,7 @@ class ICWP_WPSF_Processor_LoginProtect_Intent extends ICWP_WPSF_Processor_BaseWp
 	 */
 	public function getLoginTrack() {
 		if ( !isset( $this->oLoginTrack ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'loginprotect_track.php' );
+			require_once( dirname( __FILE__ ).'/loginprotect_track.php' );
 			$this->oLoginTrack = new ICWP_WPSF_Processor_LoginProtect_Track();
 		}
 		return $this->oLoginTrack;

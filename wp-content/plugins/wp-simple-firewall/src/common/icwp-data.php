@@ -25,7 +25,8 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	 */
 	protected $aRequestUriParts;
 
-	protected function __construct() {}
+	protected function __construct() {
+	}
 
 	/**
 	 * @return ICWP_WPSF_DataProcessor
@@ -95,6 +96,35 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	public function post( $sKey, $mDefault = null, $bTrim = true ) {
 		$mVal = $this->FetchPost( $sKey, $mDefault );
 		return ( $bTrim && is_scalar( $mVal ) ) ? trim( $mVal ) : $mVal;
+	}
+
+	/**
+	 * @param string $sKey
+	 * @param null   $mDefault
+	 * @param bool   $bTrim -automatically trim whitespace
+	 * @return mixed|null
+	 */
+	public function server( $sKey, $mDefault = null, $bTrim = true ) {
+		$mVal = $this->FetchServer( $sKey, $mDefault );
+		return ( $bTrim && is_scalar( $mVal ) ) ? trim( $mVal ) : $mVal;
+	}
+
+	/**
+	 * @param string $sKey
+	 * @param null   $mDefault
+	 * @param bool   $bIncludeCookie
+	 * @param bool   $bTrim -automatically trim whitespace
+	 * @return mixed|null
+	 */
+	public function request( $sKey, $bIncludeCookie = false, $mDefault = null, $bTrim = true ) {
+		$mVal = $this->post( $sKey, null, $bTrim );
+		if ( is_null( $mVal ) ) {
+			$mVal = $this->query( $sKey, null, $bTrim );
+			if ( is_null( $mVal && $bIncludeCookie ) ) {
+				$mVal = self::FetchCookie( $sKey );
+			}
+		}
+		return is_null( $mVal ) ? $mDefault : ( $bTrim && is_scalar( $mVal ) ) ? trim( $mVal ) : $mVal;
 	}
 
 	/**
@@ -180,6 +210,13 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function isWindows() {
+		return strtoupper( substr( PHP_OS, 0, 3 ) ) === 'WIN';
+	}
+
+	/**
 	 * @param string $sUrl
 	 * @return string
 	 */
@@ -255,6 +292,13 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function isMethodPost() {
+		return ( self::GetRequestMethod() == 'post' );
+	}
+
+	/**
 	 * Taken from http://www.phacks.net/detecting-search-engine-bot-and-web-spiders/
 	 */
 	public static function IsSearchEngineBot() {
@@ -311,13 +355,6 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 		$sAtoZ = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		$nRandomInt = rand( 0, ( strlen( $sAtoZ ) - 1 ) );
 		return $sAtoZ[ $nRandomInt ];
-	}
-
-	/**
-	 * @return bool
-	 */
-	static public function GetIsRequestPost() {
-		return ( self::GetRequestMethod() == 'post' );
 	}
 
 	/**
@@ -388,6 +425,7 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @deprecated
 	 * @param string $sKey
 	 * @param mixed  $mDefault
 	 * @return mixed|null
@@ -418,23 +456,6 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param string  $sKey
-	 * @param boolean $bIncludeCookie
-	 * @param mixed   $mDefault
-	 * @return mixed|null
-	 */
-	public static function FetchRequest( $sKey, $bIncludeCookie = false, $mDefault = null ) {
-		$mFetchVal = self::FetchPost( $sKey );
-		if ( is_null( $mFetchVal ) ) {
-			$mFetchVal = self::FetchGet( $sKey );
-			if ( is_null( $mFetchVal && $bIncludeCookie ) ) {
-				$mFetchVal = self::FetchCookie( $sKey );
-			}
-		}
-		return is_null( $mFetchVal ) ? $mDefault : $mFetchVal;
-	}
-
-	/**
 	 * @param string $sKey
 	 * @param mixed  $mDefault
 	 * @return mixed|null
@@ -450,17 +471,28 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param string $sRequestedUrl
-	 * @param string $sBaseUrl
+	 * @param string $sRequestedUriPath
+	 * @param string $sHostName - you can also send a full and valid URL
 	 */
-	public function doSendApache404( $sRequestedUrl, $sBaseUrl ) {
-		$bForwardedProto = $this->FetchServer( 'HTTP_X_FORWARDED_PROTO' ) == 'https';
+	public function doSendApache404( $sRequestedUriPath = '', $sHostName = '' ) {
+		if ( empty( $sRequestedUriPath ) ) {
+			$sRequestedUriPath = $this->server( 'REQUEST_URI' );
+		}
+
+		if ( empty( $sHostName ) ) {
+			$sHostName = $this->server( 'SERVER_NAME' );
+		}
+		else if ( filter_var( $sHostName, FILTER_VALIDATE_URL ) ) {
+			$sHostName = parse_url( $sRequestedUriPath, PHP_URL_HOST );
+		}
+
+		$bSsl = is_ssl() || $this->server( 'HTTP_X_FORWARDED_PROTO' ) == 'https';
 		header( 'HTTP/1.1 404 Not Found' );
 		$sDie = sprintf(
 			'<html><head><title>404 Not Found</title><style type="text/css"></style></head><body><h1>Not Found</h1><p>The requested URL %s was not found on this server.</p><p>Additionally, a 404 Not Found error was encountered while trying to use an ErrorDocument to handle the request.</p><hr><address>Apache Server at %s Port %s</address></body></html>',
-			$sRequestedUrl,
-			$sBaseUrl,
-			( $bForwardedProto || is_ssl() ) ? 443 : $this->FetchServer( 'SERVER_PORT' )
+			$sRequestedUriPath,
+			$sHostName,
+			$bSsl ? 443 : $this->server( 'SERVER_PORT' )
 		);
 		die( $sDie );
 	}

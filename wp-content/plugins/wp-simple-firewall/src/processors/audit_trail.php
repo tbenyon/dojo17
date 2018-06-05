@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_Processor_AuditTrail', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'basedb.php' );
+require_once( dirname( __FILE__ ).'/basedb.php' );
 
 class ICWP_WPSF_Processor_AuditTrail extends ICWP_WPSF_BaseDbProcessor {
 
@@ -18,7 +18,7 @@ class ICWP_WPSF_Processor_AuditTrail extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	public function getBaseAuditor() {
 		if ( !isset( $this->oAuditor ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_auditor_base.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_auditor_base.php' );
 			$this->oAuditor = new ICWP_WPSF_AuditTrail_Auditor_Base();
 		}
 		return $this->oAuditor;
@@ -29,19 +29,6 @@ class ICWP_WPSF_Processor_AuditTrail extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	public function __construct( ICWP_WPSF_FeatureHandler_AuditTrail $oFeatureOptions ) {
 		parent::__construct( $oFeatureOptions, $oFeatureOptions->getAuditTrailTableName() );
-	}
-
-	/**
-	 * Resets the object values to be re-used anew
-	 */
-	public function init() {
-		parent::init();
-
-		// Auto delete db entries
-		$nDays = $this->getOption( 'audit_trail_auto_clean' );
-		if ( $nDays > 0 ) {
-			$this->setAutoExpirePeriod( $nDays*DAY_IN_SECONDS );
-		}
 	}
 
 	public function action_doFeatureProcessorShutdown() {
@@ -59,43 +46,43 @@ class ICWP_WPSF_Processor_AuditTrail extends ICWP_WPSF_BaseDbProcessor {
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_users', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_users.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_users.php' );
 			$oUsers = new ICWP_WPSF_Processor_AuditTrail_Users();
 			$oUsers->run();
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_plugins', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_plugins.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_plugins.php' );
 			$oPlugins = new ICWP_WPSF_Processor_AuditTrail_Plugins();
 			$oPlugins->run();
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_themes', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_themes.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_themes.php' );
 			$oThemes = new ICWP_WPSF_Processor_AuditTrail_Themes();
 			$oThemes->run();
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_wordpress', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_wordpress.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_wordpress.php' );
 			$oWp = new ICWP_WPSF_Processor_AuditTrail_Wordpress();
 			$oWp->run();
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_posts', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_posts.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_posts.php' );
 			$oPosts = new ICWP_WPSF_Processor_AuditTrail_Posts();
 			$oPosts->run();
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_emails', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_emails.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_emails.php' );
 			$oEmails = new ICWP_WPSF_Processor_AuditTrail_Emails();
 			$oEmails->run();
 		}
 
 		if ( $this->getIsOption( 'enable_audit_context_wpsf', 'Y' ) ) {
-			require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'audit_trail_wpsf.php' );
+			require_once( dirname( __FILE__ ).'/audit_trail_wpsf.php' );
 			$oWpsf = new ICWP_WPSF_Processor_AuditTrail_Wpsf();
 			$oWpsf->run();
 		}
@@ -191,23 +178,10 @@ class ICWP_WPSF_Processor_AuditTrail extends ICWP_WPSF_BaseDbProcessor {
 	}
 
 	/**
-	 * @return bool|int
-	 */
-	public function cleanupDatabase() {
-//		parent::cleanupDatabase();
-//
-//		/** @var ICWP_WPSF_FeatureHandler_AuditTrail $oFO */
-//		$oFO = $this->getFeature();
-//		$sQuery = "DELETE * FROM `%s` ORDER BY `id` DESC LIMIT %s,%s";
-//		$sQuery = sprintf( $sQuery, $this->getTableName(), $oFO->getMaxEntries(), PHP_INT_MAX );
-//		return $this->selectCustom( $sQuery );
-	}
-
-	/**
 	 * @return array
 	 */
 	protected function getTableColumnsByDefinition() {
-		$aDef = $this->getFeature()->getDefinition( 'audit_trail_table_columns' );
+		$aDef = $this->getFeature()->getDef( 'audit_trail_table_columns' );
 		return ( is_array( $aDef ) ? $aDef : array() );
 	}
 
@@ -215,5 +189,32 @@ class ICWP_WPSF_Processor_AuditTrail extends ICWP_WPSF_BaseDbProcessor {
 	 * override and do not delete
 	 */
 	public function deleteTable() {
+	}
+
+	/**
+	 * @return int|null
+	 */
+	protected function getAutoExpirePeriod() {
+		// Auto delete db entries
+		$nDays = (int)$this->getOption( 'audit_trail_auto_clean' );
+		return ( $nDays > 0 ) ? ( $nDays*DAY_IN_SECONDS ) : parent::getAutoExpirePeriod();
+	}
+
+	/**
+	 * @return ICWP_WPSF_Query_AuditTrail_Find
+	 */
+	public function getAuditTrailFinder() {
+		require_once( dirname( dirname( __FILE__ ) ).'/query/audittrail_find.php' );
+		$oSearch = new ICWP_WPSF_Query_AuditTrail_Find();
+		return $oSearch->setTable( $this->getTableName() );
+	}
+
+	/**
+	 * @return ICWP_WPSF_Query_AuditTrail_Delete
+	 */
+	public function getAuditTrailDelete() {
+		require_once( dirname( dirname( __FILE__ ) ).'/query/audittrail_delete.php' );
+		$oSearch = new ICWP_WPSF_Query_AuditTrail_Delete();
+		return $oSearch->setTable( $this->getTableName() );
 	}
 }

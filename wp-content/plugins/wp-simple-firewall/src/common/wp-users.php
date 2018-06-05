@@ -57,6 +57,26 @@ class ICWP_WPSF_WpUsers extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param array $aArgs
+	 * @return WP_User[]
+	 */
+	public function getAllUsers( $aArgs = array() ) {
+		$aArgs = wp_parse_args(
+			$aArgs,
+			array(
+				'blog_id' => 0,
+				//					'fields' => array(
+				//						'ID',
+				//						'user_login',
+				//						'user_email',
+				//						'user_pass',
+				//					)
+			)
+		);
+		return function_exists( 'get_users' ) ? get_users( $aArgs ) : array();
+	}
+
+	/**
 	 * @return integer
 	 */
 	public function getCurrentUserLevel() {
@@ -107,22 +127,11 @@ class ICWP_WPSF_WpUsers extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param $sUsername
-	 * @return false|WP_User
+	 * @param string $sEmail
+	 * @return WP_User|null
 	 */
-	public function getUserByUsername( $sUsername ) {
-		if ( empty( $sUsername ) ) {
-			return false;
-		}
-
-		if ( $this->loadWp()->getWordpressIsAtLeastVersion( '2.8.0' ) ) {
-			$oUser = get_user_by( 'login', $sUsername );
-		}
-		else {
-			$oUser = get_userdatabylogin( $sUsername );
-		}
-
-		return $oUser;
+	public function getUserByEmail( $sEmail ) {
+		return function_exists( 'get_user_by' ) ? get_user_by( 'email', $sEmail ) : null;
 	}
 
 	/**
@@ -131,6 +140,14 @@ class ICWP_WPSF_WpUsers extends ICWP_WPSF_Foundation {
 	 */
 	public function getUserById( $nId ) {
 		return function_exists( 'get_user_by' ) ? get_user_by( 'id', $nId ) : null;
+	}
+
+	/**
+	 * @param $sUsername
+	 * @return null|WP_User
+	 */
+	public function getUserByUsername( $sUsername ) {
+		return function_exists( 'get_user_by' ) ? get_user_by( 'login', $sUsername ) : null;
 	}
 
 	/**
@@ -250,7 +267,7 @@ class ICWP_WPSF_WpUsers extends ICWP_WPSF_Foundation {
 	public function setUserLoggedIn( $sUsername ) {
 
 		$oUser = $this->getUserByUsername( $sUsername );
-		if ( !is_a( $oUser, 'WP_User' ) ) {
+		if ( !( $oUser instanceof WP_User ) ) {
 			return false;
 		}
 

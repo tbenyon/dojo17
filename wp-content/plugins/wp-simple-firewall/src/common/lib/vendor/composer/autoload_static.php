@@ -11,6 +11,10 @@ class ComposerStaticInit18a31866e67f0a0bfffdc031786ecae1
     );
 
     public static $prefixLengthsPsr4 = array (
+        'Z' => 
+        array (
+            'ZxcvbnPhp\\' => 10,
+        ),
         'T' => 
         array (
             'Twig\\' => 5,
@@ -31,6 +35,10 @@ class ComposerStaticInit18a31866e67f0a0bfffdc031786ecae1
     );
 
     public static $prefixDirsPsr4 = array (
+        'ZxcvbnPhp\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/bjeavons/zxcvbn-php/src',
+        ),
         'Twig\\' => 
         array (
             0 => __DIR__ . '/..' . '/twig/twig/src',
