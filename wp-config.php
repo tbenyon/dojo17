@@ -20,22 +20,49 @@
 
 // ** MySQL settings - You can get this info from your web host ** //
 /** The name of the database for WordPress */
-define('DB_NAME', 'dojo2017');
+define('DB_NAME', getenv('DATABASE_NAME'));
 
 /** MySQL database username */
-define('DB_USER', 'root');
+define('DB_USER', getenv('DATABASE_USER'));
 
 /** MySQL database password */
-define('DB_PASSWORD', 'root');
+define('DB_PASSWORD', getenv('DATABASE_PASSWORD'));
 
 /** MySQL hostname */
-define('DB_HOST', 'localhost');
+define('DB_HOST', getenv('DATABASE_HOST'));
 
 /** Database Charset to use in creating database tables. */
 define('DB_CHARSET', 'utf8mb4');
 
 /** The Database Collate type. Don't change this if in doubt. */
 define('DB_COLLATE', '');
+
+
+// ** EXTERNAL LOGIN SETTINGS ** //
+/** EXLOG - The External Database Name */
+define('EXTERNAL_LOGIN_OPTION_DB_NAME', getenv('EXTERNAL_LOGIN_OPTION_DB_NAME'));
+
+/** EXLOG - The External Database Host */
+define('EXTERNAL_LOGIN_OPTION_DB_HOST', getenv('EXTERNAL_LOGIN_OPTION_DB_HOST'));
+
+/** EXLOG - The External Database Username */
+define('EXTERNAL_LOGIN_OPTION_DB_USERNAME', getenv('EXTERNAL_LOGIN_OPTION_DB_USERNAME'));
+
+/** EXLOG - The External Database Password */
+define('EXTERNAL_LOGIN_OPTION_DB_PASSWORD', getenv('EXTERNAL_LOGIN_OPTION_DB_PASSWORD'));
+
+/** EXLOG - Hash Type */
+define('EXTERNAL_LOGIN_OPTION_HASH_ALGORITHM', getenv('EXTERNAL_LOGIN_OPTION_HASH_ALGORITHM'));
+
+/** EXLOG - Salting Method */
+define('EXTERNAL_LOGIN_OPTION_DB_SALTING_METHOD', getenv('EXTERNAL_LOGIN_OPTION_DB_SALTING_METHOD'));
+
+/** EXLOG - Salt Location */
+define('EXTERNAL_LOGIN_OPTION_DB_SALT_LOCATION', getenv('EXTERNAL_LOGIN_OPTION_DB_SALT_LOCATION'));
+
+/** EXLOG - Password Salt */
+define('EXTERNAL_LOGIN_OPTION_DB_SALT', getenv('EXTERNAL_LOGIN_OPTION_DB_SALT'));
+
 
 /**#@+
  * Authentication Unique Keys and Salts.

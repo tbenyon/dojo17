@@ -1,0 +1,1 @@
+<p><?php echo $strings[ 'message' ]; ?></p>
