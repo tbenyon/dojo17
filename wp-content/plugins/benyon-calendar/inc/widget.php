@@ -30,14 +30,26 @@ class My_Widget extends WP_Widget {
             $this->rawData = array();
         }
 
-        if ( isset( $instance[ 'title' ] ) ) {
+        if ( isset( $instance[ 'title' ] ) && $instance[ 'title' ] !== "" ) {
             echo "<h3>" . $instance[ 'title' ] . "</h3>";
         }
 
         foreach ($this->rawData as &$value) {
-            echo "<div>" . json_encode($value['summary']) . "</div>";
-            echo "<div>" . json_encode($value['start']['dateTime']) . "</div>";
-            echo "<div>" . json_encode($value['end']['dateTime']) . "</div>";
+            $start = new DateTime($value['start']['dateTime']);
+            $end = new DateTime($value['end']['dateTime']);
+            $sameDay = $this->is_same_day($start, $end);
+            if ($sameDay) {
+                $startFormat = "jS F H:i";
+                $endFormat = "H:i";
+            } else {
+                $startFormat = $endFormat = "jS F";
+            }
+
+            echo "<div class='dojoEntry'>";
+            echo "<div>" . $value['summary'] . "</div>";
+            echo "<div>" . $start->format($startFormat) . " - " . $end->format($endFormat) . "</div>";
+            echo "</div>";
+
         }
     }
 
@@ -77,5 +89,12 @@ class My_Widget extends WP_Widget {
         $instance['title'] = ( ! empty( $new_instance['title'] ) ) ? strip_tags( $new_instance['title'] ) : '';
         $instance['amountToView'] = ( ! empty( $new_instance['amountToView'] ) ) ? strip_tags( $new_instance['amountToView'] ) : '';
         return $instance;
+    }
+
+    // Check if start date and end date are in the same day
+    private function is_same_day($start, $end) {
+        $firstDate = $start->format('Y-m-d');
+        $secondDate = $end->format('Y-m-d');
+        return $firstDate === $secondDate;
     }
 }
