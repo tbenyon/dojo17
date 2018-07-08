@@ -18,7 +18,6 @@ class My_Widget extends WP_Widget {
         if ( isset( $instance[ 'amountToView' ] ) ) {
             $numResults = intval($instance[ 'amountToView' ]);
         }
-        $numResults += 1; //Google Max results seems to return 1 less than the max result
 
         $query_string_items = [
           'maxResults=' . $numResults,
@@ -41,6 +40,8 @@ class My_Widget extends WP_Widget {
             $this->rawData = array();
         }
 
+        echo "<div class='benyon-calendar-widget-container'>";
+
         if ( isset( $instance[ 'title' ] ) && $instance[ 'title' ] !== "" ) {
             echo "<h3>" . $instance[ 'title' ] . "</h3>";
         }
@@ -56,12 +57,15 @@ class My_Widget extends WP_Widget {
                 $startFormat = $endFormat = "jS F";
             }
 
-            echo "<div class='dojoEntry'>";
-            echo "<div>" . $value['summary'] . "</div>";
-            echo "<div>" . $start->format($startFormat) . " - " . $end->format($endFormat) . "</div>";
+            echo "<div class='event'>";
+            echo "<div class='event-title'>" . $value['summary'] . "</div>";
+            echo "<div class='event-times'>" . $start->format($startFormat) . " - " . $end->format($endFormat) . "</div>";
             echo "</div>";
 
         }
+
+        echo "</div>";
+
     }
 
     // output the option form field in admin Widgets screen

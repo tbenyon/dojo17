@@ -1,0 +1,21 @@
+.benyon-calendar-widget-container {
+    h3 {
+        text-align: center;
+    }
+
+    .event {
+        margin-bottom: 10px;
+        &:last-child {
+            padding-bottom: 0;
+        }
+
+        .event-title {
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .event-times {
+            text-align: center;
+        }
+    }
+}

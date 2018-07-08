@@ -1,0 +1,11 @@
+.benyon-calendar-widget-container h3 {
+  text-align: center; }
+.benyon-calendar-widget-container .event {
+  margin-bottom: 10px; }
+  .benyon-calendar-widget-container .event:last-child {
+    padding-bottom: 0; }
+  .benyon-calendar-widget-container .event .event-title {
+    font-weight: bold;
+    text-align: center; }
+  .benyon-calendar-widget-container .event .event-times {
+    text-align: center; }

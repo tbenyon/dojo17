@@ -17,6 +17,7 @@ error_log("result" . var_export($result, true));
 
 include BENYON_CAL_INCLUDES . '/options_page.php';
 include BENYON_CAL_INCLUDES . '/widget.php';
+include BENYON_CAL_INCLUDES . '/include_styles.php';
 
 // register My_Widget
 add_action( 'widgets_init', function(){
