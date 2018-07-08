@@ -20,10 +20,21 @@ class My_Widget extends WP_Widget {
         }
         $numResults += 1; //Google Max results seems to return 1 less than the max result
 
-        $calendarEntries = 'maxResults=' . $numResults;
-
+        $query_string_items = [
+          'maxResults=' . $numResults,
+          'timeMin=' . date('Y-m-d\TH:i:s\Z'),
+          'singleEvents=True',
+          'orderBy=startTime',
+          'key=' . get_field('benyon_cal_api_key', 'option')
+        ];
         try {
-            $response = file_get_contents("https://www.googleapis.com/calendar/v3/calendars/" . get_field('benyon_cal_id', 'option') . "/events?key=" . get_field('benyon_cal_api_key', 'option') . "&" . $calendarEntries);
+            $url =
+                "https://www.googleapis.com/calendar/v3/calendars/" .
+                get_field('benyon_cal_id', 'option') .
+                "/events?" .
+                implode('&', $query_string_items);
+
+            $response = file_get_contents($url);
             $this->rawData = json_decode($response, true)['items'];
         } catch(Exception $e) {
             error_log("FAIL!");
