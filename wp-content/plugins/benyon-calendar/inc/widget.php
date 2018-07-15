@@ -1,7 +1,6 @@
 <?php
 
 class My_Widget extends WP_Widget {
-    public $rawData;
 
     // class constructor
     public function __construct() {
@@ -14,35 +13,10 @@ class My_Widget extends WP_Widget {
 
     // output the widget content on the front-end
     public function widget( $args, $instance ) {
-        $numResults = 6;
-        if ( isset( $instance[ 'amountToView' ] ) ) {
-            $numResults = intval($instance[ 'amountToView' ]);
-        }
-
-        $query_string_items = [
-          'maxResults=' . $numResults,
-          'timeMin=' . date('Y-m-d\TH:i:s\Z'),
-          'singleEvents=True',
-          'orderBy=startTime',
-          'key=' . get_field('benyon_cal_api_key', 'option')
-        ];
-        try {
-            $url =
-                "https://www.googleapis.com/calendar/v3/calendars/" .
-                get_field('benyon_cal_id', 'option') .
-                "/events?" .
-                implode('&', $query_string_items);
-
-            $response = file_get_contents($url);
-            $this->rawData = json_decode($response, true)['items'];
-        } catch(Exception $e) {
-            error_log("FAIL!");
-            $this->rawData = array();
-        }
-
+        $rawData = $this->get_raw_calendar_data();
         $events = array();
 
-        foreach ($this->rawData as &$eventData) {
+        foreach ($rawData as $eventData) {
             array_push(
               $events,
               array(
@@ -54,8 +28,6 @@ class My_Widget extends WP_Widget {
         }
 
         include BENYON_CAL_VIEWS . '/widget.php';
-
-
     }
 
     // output the option form field in admin Widgets screen
@@ -114,5 +86,33 @@ class My_Widget extends WP_Widget {
             $startFormat = $endFormat = "jS F";
         }
         return $start->format($startFormat) . " - " . $end->format($endFormat);
+    }
+
+    private function get_raw_calendar_data() {
+        $numResults = 6;
+        if ( isset( $instance[ 'amountToView' ] ) ) {
+            $numResults = intval($instance[ 'amountToView' ]);
+        }
+
+        $query_string_items = [
+            'maxResults=' . $numResults,
+            'timeMin=' . date('Y-m-d\TH:i:s\Z'),
+            'singleEvents=True',
+            'orderBy=startTime',
+            'key=' . get_field('benyon_cal_api_key', 'option')
+        ];
+        try {
+            $url =
+                "https://www.googleapis.com/calendar/v3/calendars/" .
+                get_field('benyon_cal_id', 'option') .
+                "/events?" .
+                implode('&', $query_string_items);
+
+            $response = file_get_contents($url);
+            return json_decode($response, true)['items'];
+        } catch(Exception $e) {
+            error_log("FAILED TO GET CALENDAR DATA!");
+            return array();
+        }
     }
 }
