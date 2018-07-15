@@ -12,6 +12,7 @@ License: GPL2
 define( 'BENYON_CAL_PLUGIN_FILE_PATH', __FILE__);
 define( 'BENYON_CAL_PATH_PLUGIN_BASE', __DIR__);
 define( 'BENYON_CAL_INCLUDES', BENYON_CAL_PATH_PLUGIN_BASE . '/inc');
+define( 'BENYON_CAL_VIEWS', BENYON_CAL_PATH_PLUGIN_BASE . '/views');
 
 error_log("result" . var_export($result, true));
 

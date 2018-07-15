@@ -9,3 +9,5 @@
     text-align: center; }
   .benyon-calendar-widget-container .event .event-times {
     text-align: center; }
+  .benyon-calendar-widget-container .event.event-type-cancellation .event-title {
+    color: red; }

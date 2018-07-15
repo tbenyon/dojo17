@@ -17,5 +17,11 @@
         .event-times {
             text-align: center;
         }
+
+        &.event-type-cancellation {
+            .event-title {
+                color: red;
+            }
+        }
     }
 }

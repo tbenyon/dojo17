@@ -40,31 +40,21 @@ class My_Widget extends WP_Widget {
             $this->rawData = array();
         }
 
-        echo "<div class='benyon-calendar-widget-container'>";
+        $events = array();
 
-        if ( isset( $instance[ 'title' ] ) && $instance[ 'title' ] !== "" ) {
-            echo "<h3>" . $instance[ 'title' ] . "</h3>";
+        foreach ($this->rawData as &$eventData) {
+            array_push(
+              $events,
+              array(
+                "event_summary"   => $eventData['summary'],
+                "event_date_time" => $this->get_date_time_string($eventData),
+                "cancellation"    => stripos($eventData['summary'], 'no') !== false
+              )
+            );
         }
 
-        foreach ($this->rawData as &$value) {
-            $start = new DateTime($value['start']['dateTime']);
-            $end = new DateTime($value['end']['dateTime']);
-            $sameDay = $this->is_same_day($start, $end);
-            if ($sameDay) {
-                $startFormat = "jS F H:i";
-                $endFormat = "H:i";
-            } else {
-                $startFormat = $endFormat = "jS F";
-            }
+        include BENYON_CAL_VIEWS . '/widget.php';
 
-            echo "<div class='event'>";
-            echo "<div class='event-title'>" . $value['summary'] . "</div>";
-            echo "<div class='event-times'>" . $start->format($startFormat) . " - " . $end->format($endFormat) . "</div>";
-            echo "</div>";
-
-        }
-
-        echo "</div>";
 
     }
 
@@ -111,5 +101,18 @@ class My_Widget extends WP_Widget {
         $firstDate = $start->format('Y-m-d');
         $secondDate = $end->format('Y-m-d');
         return $firstDate === $secondDate;
+    }
+
+    private function get_date_time_string($eventData) {
+        $start = new DateTime($eventData['start']['dateTime']);
+        $end = new DateTime($eventData['end']['dateTime']);
+        $sameDay = $this->is_same_day($start, $end);
+        if ($sameDay) {
+            $startFormat = "jS F H:i";
+            $endFormat = "H:i";
+        } else {
+            $startFormat = $endFormat = "jS F";
+        }
+        return $start->format($startFormat) . " - " . $end->format($endFormat);
     }
 }
