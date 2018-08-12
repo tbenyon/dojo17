@@ -1,3 +1,3 @@
 <?php
 
-include ("inc/import_parent_styles.php");
+include("inc/import_styles_and_js.php");
