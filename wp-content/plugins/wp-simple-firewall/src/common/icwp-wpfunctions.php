@@ -190,17 +190,14 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param bool $bRemoveSchema
+	 * @param string $sPath
 	 * @return string
 	 */
-	public function getHomeUrl( $bRemoveSchema = false ) {
-		$sUrl = home_url();
+	public function getHomeUrl( $sPath = '' ) {
+		$sUrl = home_url( $sPath );
 		if ( empty( $sUrl ) ) {
 			remove_all_filters( 'home_url' );
-			$sUrl = home_url();
-		}
-		if ( $bRemoveSchema ) {
-			$sUrl = preg_replace( '#^((http|https):)?\/\/#i', '', $sUrl );
+			$sUrl = home_url( $sPath );
 		}
 		return $sUrl;
 	}
@@ -408,7 +405,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	}
 
 	public function redirectHere() {
-		$this->doRedirect( $this->loadDataProcessor()->getRequestUri() );
+		$this->doRedirect( $this->loadDP()->getRequestUri() );
 	}
 
 	/**
@@ -753,7 +750,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 
 			$sPath = $oDP->request( 'rest_route' );
 			if ( empty( $sPath ) && $this->isPermalinksEnabled() ) {
-				$sFullUri = $this->loadWp()->getHomeUrl().$oDP->getRequestPath();
+				$sFullUri = $this->loadWp()->getHomeUrl( $oDP->getRequestPath() );
 				$sPath = substr( $sFullUri, strlen( get_rest_url( get_current_blog_id() ) ) );
 			}
 		}
@@ -853,7 +850,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 			}
 		}
 
-		$nTime = is_null( $nTime ) ? $this->loadDataProcessor()->time() : $nTime;
+		$nTime = is_null( $nTime ) ? $this->loadDP()->time() : $nTime;
 		return $nTime + ( $nTimezoneOffset*HOUR_IN_SECONDS );
 	}
 

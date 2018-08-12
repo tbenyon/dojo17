@@ -225,6 +225,14 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sUrl
+	 * @return string
+	 */
+	public function urlStripSchema( $sUrl ) {
+		return preg_replace( '#^((http|https):)?\/\/#i', '', $sUrl );
+	}
+
+	/**
 	 * Will strip everything from a URL except Scheme+Host and requires that Scheme+Host be present
 	 * @return string|false
 	 */
@@ -243,10 +251,19 @@ class ICWP_WPSF_DataProcessor extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sEmail
 	 * @return boolean
 	 */
 	public function validEmail( $sEmail ) {
 		return ( !empty( $sEmail ) && function_exists( 'is_email' ) && is_email( $sEmail ) );
+	}
+
+	/**
+	 * @param string $sUrl
+	 * @return bool
+	 */
+	public function validUrl( $sUrl ) {
+		return filter_var( $sUrl, FILTER_VALIDATE_URL );
 	}
 
 	/**

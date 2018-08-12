@@ -11,5 +11,5 @@ return array(
     'Symfony\\Polyfill\\Mbstring\\' => array($vendorDir . '/symfony/polyfill-mbstring'),
     'Symfony\\Component\\Translation\\' => array($vendorDir . '/symfony/translation'),
     'FernleafSystems\\Utilities\\' => array($vendorDir . '/fernleafsystems/utilities/src'),
-    'Carbon\\' => array($vendorDir . '/nesbot/carbon/src/Carbon'),
+    '' => array($vendorDir . '/nesbot/carbon/src'),
 );
