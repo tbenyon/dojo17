@@ -1,0 +1,25 @@
+.tb-accordion {
+  .tb-accordion-item {
+    .tb-accordion-bar {
+      cursor: pointer;
+      padding: 18px;
+      width: 100%;
+      text-align: left;
+      &:focus {
+        outline:0;
+      }
+    }
+
+    .tb-accordion-panel {
+      padding: 0 18px;
+      display: none;
+    }
+
+    &.active {
+      .tb-accordion-bar {
+        &:hover, &.active {
+        }
+      }
+    }
+  }
+}

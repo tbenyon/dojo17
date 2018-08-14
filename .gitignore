@@ -3,3 +3,5 @@
 wp-content/plugins/external-login
 
 wp-content/uploads
+
+node_modules

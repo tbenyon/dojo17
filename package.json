@@ -1,0 +1,24 @@
+{
+  "name": "dojo17",
+  "version": "1.0.0",
+  "description": "A website for Horsham Coder Dojo",
+  "main": "gulpfile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tbenyon/dojo17.git"
+  },
+  "author": "Tom Benyon",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/tbenyon/dojo17/issues"
+  },
+  "homepage": "https://github.com/tbenyon/dojo17#readme",
+  "dependencies": {
+    "gulp": "^3.9.1",
+    "gulp-sass": "^4.0.1",
+    "gulp-sourcemaps": "^2.6.4"
+  }
+}

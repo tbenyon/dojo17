@@ -3,10 +3,10 @@
 function dojo_theme_enqueue_styles() {
 
 //    Enqueue JS
-    wp_enqueue_script( 'my_custom_js', get_stylesheet_directory_uri() . '/js/bootstrap.bundle.min.js', array('jquery'));
+    wp_enqueue_script( 'dojo_accordion', get_stylesheet_directory_uri() . '/js/accordion.js', array('jquery'));
 
 //    Enqueue Styles
-    wp_enqueue_style( 'main_css', get_stylesheet_directory_uri() . '/css/bootstrap.min.css' );
+    wp_enqueue_style( 'dojo_css', get_stylesheet_directory_uri() . '/style.css' );
 
 //    Enqueue parent styles
     $parent_style = 'parent-style';
