@@ -5,8 +5,10 @@
       padding: 18px;
       width: 100%;
       text-align: left;
+      font-weight: bold;
       &:focus {
         outline:0;
+        border-color: inherit;
       }
     }
 

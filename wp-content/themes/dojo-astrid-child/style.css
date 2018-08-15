@@ -11,13 +11,22 @@
  Tags:         light, dark, two-columns, right-sidebar, responsive-layout, accessibility-ready
  Text Domain:  astrid-child
 */
+button {
+  background-color: #36393D;
+  border-color: #212529 !important; }
+  button:focus {
+    border-color: #212529;
+    box-shadow: none; }
+
 .tb-accordion .tb-accordion-item .tb-accordion-bar {
   cursor: pointer;
   padding: 18px;
   width: 100%;
-  text-align: left; }
+  text-align: left;
+  font-weight: bold; }
   .tb-accordion .tb-accordion-item .tb-accordion-bar:focus {
-    outline: 0; }
+    outline: 0;
+    border-color: inherit; }
 
 .tb-accordion .tb-accordion-item .tb-accordion-panel {
   padding: 0 18px;

@@ -1,0 +1,8 @@
+button {
+  background-color: $color-secondary-shift;
+  border-color: $color-secondary !important; //MUST FIX THIS SLOPPY OVERRIDE
+  &:focus {
+    border-color: $color-secondary;
+    box-shadow: none;
+  }
+}
