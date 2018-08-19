@@ -2,7 +2,7 @@
 
 $benyon_ccs_image_data = array(
     array(
-			'key' => 'field_5a97f26bcd143',
+			'key' => 'field_5a97fsd26bcd143',
 			'label' => 'Image',
 			'name' => 'image',
 			'type' => 'image',
@@ -24,87 +24,87 @@ $benyon_ccs_image_data = array(
 			'max_height' => '',
 			'max_size' => '',
 			'mime_types' => '',
-		),
-		array(
-			'key' => 'field_5a97f3e1cd144',
-			'label' => 'Hyperlink',
-			'name' => 'hyperlink',
-			'type' => 'radio',
-			'instructions' => 'This is where you can choose a hyperlink for the image. For links within this site use internal links. For links outside the site use external links.',
-			'required' => 0,
-			'conditional_logic' => 0,
-			'wrapper' => array(
-				'width' => '',
-				'class' => '',
-				'id' => '',
-			),
-			'choices' => array(
-				'no_link' => 'No Link',
-				'internal' => 'Internal Link',
-				'external' => 'External Link',
-			),
-			'allow_null' => 0,
-			'other_choice' => 0,
-			'save_other_choice' => 0,
-			'default_value' => '',
-			'layout' => 'vertical',
-			'return_format' => 'value',
-		),
-		array(
-			'key' => 'field_5a97f487cd145',
-			'label' => 'Internal Link',
-			'name' => 'internal_link',
-			'type' => 'post_object',
-			'instructions' => 'The internal item to link to.',
-			'required' => 1,
-			'conditional_logic' => array(
-				array(
-					array(
-						'field' => 'field_5a97f3e1cd144',
-						'operator' => '==',
-						'value' => 'internal',
-					),
-				),
-			),
-			'wrapper' => array(
-				'width' => '',
-				'class' => '',
-				'id' => '',
-			),
-			'post_type' => array(
-				0 => 'post',
-				1 => 'page',
-				2 => 'social-posts',
-			),
-			'taxonomy' => array(
-			),
-			'allow_null' => 0,
-			'multiple' => 0,
-			'return_format' => 'id',
-			'ui' => 1,
-		),
-		array(
-			'key' => 'field_5a97f4bccd146',
-			'label' => 'External Link',
-			'name' => 'external_link',
-			'type' => 'url',
-			'instructions' => 'The external hyperlink.',
-			'required' => 1,
-			'conditional_logic' => array(
-				array(
-					array(
-						'field' => 'field_5a97f3e1cd144',
-						'operator' => '==',
-						'value' => 'external',
-					),
-				),
-			),
-			'wrapper' => array(
-				'width' => '',
-				'class' => '',
-				'id' => '',
-			),
-			'default_value' => '',
-			'placeholder' => '',
-		),
-  );
+    ),
+    array(
+        'key' => 'field_5a97ddsf3e1cd1sdf44',
+        'label' => 'Hyperlink',
+        'name' => 'hyperlink',
+        'type' => 'radio',
+        'instructions' => 'This is where you can choose a hyperlink for the image. For links within this site use internal links. For links outside the site use external links.',
+        'required' => 0,
+        'conditional_logic' => 0,
+        'wrapper' => array(
+            'width' => '',
+            'class' => '',
+            'id' => '',
+        ),
+        'choices' => array(
+            'no_link' => 'No Link',
+            'internal' => 'Internal Link',
+            'external' => 'External Link',
+        ),
+        'allow_null' => 0,
+        'other_choice' => 0,
+        'save_other_choice' => 0,
+        'default_value' => '',
+        'layout' => 'vertical',
+        'return_format' => 'value',
+    ),
+    array(
+        'key' => 'field_5a97f4sdfsdf87cd145',
+        'label' => 'Internal Link',
+        'name' => 'internal_link',
+        'type' => 'post_object',
+        'instructions' => 'The internal item to link to.',
+        'required' => 1,
+        'conditional_logic' => array(
+            array(
+                array(
+                    'field' => 'field_5a97ddsf3e1cd1sdf44',
+                    'operator' => '==',
+                    'value' => 'internal',
+                ),
+            ),
+        ),
+        'wrapper' => array(
+            'width' => '',
+            'class' => '',
+            'id' => '',
+        ),
+        'post_type' => array(
+            0 => 'post',
+            1 => 'page',
+            2 => 'social-posts',
+        ),
+        'taxonomy' => array(
+        ),
+        'allow_null' => 0,
+        'multiple' => 0,
+        'return_format' => 'id',
+        'ui' => 1,
+    ),
+    array(
+        'key' => 'field_5a97f4bsdfccd146',
+        'label' => 'External Link',
+        'name' => 'external_link',
+        'type' => 'url',
+        'instructions' => 'The external hyperlink.',
+        'required' => 1,
+        'conditional_logic' => array(
+            array(
+                array(
+                    'field' => 'field_5a97ddsf3e1cd1sdf44',
+                    'operator' => '==',
+                    'value' => 'external',
+                ),
+            ),
+        ),
+        'wrapper' => array(
+            'width' => '',
+            'class' => '',
+            'id' => '',
+        ),
+        'default_value' => '',
+        'placeholder' => '',
+    ),
+);
