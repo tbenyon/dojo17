@@ -1,4 +1,4 @@
-<div class='benyon-calendar-widget-container'>
+<aside class='widget benyon-calendar-widget-container'>
 
     <?php if ( isset( $instance[ 'title' ] ) && $instance[ 'title' ] !== "" ) : ?>
         <h3> <?php echo $instance[ 'title' ] ?></h3>
@@ -11,4 +11,4 @@
         </div>
     <?php endforeach; ?>
 
-</div>
+</aside>
