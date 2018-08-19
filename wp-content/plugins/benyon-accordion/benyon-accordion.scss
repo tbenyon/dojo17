@@ -1,8 +1,10 @@
 .tb-accordion {
+  $size-basic-padding: 20px !default;
+
   .tb-accordion-item {
     .tb-accordion-bar {
       cursor: pointer;
-      padding: 18px;
+      padding: $size-basic-padding;
       width: 100%;
       text-align: left;
       font-weight: bold;
@@ -13,7 +15,7 @@
     }
 
     .tb-accordion-panel {
-      padding: 0 18px;
+      margin: 0 $size-basic-padding;
       display: none;
     }
 

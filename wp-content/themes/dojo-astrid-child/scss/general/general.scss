@@ -1,0 +1,7 @@
+p {
+  margin-bottom: $size-basic-padding;
+
+  &:first-of-type {
+    margin-top: $size-basic-padding;
+  }
+}

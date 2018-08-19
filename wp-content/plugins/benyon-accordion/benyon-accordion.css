@@ -1,6 +1,6 @@
 .tb-accordion .tb-accordion-item .tb-accordion-bar {
   cursor: pointer;
-  padding: 18px;
+  padding: 20px;
   width: 100%;
   text-align: left;
   font-weight: bold; }
@@ -9,5 +9,5 @@
     border-color: inherit; }
 
 .tb-accordion .tb-accordion-item .tb-accordion-panel {
-  padding: 0 18px;
+  margin: 0 20px;
   display: none; }

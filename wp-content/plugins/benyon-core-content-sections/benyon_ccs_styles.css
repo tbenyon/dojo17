@@ -31,7 +31,8 @@
         margin-top: -25px; }
 
 .benyon-cca-wysiwyg-container {
-  overflow: hidden; }
+  overflow: hidden;
+  margin: 0 20px; }
   .benyon-cca-wysiwyg-container p.paragraph:last-child {
     margin-bottom: 0; }
   .benyon-cca-wysiwyg-container img {

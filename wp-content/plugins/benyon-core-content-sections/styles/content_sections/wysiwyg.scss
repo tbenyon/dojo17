@@ -1,5 +1,7 @@
 .benyon-cca-wysiwyg-container {
+  $size-basic-padding: 20px !default;
   overflow: hidden;
+  margin: 0 $size-basic-padding;
   p.paragraph:last-child {
     margin-bottom: 0;
   }
