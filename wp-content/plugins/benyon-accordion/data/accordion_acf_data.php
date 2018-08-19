@@ -1,0 +1,63 @@
+<?php
+
+$benyon_acc_acf_data = array(
+  array(
+      'key' => 'field_5b7982a35246f',
+      'label' => 'Accordion Items',
+      'name' => 'accordion_items',
+      'type' => 'repeater',
+      'instructions' => '',
+      'required' => 0,
+      'conditional_logic' => 0,
+      'wrapper' => array(
+          'width' => '',
+          'class' => '',
+          'id' => '',
+      ),
+      'collapsed' => '',
+      'min' => 0,
+      'max' => 0,
+      'layout' => 'row',
+      'button_label' => '',
+      'sub_fields' => array(
+          array(
+              'key' => 'field_5b7982c852470',
+              'label' => 'Accordion Item Title',
+              'name' => 'accordion_item_title',
+              'type' => 'text',
+              'instructions' => '',
+              'required' => 0,
+              'conditional_logic' => 0,
+              'wrapper' => array(
+                  'width' => '',
+                  'class' => '',
+                  'id' => '',
+              ),
+              'default_value' => '',
+              'placeholder' => '',
+              'prepend' => '',
+              'append' => '',
+              'maxlength' => '',
+          ),
+          array(
+              'key' => 'field_5b7982d552471',
+              'label' => 'Accordion Item Body',
+              'name' => 'accordion_item_body',
+              'type' => 'wysiwyg',
+              'instructions' => '',
+              'required' => 0,
+              'conditional_logic' => 0,
+              'wrapper' => array(
+                  'width' => '',
+                  'class' => '',
+                  'id' => '',
+              ),
+              'default_value' => '',
+              'tabs' => 'all',
+              'toolbar' => 'full',
+              'media_upload' => 1,
+              'delay' => 0,
+          ),
+      ),
+  ),
+);

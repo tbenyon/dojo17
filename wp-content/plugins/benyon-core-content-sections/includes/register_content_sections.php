@@ -1,7 +1,6 @@
 <?php
 
 if (class_exists('BenyonContentSections\Content_Sections')) {
-    error_log('CAN GET IN CONT SEC ONE!');
   // Add image cotent section
   $data_string = json_encode($benyon_ccs_image_data);
   $view_path = BENYON_CCS_VIEWS . '/image.php';
