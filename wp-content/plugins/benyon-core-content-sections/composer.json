@@ -1,0 +1,6 @@
+{
+  "name": "benyon_core_content_sections" ,
+  "description": "Some default sections to be added to register with content sections.",
+  "repositories": [],
+  "require": {}
+}

@@ -1,0 +1,11 @@
+.benyon-cca-wysiwyg-container {
+  overflow: hidden;
+  p.paragraph:last-child {
+    margin-bottom: 0;
+  }
+
+  img {
+    max-width: 100%;
+    height: 100%;
+  }
+}

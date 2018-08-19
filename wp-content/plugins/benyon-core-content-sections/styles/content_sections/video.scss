@@ -1,0 +1,23 @@
+.benyon-ccs-video-item-container {
+  width: 100%;
+  padding-bottom: 56.25%;
+  position: relative;
+
+  .benyon-ccs-video-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .benyon-ccs-play-icon {
+      width: 80px;
+      height: 80px;
+    }
+  }
+}

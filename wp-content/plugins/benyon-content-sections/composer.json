@@ -1,0 +1,11 @@
+{
+  "name": "benyon_content_sections" ,
+  "description": "A system for creating sections for pages and posts",
+  "repositories": [],
+  "require": {},
+  "autoload": {
+    "psr-4": {
+      "BenyonContentSections\\": "lib/"
+    }
+  }
+}

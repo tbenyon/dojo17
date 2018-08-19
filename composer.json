@@ -1,0 +1,16 @@
+{
+  "name": "benyon/dojo17",
+  "version": "0.2.32",
+  "description": "desc",
+  "type": "Wordpress-plugin",
+  "license": "UNLICENSED",
+  "authors": [
+    {
+      "name": "Tom Benyon",
+      "email": "Tom.Benyon@creative-assembly.com"
+    }
+  ],
+  "config": {
+    "vendor-dir": "wp-content/plugins"
+  }
+}
