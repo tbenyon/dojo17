@@ -1,0 +1,13 @@
+.tb-accordion .tb-accordion-item .tb-accordion-bar {
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  text-align: left;
+  font-weight: bold; }
+  .tb-accordion .tb-accordion-item .tb-accordion-bar:focus {
+    outline: 0;
+    border-color: inherit; }
+
+.tb-accordion .tb-accordion-item .tb-accordion-panel {
+  padding: 0 18px;
+  display: none; }

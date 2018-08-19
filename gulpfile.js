@@ -21,11 +21,18 @@ gulp.task('cssPluginCcs', function () {
     .pipe(gulp.dest('wp-content/plugins/benyon-core-content-sections'));
 });
 
+gulp.task('cssPluginAcc', function () {
+  return gulp.src('wp-content/plugins/benyon-accordion/benyon-accordion.scss')
+    .pipe(sourcemaps.init())
+    .pipe(scss())
+    .pipe(gulp.dest('wp-content/plugins/benyon-accordion'));
+});
+
 gulp.task('assets', ['css', 'js']);
 
 
 gulp.task('local-watch', function () {
-  gulp.watch(['wp-content/themes/**/*', 'wp-content/plugins/**/*'], ['css', 'cssPluginCcs']);
+  gulp.watch(['wp-content/themes/**/*', 'wp-content/plugins/**/*'], ['css', 'cssPluginCcs', 'cssPluginAcc']);
 });
 
 gulp.task('default', ['local-watch']);
