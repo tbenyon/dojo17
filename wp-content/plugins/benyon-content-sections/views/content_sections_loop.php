@@ -29,7 +29,7 @@ if (have_rows('benyon_content_sections')): ?>
                 <section class="benyon_cs_content_section">
                     <div class="benyon_cs_content_section_outer_container">
                         <div class="benyon_cs_content_section_inner_container">
-                            <div class="benyon-cca-wysiwyg-container ws2-article-text-section">
+                            <div class="benyon-cca-wysiwyg-container benyon-article-text-section">
                                 <?php the_sub_field('content'); ?>
                             </div>
                         </div>

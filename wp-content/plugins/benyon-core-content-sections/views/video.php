@@ -6,7 +6,7 @@
 ?>
 
 <?php if ($benyon_ccs_video_id && $benyon_ccs_image_url) : ?>
-  <a class="swipebox swipebox-video ws2-play-icon-hover-trigger benyon-arrow-hover-container" rel=”youtube” href="<?php echo $benyon_ccs_video_url; ?>&rel=0">
+  <a class="swipebox swipebox-video benyon-play-icon-hover-trigger benyon-arrow-hover-container" rel=”youtube” href="<?php echo $benyon_ccs_video_url; ?>&rel=0">
     <div class="benyon-ccs-video-item-container">
         <div
             class="benyon-ccs-video-item"
@@ -16,7 +16,7 @@
             <?php endif; ?>
         >
 
-        <div class="ws2-play-icon benyon-ccs-play-icon benyon-arrow benyon-arrow-right">
+        <div class="benyon-play-icon benyon-ccs-play-icon benyon-arrow benyon-arrow-right">
         </div>
     </div>
   </a>

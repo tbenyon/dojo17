@@ -1,4 +1,4 @@
-<div class="ws2-button-container">
+<div class="benyon-button-container">
 
   <?php
     $benyon_ccs_button_style_class = get_sub_field("button_style") == "primary" ? "primary" : "secondary";
@@ -12,7 +12,7 @@
 
   <a
       href="<?php echo $href; ?>"
-      class="ws2-button <?php echo $benyon_ccs_button_style_class ?>"
+      class="benyon-button <?php echo $benyon_ccs_button_style_class ?>"
       <?php if (get_sub_field("hyperlink") == "external") : ?>
         target="_blank"
       <?php endif; ?>
