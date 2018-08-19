@@ -3,11 +3,10 @@
   $benyon_ccs_video_url =  "https://www.youtube.com/watch?v=" . $benyon_ccs_video_id;
   $benyon_ccs_image_id =  get_sub_field('poster_frame');
   $benyon_ccs_image_url =  wp_get_attachment_image_src($benyon_ccs_image_id, 'large')[0];
-  $benyon_ccs_play_icon = file_get_contents("MISSINGLOCATION/icons/play.svg");
 ?>
 
-<?php if ($benyon_ccs_video_id && $benyon_ccs_image_url && $benyon_ccs_play_icon) : ?>
-  <a class="swipebox swipebox-video ws2-play-icon-hover-trigger" rel=”youtube” href="<?php echo $benyon_ccs_video_url; ?>&rel=0">
+<?php if ($benyon_ccs_video_id && $benyon_ccs_image_url) : ?>
+  <a class="swipebox swipebox-video ws2-play-icon-hover-trigger benyon-arrow-hover-container" rel=”youtube” href="<?php echo $benyon_ccs_video_url; ?>&rel=0">
     <div class="benyon-ccs-video-item-container">
         <div
             class="benyon-ccs-video-item"
@@ -17,8 +16,7 @@
             <?php endif; ?>
         >
 
-        <div class="ws2-play-icon benyon-ccs-play-icon">
-          <?php echo $benyon_ccs_play_icon; ?>
+        <div class="ws2-play-icon benyon-ccs-play-icon benyon-arrow benyon-arrow-right">
         </div>
     </div>
   </a>

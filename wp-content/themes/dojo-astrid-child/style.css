@@ -31,3 +31,12 @@ button {
 .tb-accordion .tb-accordion-item .tb-accordion-panel {
   padding: 0 18px;
   display: none; }
+
+.benyon-arrow.benyon-arrow-right:after {
+  border-color: transparent transparent transparent #fcd088; }
+
+.benyon-arrow-hover-container .benyon-arrow.benyon-arrow-right:after {
+  border-color: transparent transparent transparent #FFF; }
+
+.benyon-arrow-hover-container:hover .benyon-arrow.benyon-arrow-right:after {
+  border-color: transparent transparent transparent #fcd088; }

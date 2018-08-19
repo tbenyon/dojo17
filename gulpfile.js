@@ -14,11 +14,18 @@ gulp.task('css', function () {
     .pipe(gulp.dest(dirTheme));
 });
 
+gulp.task('cssPluginCcs', function () {
+  return gulp.src('wp-content/plugins/benyon-core-content-sections/styles/benyon_ccs_styles.scss')
+    .pipe(sourcemaps.init())
+    .pipe(scss())
+    .pipe(gulp.dest('wp-content/plugins/benyon-core-content-sections'));
+});
+
 gulp.task('assets', ['css', 'js']);
 
 
 gulp.task('local-watch', function () {
-  gulp.watch([dirSrcScss + '/**/*'], ['css']);
+  gulp.watch(['wp-content/themes/**/*', 'wp-content/plugins/**/*'], ['css', 'cssPluginCcs']);
 });
 
 gulp.task('default', ['local-watch']);
