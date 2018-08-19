@@ -1,0 +1,44 @@
+#swipebox-slider {
+  .slide-loading {
+    background: none; // Temporarily switch off
+  }
+}
+
+#swipebox-close {
+  $size: 32px; //Keep even
+  $normal_weight: 2px;
+  $thicker_weight: 4px;
+  $weight_difference: $thicker_weight - $normal_weight;
+  position: absolute;
+  right: $size;
+  top: $size;
+  width: $size;
+  height: $size;
+  opacity: 0.9;
+
+  &:hover {
+    opacity: 1;
+    &:before, &:after {
+      width: 4px;
+      margin-left: -$weight_difference / 2;
+      margin-bottom: -$weight_difference / 2;
+    }
+  }
+
+  &:before, &:after {
+    position: absolute;
+    left: $size / 2;
+    content: ' ';
+    height: $size;
+    width: 2px;
+    background-color: $color-prime;
+  }
+
+  &:before {
+    transform: rotate(45deg);
+  }
+
+  &:after {
+    transform: rotate(-45deg);
+  }
+}
