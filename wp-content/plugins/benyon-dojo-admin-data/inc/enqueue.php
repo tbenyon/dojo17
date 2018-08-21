@@ -13,5 +13,6 @@ function dojo_admin_enqueue_for_options($hook) {
 
 //    Scripts
     wp_enqueue_script('jquery', plugin_dir_url(__FILE__) . '../js/jquery-3.3.1.min.js');
+    wp_enqueue_script( 'chartjs', plugin_dir_url(__FILE__) . '../js/chart.js', array('jquery') );
     wp_enqueue_script( 'dojo_admin-validation-tools', plugin_dir_url(__FILE__) . '../js/dojo_admin.js', array('jquery') );
 }

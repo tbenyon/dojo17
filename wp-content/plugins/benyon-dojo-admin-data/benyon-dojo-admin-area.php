@@ -18,3 +18,4 @@ define( 'BENYON_DOJO_MENU_SLUG', 'benyon-dojo-admin');
 
 require BENYON_DOJO_ADMIN_INCLUDES . '/create_options_page.php';
 require BENYON_DOJO_ADMIN_INCLUDES . '/enqueue.php';
+require BENYON_DOJO_ADMIN_INCLUDES . '/query.php';
