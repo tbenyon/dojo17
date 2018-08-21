@@ -28,11 +28,18 @@ gulp.task('cssPluginAcc', function () {
     .pipe(gulp.dest('wp-content/plugins/benyon-accordion'));
 });
 
+gulp.task('cssPluginDojoAdmin', function () {
+  return gulp.src('wp-content/plugins/benyon-dojo-admin-data/dojo_admin.scss')
+    .pipe(sourcemaps.init())
+    .pipe(scss())
+    .pipe(gulp.dest('wp-content/plugins/benyon-dojo-admin-data'));
+});
+
 gulp.task('assets', ['css', 'js']);
 
 
 gulp.task('local-watch', function () {
-  gulp.watch(['wp-content/themes/**/*', 'wp-content/plugins/**/*'], ['css', 'cssPluginCcs', 'cssPluginAcc']);
+  gulp.watch(['wp-content/themes/**/*', 'wp-content/plugins/**/*'], ['css', 'cssPluginCcs', 'cssPluginAcc', 'cssPluginDojoAdmin']);
 });
 
 gulp.task('default', ['local-watch']);
