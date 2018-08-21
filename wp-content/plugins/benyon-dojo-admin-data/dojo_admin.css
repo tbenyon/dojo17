@@ -1,0 +1,7 @@
+.dojo-admin-view-container {
+  padding: 30px; }
+  .dojo-admin-view-container h1 {
+    text-align: center;
+    margin-top: 50px; }
+  .dojo-admin-view-container #memberCounter {
+    max-width: 450px; }

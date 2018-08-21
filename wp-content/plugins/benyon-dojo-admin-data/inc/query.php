@@ -1,6 +1,8 @@
 <?php
 
 function dojo_admin_get_data() {
+    $query_data = array();
+
     $host = exlog_get_option("external_login_option_db_host");
     $port = exlog_get_option("external_login_option_db_port");
     $user = exlog_get_option("external_login_option_db_username");
@@ -16,19 +18,47 @@ function dojo_admin_get_data() {
         $host
     );
 
+    $query_data['attendanceData'] = dojo_admin_attendance_data($db_instance);
+
+    $query_data['attendanceTopScoresData'] = dojo_admin_attendance_top_scores($db_instance);
+
+    return $query_data;
+}
+
+function dojo_admin_attendance_top_scores($db_instance) {
     $query_string = 'SELECT User.NickName, User.UserType, COUNT(DISTINCT Register.DojoID) AS count ' .
         'FROM Register LEFT JOIN User ON Register.UserID = User.UserID ' .
         'GROUP BY Register.UserID ' .
         'ORDER BY count DESC;';
 
-    $rows = $db_instance->get_results($query_string, ARRAY_A);
+    return $db_instance->get_results($query_string, ARRAY_A);
+}
 
-    if (sizeof($rows) > 0) {
-        return $rows[0];
-    }
+function dojo_admin_attendance_data($db_instance) {
+    $data = array();
 
-//    Failed response
-    return false;
+//    All
+    $query_string = 'SELECT Register.DojoID, Dojo.DojoDate, COUNT(DISTINCT Register.UserID) AS count ' .
+        'FROM Register LEFT JOIN Dojo ON Dojo.DojoID = Register.DojoID GROUP BY DojoID;';
+
+    $data['all'] =  $db_instance->get_results($query_string, ARRAY_A);
+
+//    Student
+    $query_string = 'SELECT Register.DojoID, COUNT(DISTINCT Register.UserID) AS count ' .
+        'FROM Register LEFT JOIN User ON Register.UserID = User.UserID ' .
+        'WHERE User.UserType = "Student" GROUP BY Register.DojoID;';
+
+    $data['student'] =  $db_instance->get_results($query_string, ARRAY_A);
+
+//    Mentor
+    $query_string = 'SELECT Register.DojoID, COUNT(DISTINCT Register.UserID) AS count ' .
+        'FROM Register LEFT JOIN User ON Register.UserID = User.UserID ' .
+        'WHERE User.UserType = "Mentor" GROUP BY Register.DojoID;';
+
+    $data['mentor'] =  $db_instance->get_results($query_string, ARRAY_A);
+
+//    RETURN DATA
+    return $data;
 }
 
 /*
