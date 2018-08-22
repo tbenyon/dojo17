@@ -1,4 +1,3 @@
-    console.log('ADMIN JS WORKING');
 (function ($) {
   $(function () {
     var labels = [];

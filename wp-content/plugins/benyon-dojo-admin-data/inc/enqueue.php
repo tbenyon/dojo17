@@ -9,10 +9,13 @@ function dojo_admin_enqueue_for_options($hook) {
     }
 
 //    Style
-    wp_enqueue_style( 'dojo_admin-styles', plugin_dir_url(__FILE__) . '../dojo_admin.css' );
+    wp_enqueue_style( 'datatables', plugin_dir_url(__FILE__) . '../styles/jquery.dataTables.min.css' );
+    wp_enqueue_style( 'dojo-admin-styles', plugin_dir_url(__FILE__) . '../dojo_admin.css' );
 
 //    Scripts
     wp_enqueue_script('jquery', plugin_dir_url(__FILE__) . '../js/jquery-3.3.1.min.js');
     wp_enqueue_script( 'chartjs', plugin_dir_url(__FILE__) . '../js/chart.js', array('jquery') );
-    wp_enqueue_script( 'dojo_admin-validation-tools', plugin_dir_url(__FILE__) . '../js/dojo_admin.js', array('jquery') );
+    wp_enqueue_script( 'datatables', plugin_dir_url(__FILE__) . '../js/jquery.dataTables.min.js', array('jquery') );
+    wp_enqueue_script( 'dojo-admin-validation-tools', plugin_dir_url(__FILE__) . '../js/dojo_admin.js', array('jquery') );
+    wp_enqueue_script( 'dojo-admin-datatable-init', plugin_dir_url(__FILE__) . '../js/dojo_datatable_init.js', array('jquery') );
 }

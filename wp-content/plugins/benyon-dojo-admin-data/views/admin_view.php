@@ -2,6 +2,7 @@
   <?php $admin_view_data = dojo_admin_get_data(); ?>
   var attendanceData = <?php echo json_encode($admin_view_data['attendanceData']); ?>;
   var attendanceTopScoresData = <?php echo json_encode($admin_view_data['attendanceTopScoresData']); ?>;
+  var register = <?php echo json_encode($admin_view_data['register']); ?>;
 </script>
 
 <div class="dojo-admin-view-container">
@@ -16,5 +17,28 @@
 
     <h2>Registered Members</h2>
     <canvas id="memberCounter" width="200" height="200"></canvas>
+
+    <h2>Users Data</h2>
+
+    <table id="dojo-admin-register-search" class="display">
+      <thead>
+        <tr>
+          <?php foreach ($admin_view_data['register'][0] as $key => $value) : ?>
+            <th><?php echo $key; ?></th>
+          <?php endforeach;?>
+        </tr>
+      </thead>
+
+      <tbody>
+        <?php foreach ($admin_view_data['register'] as $user) : ?>
+          <tr>
+            <?php foreach ($user as $data) :?>
+              <td><?php echo $data; ?></td>
+            <?php endforeach; ?>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+
+    </table>
   </div>
 </div>

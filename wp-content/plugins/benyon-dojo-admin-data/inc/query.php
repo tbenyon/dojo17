@@ -22,6 +22,8 @@ function dojo_admin_get_data() {
 
     $query_data['attendanceTopScoresData'] = dojo_admin_attendance_top_scores($db_instance);
 
+    $query_data['register'] = dojo_admin_register($db_instance);
+
     return $query_data;
 }
 
@@ -59,6 +61,19 @@ function dojo_admin_attendance_data($db_instance) {
 
 //    RETURN DATA
     return $data;
+}
+
+function dojo_admin_register($db_instance) {
+    $requiredFields = "User.NickName, User.FirstName, User.LastName, User.UserType, R1.Login, R1.Logout, User.DOB, User.ContactNumber";
+
+    $query_string = 'SELECT ' . $requiredFields . ' ' .
+            'FROM Register AS R1 ' .
+            'LEFT JOIN User ON User.UserID = R1.UserID ' .
+            'WHERE R1.Login = (SELECT MAX(R2.Login) ' .
+            'FROM Register AS R2 ' .
+            'WHERE R2.UserID = R1.UserID)';
+
+    return $db_instance->get_results($query_string, ARRAY_A);
 }
 
 /*
