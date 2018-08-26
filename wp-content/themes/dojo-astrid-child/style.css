@@ -34,3 +34,8 @@ p {
 
 #mc_embed_signup input:not([type="submit"]) {
   width: 100%; }
+
+.page-template-whos_in .content-area.dojo-whos-in {
+  padding: 30px; }
+  .page-template-whos_in .content-area.dojo-whos-in .site-main {
+    overflow: scroll; }
