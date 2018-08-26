@@ -1,35 +1,52 @@
-.benyon-ccs-video-item-container {
-  width: 100%;
-  padding-bottom: 56.25%;
-  position: relative;
+.benyon-ccs-video-item-outer-container {
+  padding: 30px;
 
-  .benyon-ccs-video-item {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .benyon-ccs-video-item-container {
+    width: 100%;
+    padding-bottom: 56.25%;
+    position: relative;
+    overflow: hidden;
+    border: solid 10px $color_accent;
+    border-radius: 15px;
+
+    .benyon-ccs-video-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: blur(2px) brightness(60%);
+    }
 
     .benyon-ccs-play-icon {
       $height: 50px;
       $width: $height * 1.8;
-      position: relative;
-      &:after {
-        content: '';
-        width: 0;
-        height: 0;
-        border-style: solid;
-        border-width: $height 0 $height $width;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-left: -$width / 2;
-        margin-top: -$height / 2;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      margin-left: -$width / 2;
+      margin-top: -$height;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: $height 0 $height $width;
+      border-color: transparent transparent transparent $color_accent;
+    }
+  }
+
+  &:hover {
+    .benyon-ccs-video-item-container {
+      .benyon-ccs-video-item {
+        filter: blur(0px) brightness(80%);
+      }
+
+      .benyon-ccs-play-icon {
+        border-color: transparent transparent transparent $color-prime;
       }
     }
   }

@@ -4,7 +4,6 @@ Template Name: Who's in?
 */
 ?>
 
-
 <?php get_header(); ?>
 
     <div id="primary" class="content-area dojo-whos-in">

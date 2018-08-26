@@ -23,15 +23,6 @@ p {
   p:first-of-type {
     margin-top: 20px; }
 
-.benyon-arrow.benyon-arrow-right:after {
-  border-color: transparent transparent transparent #fcd088; }
-
-.benyon-arrow-hover-container .benyon-arrow.benyon-arrow-right:after {
-  border-color: transparent transparent transparent #FFF; }
-
-.benyon-arrow-hover-container:hover .benyon-arrow.benyon-arrow-right:after {
-  border-color: transparent transparent transparent #fcd088; }
-
 #mc_embed_signup input:not([type="submit"]) {
   width: 100%; }
 

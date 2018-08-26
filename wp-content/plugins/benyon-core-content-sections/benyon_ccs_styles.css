@@ -1,34 +1,42 @@
 .benyon_cs_content_section.benyon_ccs_image img {
   width: 100%; }
 
-.benyon-ccs-video-item-container {
-  width: 100%;
-  padding-bottom: 56.25%;
-  position: relative; }
-  .benyon-ccs-video-item-container .benyon-ccs-video-item {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    align-items: center;
-    justify-content: center; }
-    .benyon-ccs-video-item-container .benyon-ccs-video-item .benyon-ccs-play-icon {
-      position: relative; }
-      .benyon-ccs-video-item-container .benyon-ccs-video-item .benyon-ccs-play-icon:after {
-        content: '';
-        width: 0;
-        height: 0;
-        border-style: solid;
-        border-width: 50px 0 50px 90px;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-left: -45px;
-        margin-top: -25px; }
+.benyon-ccs-video-item-outer-container {
+  padding: 30px; }
+  .benyon-ccs-video-item-outer-container .benyon-ccs-video-item-container {
+    width: 100%;
+    padding-bottom: 56.25%;
+    position: relative;
+    overflow: hidden;
+    border: solid 10px #fcd088;
+    border-radius: 15px; }
+    .benyon-ccs-video-item-outer-container .benyon-ccs-video-item-container .benyon-ccs-video-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: blur(2px) brightness(60%); }
+    .benyon-ccs-video-item-outer-container .benyon-ccs-video-item-container .benyon-ccs-play-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      margin-left: -45px;
+      margin-top: -50px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 50px 0 50px 90px;
+      border-color: transparent transparent transparent #fcd088; }
+  .benyon-ccs-video-item-outer-container:hover .benyon-ccs-video-item-container .benyon-ccs-video-item {
+    filter: blur(0px) brightness(80%); }
+  .benyon-ccs-video-item-outer-container:hover .benyon-ccs-video-item-container .benyon-ccs-play-icon {
+    border-color: transparent transparent transparent #FFF; }
 
 .benyon-cca-wysiwyg-container {
   overflow: hidden;
