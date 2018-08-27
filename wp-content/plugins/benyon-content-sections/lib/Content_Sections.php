@@ -173,6 +173,13 @@ class Content_Sections {
            'value' => 'page',
          ),
        ),
+       array(
+         array(
+           'param' => 'post_type',
+           'operator' => '==',
+           'value' => 'benyon-challenges',
+         ),
+       ),
      ),
      'menu_order' => -5,
      'position' => 'normal',
