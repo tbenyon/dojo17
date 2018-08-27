@@ -177,7 +177,7 @@ class Content_Sections {
          array(
            'param' => 'post_type',
            'operator' => '==',
-           'value' => 'benyon-challenges',
+           'value' => 'challenges',
          ),
        ),
      ),
