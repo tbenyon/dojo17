@@ -1,13 +1,14 @@
-.tb-accordion .tb-accordion-item .tb-accordion-bar {
-  cursor: pointer;
-  padding: 20px;
-  width: 100%;
-  text-align: left;
-  font-weight: bold; }
-  .tb-accordion .tb-accordion-item .tb-accordion-bar:focus {
-    outline: 0;
-    border-color: inherit; }
-
-.tb-accordion .tb-accordion-item .tb-accordion-panel {
-  margin: 0 20px;
-  display: none; }
+.tb-accordion {
+  margin: 0 20px; }
+  .tb-accordion .tb-accordion-item .tb-accordion-bar {
+    cursor: pointer;
+    padding: 20px;
+    width: 100%;
+    text-align: left;
+    font-weight: bold; }
+    .tb-accordion .tb-accordion-item .tb-accordion-bar:focus {
+      outline: 0;
+      border-color: inherit; }
+  .tb-accordion .tb-accordion-item .tb-accordion-panel {
+    margin: 0 20px;
+    display: none; }

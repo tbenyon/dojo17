@@ -1,5 +1,6 @@
 .tb-accordion {
   $size-basic-padding: 20px !default;
+  margin: 0 $size-basic-padding;
 
   .tb-accordion-item {
     .tb-accordion-bar {
