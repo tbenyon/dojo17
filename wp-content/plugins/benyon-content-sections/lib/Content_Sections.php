@@ -63,35 +63,10 @@ class Content_Sections {
  }
 
  private function build_default_fields($view_path, $unique_section_id) {
+
+   update_option(BENYON_CS_VIEW_OPTION_BASE . $unique_section_id, $view_path); // Store view path in WP DB
+
    return array(
-   array(
-     'key' => $unique_section_id . 'benyon_cs_view_path',
-     'label' => 'View Path',
-     'name' => $unique_section_id . 'benyon_cs_view_path',
-     'type' => 'text',
-     'instructions' => 'This is not editable as it is set by developers in the code.',
-     'required' => 0,
-     'conditional_logic' => array(
-       array(
-         array(
-           'field' => 'DO_NOT_SHOW',
-           'operator' => '==',
-           'value' => '1',
-         ),
-       ),
-     ),
-     'wrapper' => array(
-       'width' => '',
-       'class' => '',
-       'id' => '',
-     ),
-     'default_value' => $view_path,
-     'placeholder' => '',
-     'prepend' => '',
-     'append' => '',
-     'maxlength' => '',
-     'readonly' => 1,
-   ),
     array(
        'key' => $unique_section_id . 'benyon_cs_section_id',
        'label' => 'Section ID',

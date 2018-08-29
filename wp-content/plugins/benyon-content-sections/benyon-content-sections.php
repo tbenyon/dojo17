@@ -14,6 +14,8 @@ define('BENYON_CS_VENDOR', BENYON_CS_BASE . '/vendor');
 define('BENYON_CS_INC', BENYON_CS_BASE .'/includes');
 define('BENYON_CS_VIEWS', BENYON_CS_BASE .'/views');
 
+define('BENYON_CS_VIEW_OPTION_BASE', 'benyon_cs_view_path_');
+
 require BENYON_CS_VENDOR . '/autoload.php';
 
 add_action( 'init', 'benyon_cs_add_field_group' );
