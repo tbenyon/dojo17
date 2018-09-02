@@ -52,6 +52,9 @@ define('EXTERNAL_LOGIN_OPTION_DB_NAME', getenv('EXTERNAL_LOGIN_OPTION_DB_NAME'))
 /** EXLOG - The External Database Host */
 define('EXTERNAL_LOGIN_OPTION_DB_HOST', getenv('EXTERNAL_LOGIN_OPTION_DB_HOST'));
 
+/** EXLOG - The External Database Port */
+define('EXTERNAL_LOGIN_OPTION_DB_PORT', getenv('EXTERNAL_LOGIN_OPTION_DB_PORT'));
+
 /** EXLOG - The External Database Username */
 define('EXTERNAL_LOGIN_OPTION_DB_USERNAME', getenv('EXTERNAL_LOGIN_OPTION_DB_USERNAME'));
 
