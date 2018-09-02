@@ -21,6 +21,10 @@
 define('WP_HOME', getenv('WP_URL'));
 define('WP_SITEURL', getenv('WP_URL'));
 
+@ini_set('log_errors','On'); // enable or disable php error logging (use 'On' or 'Off')
+@ini_set('display_errors','Off'); // enable or disable public display of errors (use 'On' or 'Off')
+@ini_set('error_log','/var/www/html/dojo_php.log'); // path to server-writable log file
+
 // ** MySQL settings - You can get this info from your web host ** //
 /** The name of the database for WordPress */
 define('DB_NAME', getenv('DATABASE_NAME'));
