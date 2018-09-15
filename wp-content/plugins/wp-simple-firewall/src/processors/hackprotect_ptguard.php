@@ -17,7 +17,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 		parent::run();
 
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 		if ( $oFO->isPtgReadyToScan() ) {
 			add_action( 'upgrader_process_complete', array( $this, 'updateSnapshotAfterUpgrade' ), 10, 2 );
 			add_action( 'activated_plugin', array( $this, 'onActivatePlugin' ), 10 );
@@ -25,7 +25,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 			add_action( 'switch_theme', array( $this, 'onActivateTheme' ), 10, 0 );
 		}
 		else if ( $oFO->isPtgBuildRequired() ) {
-			$this->rebuildSnapshots(); // TODO: Consider if we can't write to disk - we do this forever.
+			$this->rebuildSnapshots();
 			if ( $this->storeExists( self::CONTEXT_PLUGINS ) && $this->storeExists( self::CONTEXT_THEMES ) ) {
 				$oFO->setPtgLastBuildAt();
 			}
@@ -64,7 +64,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 			),
 			'js_snippets' => array()
 		);
-		echo $this->getFeature()
+		echo $this->getMod()
 				  ->renderTemplate( 'snippets/hg-plugins-reinstall-dialogs.php', $aRenderData );
 	}
 
@@ -114,20 +114,53 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 
 	/**
 	 * @param WP_Upgrader $oUpgrader
-	 * @param array       $aUpgradeInfo
+	 * @param array       $aInfo Upgrade/Install Information
 	 */
-	public function updateSnapshotAfterUpgrade( $oUpgrader, $aUpgradeInfo ) {
+	public function updateSnapshotAfterUpgrade( $oUpgrader, $aInfo ) {
 
 		$sContext = '';
-		if ( !empty( $aUpgradeInfo[ self::CONTEXT_PLUGINS ] ) ) {
+		$aSlugs = array();
+
+		// Need to account for single and bulk updates. First bulk
+		if ( !empty( $aInfo[ self::CONTEXT_PLUGINS ] ) ) {
 			$sContext = self::CONTEXT_PLUGINS;
+			$aSlugs = $aInfo[ $sContext ];
 		}
-		else if ( !empty( $aUpgradeInfo[ self::CONTEXT_PLUGINS ] ) ) {
+		else if ( !empty( $aInfo[ self::CONTEXT_THEMES ] ) ) {
+			$sContext = self::CONTEXT_THEMES;
+			$aSlugs = $aInfo[ $sContext ];
+		}
+		else if ( !empty( $aInfo[ 'plugin' ] ) ) {
 			$sContext = self::CONTEXT_PLUGINS;
+			$aSlugs = array( $aInfo[ 'plugin' ] );
+		}
+		else if ( !empty( $aInfo[ 'theme' ] ) ) {
+			$sContext = self::CONTEXT_THEMES;
+			$aSlugs = array( $aInfo[ 'theme' ] );
+		}
+		else if ( isset( $aInfo[ 'action' ] ) && $aInfo[ 'action' ] == 'install' && isset( $aInfo[ 'type' ] )
+				  && !empty( $oUpgrader->result[ 'destination_name' ] ) ) {
+
+			if ( $aInfo[ 'type' ] == 'plugin' ) {
+				$oWpPlugins = $this->loadWpPlugins();
+				$sDir = $oWpPlugins->getFileFromDirName( $oUpgrader->result[ 'destination_name' ] );
+				if ( $sDir && $oWpPlugins->isActive( $sDir ) ) {
+					$sContext = self::CONTEXT_PLUGINS;
+					$aSlugs = array( $sDir );
+				}
+			}
+			else if ( $aInfo[ 'type' ] == 'theme' ) {
+				$sDir = $oUpgrader->result[ 'destination_name' ];
+				if ( $this->loadWpThemes()->isActive( $sDir ) ) {
+					$sContext = self::CONTEXT_THEMES;
+					$aSlugs = array( $sDir );
+				}
+			}
 		}
 
-		if ( !empty( $sContext ) ) {
-			foreach ( $aUpgradeInfo[ $sContext ] as $sSlug ) {
+		// update snaptshots
+		if ( is_array( $aSlugs ) ) {
+			foreach ( $aSlugs as $sSlug ) {
 				$this->updateItemInSnapshot( $sSlug, $sContext );
 			}
 		}
@@ -142,7 +175,8 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 		$aSnapshot = $this->loadSnapshotData( $sContext );
 		if ( isset( $aSnapshot[ $sSlug ] ) ) {
 			unset( $aSnapshot[ $sSlug ] );
-			$this->storeSnapshot( $aSnapshot, $sContext );
+			$this->addToAuditEntry( sprintf( _wpsf__( 'File signatures removed for item "%s"' ), $sSlug ) )
+				 ->storeSnapshot( $aSnapshot, $sContext );
 		}
 		return $this;
 	}
@@ -166,7 +200,8 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 		if ( $aNewSnapData ) {
 			$aSnapshot = $this->loadSnapshotData( $sContext );
 			$aSnapshot[ $sSlug ] = $aNewSnapData;
-			$this->storeSnapshot( $aSnapshot, $sContext );
+			$this->storeSnapshot( $aSnapshot, $sContext )
+				 ->addToAuditEntry( sprintf( _wpsf__( 'File signatures updated for item "%s"' ), $sSlug ) );
 		}
 
 		return $this;
@@ -369,7 +404,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	private function hashFilesInDir( $sDir ) {
 		$aSnaps = array();
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 
 		$nDepth = $oFO->getPtgDepth();
 		foreach ( $this->loadFS()->getFilesInDir( $sDir, $nDepth, $this->getIterator( $sDir ) ) as $oFile ) {
@@ -384,7 +419,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	private function getIterator( $sDir ) {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 		$oIt = new GuardRecursiveFilterIterator( new RecursiveDirectoryIterator( $sDir ) );
 		return $oIt->setExtensions( $oFO->getPtgFileExtensions() );
 	}
@@ -421,7 +456,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	protected function emailResults( $aResults ) {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 
 		// Plugins
 		$aAllPlugins = array();
@@ -457,7 +492,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 			'',
 			sprintf( '<strong>%s</strong>', _wpsf__( 'You will receive only 1 email notification about these changes in a 1 week period.' ) ),
 			'',
-			sprintf( _wpsf__( 'Site URL - %s' ), sprintf( '<a href="%s" target="_blank">%s</a>', $sHomeUrl, $sHomeUrl ) ),
+			sprintf( '%s: %s', _wpsf__( 'Site URL' ), sprintf( '<a href="%s" target="_blank">%s</a>', $sHomeUrl, $sHomeUrl ) ),
 			'',
 			_wpsf__( 'Details of the problem items are below:' ),
 		);
@@ -488,7 +523,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 		}
 
 		$sTo = $oFO->getPluginDefaultRecipientAddress();
-		$sEmailSubject = sprintf( _wpsf__( 'Warning - %s' ), _wpsf__( 'Plugins/Themes Have Been Altered' ) );
+		$sEmailSubject = sprintf( '%s - %s', _wpsf__( 'Warning' ), _wpsf__( 'Plugins/Themes Have Been Altered' ) );
 		$bSendSuccess = $this->getEmailProcessor()
 							 ->sendEmailWithWrap( $sTo, $sEmailSubject, $aContent );
 
@@ -514,7 +549,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	private function getResultsHashTime( $sResultHash ) {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 
 		$aTracking = $oFO->getPtgEmailTrackData();
 
@@ -552,7 +587,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	protected function runSnapshotScan( $sContext = self::CONTEXT_PLUGINS ) {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 
 		$bProblemDiscovered = false;
 		$aResults = array();
@@ -621,7 +656,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	protected function getCronFrequency() {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 		return $oFO->getScanFrequency();
 	}
 
@@ -630,7 +665,7 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	protected function getCronName() {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 		return $oFO->getPtgCronName();
 	}
 
@@ -639,8 +674,21 @@ class ICWP_WPSF_Processor_HackProtect_PTGuard extends ICWP_WPSF_Processor_CronBa
 	 */
 	private function getSnapsBaseDir() {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
-		$oFO = $this->getFeature();
+		$oFO = $this->getMod();
 		return $oFO->getPtgSnapsBaseDir();
+	}
+
+	/**
+	 * @param string $sMsg
+	 * @param int    $nCategory
+	 * @param string $sEvent
+	 * @param string $sWpUsername
+	 * @return $this
+	 */
+	public function addToAuditEntry( $sMsg = '', $nCategory = 1, $sEvent = '', $sWpUsername = '' ) {
+		$sMsg = sprintf( '[%s]: %s', _wpsf__( 'Plugin/Theme Guard' ), $sMsg );
+		parent::addToAuditEntry( $sMsg, $nCategory, $sEvent, $sWpUsername );
+		return $this;
 	}
 }
 

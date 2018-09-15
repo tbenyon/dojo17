@@ -332,6 +332,23 @@ class ICWP_WPSF_WpFunctions_Plugins extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sDirName
+	 * @return string|null
+	 */
+	public function getFileFromDirName( $sDirName ) {
+		$sFile = null;
+		if ( !empty( $sDirName ) ) {
+			foreach ( $this->getInstalledPluginFiles() as $sF ) {
+				if ( strpos( $sFile, $sDirName.'/' ) === 0 ) {
+					$sFile = $sF;
+					break;
+				}
+			}
+		}
+		return $sFile;
+	}
+
+	/**
 	 * @param string $sPluginFile
 	 * @return null|stdClass
 	 */
@@ -448,7 +465,7 @@ class ICWP_WPSF_WpFunctions_Plugins extends ICWP_WPSF_Foundation {
 
 	/**
 	 * @param bool $bForceUpdateCheck
-	 * @return array
+	 * @return stdClass[]
 	 */
 	public function getUpdates( $bForceUpdateCheck = false ) {
 		if ( $bForceUpdateCheck ) {

@@ -23,7 +23,16 @@ trait StdClassAdapter {
 
 	/**
 	 * @param string $sProperty
-	 * @param mixed $mValue
+	 * @return bool
+	 */
+	public function __isset( $sProperty ) {
+		$oRaw = $this->getRawData();
+		return isset( $oRaw->{$sProperty} );
+	}
+
+	/**
+	 * @param string $sProperty
+	 * @param mixed  $mValue
 	 * @return $this
 	 */
 	public function __set( $sProperty, $mValue ) {
@@ -74,7 +83,7 @@ trait StdClassAdapter {
 
 	/**
 	 * @param string $sKey
-	 * @param mixed $mComparison
+	 * @param mixed  $mComparison
 	 * @return bool
 	 */
 	public function isParam( $sKey, $mComparison ) {
@@ -83,7 +92,7 @@ trait StdClassAdapter {
 
 	/**
 	 * @param string $sKey
-	 * @param array $nDefault
+	 * @param array  $nDefault
 	 * @return array
 	 */
 	public function getArrayParam( $sKey, $nDefault = array() ) {
@@ -93,7 +102,7 @@ trait StdClassAdapter {
 
 	/**
 	 * @param string $sKey
-	 * @param int $nDefault
+	 * @param int    $nDefault
 	 * @return int|float|null
 	 */
 	public function getNumericParam( $sKey, $nDefault = null ) {
@@ -103,11 +112,11 @@ trait StdClassAdapter {
 
 	/**
 	 * @param string $sKey
-	 * @param mixed $mDefault
+	 * @param mixed  $mDefault
 	 * @return mixed
 	 */
 	public function getParam( $sKey, $mDefault = null ) {
-		return isset( $this->getRawData()->{$sKey} ) ? $this->getRawData()->{$sKey} : $mDefault;
+		return isset( $this->{$sKey} ) ? $this->getRawData()->{$sKey} : $mDefault;
 	}
 
 	/**
@@ -131,7 +140,7 @@ trait StdClassAdapter {
 
 	/**
 	 * @param string $sKey
-	 * @param mixed $mValue
+	 * @param mixed  $mValue
 	 * @return $this
 	 */
 	public function setParam( $sKey, $mValue ) {
@@ -142,7 +151,7 @@ trait StdClassAdapter {
 	/**
 	 * @alias TODO remove
 	 * @param string $sKey
-	 * @param mixed $mValue
+	 * @param mixed  $mValue
 	 * @return $this
 	 */
 	public function setRawDataItem( $sKey, $mValue ) {

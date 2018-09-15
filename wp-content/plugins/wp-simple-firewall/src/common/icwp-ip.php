@@ -162,6 +162,13 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function isSupportedIpv6() {
+		return ( extension_loaded( 'sockets' ) && defined( 'AF_INET6' ) ) || @inet_pton( '::1' );
+	}
+
+	/**
 	 * @param string $sIp
 	 * @param bool   $flags
 	 * @return boolean
@@ -298,7 +305,7 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 		$oDp = $this->loadDP();
 		foreach ( $this->getIpSourceOptions() as $sSource ) {
 
-			$sIpToTest = $oDp->FetchServer( $sSource );
+			$sIpToTest = $oDp->server( $sSource );
 			if ( empty( $sIpToTest ) ) {
 				continue;
 			}
@@ -372,5 +379,115 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 			'2c0f:f248::/32',
 			'2a06:98c0::/29'
 		);
+	}
+
+	/**
+	 * @param int $sIpVersion
+	 * @return string[]
+	 */
+	public function getServiceIps_Pingdom( $sIpVersion = 4 ) {
+		$sUrl = sprintf( 'https://my.pingdom.com/probes/ipv%s', $sIpVersion );
+		return array_filter( array_map( 'trim', explode( "\n", $this->loadFS()->getUrlContent( $sUrl ) ) ) );
+	}
+
+	/**
+	 * @return string[]
+	 */
+	public function getServiceIps_StatusCake() {
+		$aIps = array();
+		$aData = @json_decode( $this->loadFS()
+									->getUrlContent( 'https://app.statuscake.com/Workfloor/Locations.php?format=json' ), true );
+		if ( is_array( $aData ) ) {
+			foreach ( $aData as $aItem ) {
+				$aIps[] = $aItem[ 'ip' ];
+			}
+		}
+		return $aIps;
+	}
+
+	/**
+	 * @param int $sIpVersion
+	 * @return string[]
+	 */
+	public function getServiceIps_UptimeRobot( $sIpVersion = 4 ) {
+		$sUrl = sprintf( 'https://uptimerobot.com/inc/files/ips/IPv%s.txt', $sIpVersion );
+		return array_filter( array_map( 'trim', explode( "\n", $this->loadFS()->getUrlContent( $sUrl ) ) ) );
+	}
+
+	/**
+	 * @param string $sIp
+	 * @param string $sUserAgent
+	 * @return bool
+	 */
+	public function isIpBingBot( $sIp, $sUserAgent = '' ) {
+		return $this->isIpOfBot( 'bingbot', '#.*\.search\.msn\.com\.?$#i', $sIp, $sUserAgent );
+	}
+
+	/**
+	 * https://duckduckgo.com/duckduckbot
+	 * @param string $sIp
+	 * @param string $sUserAgent
+	 * @return bool
+	 */
+	public function isIpDuckDuckGoBot( $sIp, $sUserAgent = '' ) {
+		$bIsBot = false;
+
+		// We check the useragent if available
+		if ( is_null( $sUserAgent ) || stripos( $sUserAgent, 'DuckDuckBot' ) !== false ) {
+			$bIsBot = in_array( $sIp, array( '107.20.237.51', '23.21.226.191', '107.21.1.8', '54.208.102.37' ) );
+		}
+		return $bIsBot;
+	}
+
+	/**
+	 * @param string $sIp
+	 * @param string $sUserAgent
+	 * @return bool
+	 */
+	public function isIpGoogleBot( $sIp, $sUserAgent = '' ) {
+		return $this->isIpOfBot( 'Googlebot', '#.*\.google(bot)?\.com\.?$#i', $sIp, $sUserAgent );
+	}
+
+	/**
+	 * @param string $sIp
+	 * @param string $sUserAgent
+	 * @return bool
+	 */
+	public function isIpYandexBot( $sIp, $sUserAgent = '' ) {
+		return $this->isIpOfBot( 'yandex.com/bots', '#.*\.yandex?\.(com|ru|net)\.?$#i', $sIp, $sUserAgent );
+	}
+
+	/**
+	 * https://support.apple.com/en-gb/HT204683
+	 * https://discussions.apple.com/thread/7090135
+	 * Apple IPs start with '17.'
+	 * @param string $sIp
+	 * @param string $sUserAgent
+	 * @return bool
+	 */
+	public function isIpAppleBot( $sIp, $sUserAgent = '' ) {
+		return ( $this->getIpVersion( $sIp ) != 4 || strpos( $sIp, '17.' ) === 0 )
+			   && $this->isIpOfBot( 'Applebot/', '#.*\.applebot.apple.com\.?$#i', $sIp, $sUserAgent );
+	}
+
+	/**
+	 * @param string $sBotUserAgent
+	 * @param string $sBotHostPattern
+	 * @param string $sReqIp
+	 * @param string $sReqUserAgent
+	 * @return bool
+	 */
+	protected function isIpOfBot( $sBotUserAgent, $sBotHostPattern, $sReqIp, $sReqUserAgent = '' ) {
+		$bIsBot = false;
+
+		// We check the useragent if available
+		if ( is_null( $sReqUserAgent ) || stripos( $sReqUserAgent, $sBotUserAgent ) !== false ) {
+			$sHost = @gethostbyaddr( $sReqIp ); // returns the ip on failure
+			if ( !empty( $sHost ) && ( $sHost != $sReqIp )
+				 && preg_match( $sBotHostPattern, $sHost ) && gethostbyname( $sHost ) === $sReqIp ) {
+				$bIsBot = true;
+			}
+		}
+		return $bIsBot;
 	}
 }

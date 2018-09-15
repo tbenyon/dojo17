@@ -92,7 +92,6 @@
       "name": "Security Admin Access Key",
       "summary": "Provide/Update Security Admin Access Key",
       "description": "Careful: If you forget this, you could potentially lock yourself out from using this plugin."
-
     },
     {
       "key": "admin_access_timeout",
@@ -155,7 +154,6 @@
       "link_blog": "https://icwp.io/wpsf21",
       "summary": "Restrict Access To Key WordPress Plugin Actions",
       "description": "Careful: This will restrict access to plugin installation, update, activation and deletion. Note: Selecting 'Activate' will also restrict all other options."
-
     },
     {
       "key": "admin_access_restrict_themes",
