@@ -23,6 +23,7 @@
 @ini_set('display_errors','Off'); // enable or disable public display of errors (use 'On' or 'Off')
 @ini_set('error_log','/var/www/html/dojo_php.log'); // path to server-writable log file
 
+define( 'FS_METHOD', 'direct' );
 
 // ** Site Base Settings - Used to overwrite WordPress DB setting ** //
 define('WP_HOME', getenv('WP_URL'));
