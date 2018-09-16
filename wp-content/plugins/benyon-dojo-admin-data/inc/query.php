@@ -11,6 +11,8 @@ function dojo_admin_get_data() {
 
     $query_data['register'] = dojo_admin_register($db_instance);
 
+    $query_data['users'] = dojo_get_users($db_instance);
+
     return $query_data;
 }
 
@@ -65,6 +67,13 @@ function dojo_admin_attendance_data($db_instance) {
 
 //    RETURN DATA
     return $data;
+}
+
+function dojo_get_users($db_instance) {
+    $requiredFields = "NickName, FirstName, LastName, UserType, DOB, ContactNumber";
+
+    $query_string = 'SELECT ' . $requiredFields . ' FROM USER;';
+    return $db_instance->get_results($query_string, ARRAY_A);
 }
 
 function dojo_admin_register($db_instance) {

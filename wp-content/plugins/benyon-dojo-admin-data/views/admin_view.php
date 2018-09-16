@@ -23,14 +23,14 @@
     <table id="dojo-admin-register-search" class="display">
       <thead>
         <tr>
-          <?php foreach ($admin_view_data['register'][0] as $key => $value) : ?>
+          <?php foreach ($admin_view_data['users'][0] as $key => $value) : ?>
             <th><?php echo $key; ?></th>
           <?php endforeach;?>
         </tr>
       </thead>
 
       <tbody>
-        <?php foreach ($admin_view_data['register'] as $user) : ?>
+        <?php foreach ($admin_view_data['users'] as $user) : ?>
           <tr>
             <?php foreach ($user as $data) :?>
               <td><?php echo $data; ?></td>
