@@ -18,10 +18,14 @@
  * @package WordPress
  */
 
-// ** Create custom Location for error logs ** //
-@ini_set('log_errors','On'); // enable or disable php error logging (use 'On' or 'Off')
-@ini_set('display_errors','Off'); // enable or disable public display of errors (use 'On' or 'Off')
-@ini_set('error_log','/var/www/html/dojo_php.log'); // path to server-writable log file
+if (getenv('DOJO_DEV_MODE') != "yes") {
+    // ** Create custom Location for error logs on live server ** //
+    @ini_set('log_errors','On'); // enable or disable php error logging (use 'On' or 'Off')
+    @ini_set('display_errors','Off'); // enable or disable public display of errors (use 'On' or 'Off')
+    @ini_set('error_log','/var/www/html/dojo_php.log'); // path to server-writable log file
+} else {
+    error_log('LOCAL DOJO DEV MODE ENABLED');
+}
 
 define( 'FS_METHOD', 'direct' );
 
