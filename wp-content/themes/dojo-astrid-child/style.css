@@ -26,6 +26,15 @@ p {
 #mc_embed_signup input:not([type="submit"]) {
   width: 100%; }
 
+header#masthead .login {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap; }
+  header#masthead .login a {
+    font-weight: bold;
+    font-size: 16px;
+    padding: 0 5px; }
+
 .page-template-whos_in .content-area.dojo-whos-in {
   padding: 30px; }
   .page-template-whos_in .content-area.dojo-whos-in .site-main {

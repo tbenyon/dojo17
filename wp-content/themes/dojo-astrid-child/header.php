@@ -22,7 +22,7 @@
     gtag('config', 'UA-128490220-1');
   </script>
 
-  
+
   <meta charset="<?php bloginfo( 'charset' ); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="profile" href="http://gmpg.org/xfn/11">
@@ -45,7 +45,16 @@
 	<header id="masthead" class="site-header <?php echo astrid_has_header(); ?>" role="banner">
 		<div class="container">
 			<div class="site-branding col-md-4 col-sm-6 col-xs-12">
-				<?php astrid_branding(); ?>
+<!--				--><?php //astrid_branding(); ?>
+        <p class="site-title"><a href="<?php echo get_site_url(); ?>" rel="home">Coder Dojo Horsham</a></p>
+        <p class="login site-description">
+          <?php if (is_user_logged_in()) : ?>
+            <a href="<?php echo get_site_url() . "/wp-admin"; ?>" rel="admin">Create</a> |
+            <a href="<?php echo wp_logout_url(get_site_url()); ?>" rel="logout">Logout</a>
+          <?php else : ?>
+            <a href="<?php echo get_site_url() . "/wp-login.php"; ?>" rel="login">Login</a>
+          <?php endif; ?>
+        </p>
 			</div>
 			<div class="btn-menu col-md-8 col-sm-6 col-xs-12"><i class="fa fa-navicon"></i></div>
 			<nav id="mainnav" class="main-navigation col-md-8 col-sm-6 col-xs-12" role="navigation">

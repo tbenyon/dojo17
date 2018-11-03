@@ -1,0 +1,12 @@
+header#masthead {
+  .login {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    a {
+      font-weight: bold;
+      font-size: 16px;
+      padding: 0 5px;
+    }
+  }
+}
