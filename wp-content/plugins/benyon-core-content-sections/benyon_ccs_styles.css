@@ -8,7 +8,7 @@
     padding-bottom: 56.25%;
     position: relative;
     overflow: hidden;
-    border: solid 10px #fcd088;
+    border: solid 5px #81D725;
     border-radius: 15px; }
     .benyon-ccs-video-item-outer-container .benyon-ccs-video-item-container .benyon-ccs-video-item {
       position: absolute;
@@ -26,17 +26,17 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      margin-left: -45px;
-      margin-top: -50px;
+      margin-left: -36px;
+      margin-top: -40px;
       width: 0;
       height: 0;
       border-style: solid;
-      border-width: 50px 0 50px 90px;
-      border-color: transparent transparent transparent #fcd088; }
+      border-width: 40px 0 40px 72px;
+      border-color: transparent transparent transparent #81D725; }
   .benyon-ccs-video-item-outer-container:hover .benyon-ccs-video-item-container .benyon-ccs-video-item {
     filter: blur(0px) brightness(80%); }
   .benyon-ccs-video-item-outer-container:hover .benyon-ccs-video-item-container .benyon-ccs-play-icon {
-    border-color: transparent transparent transparent #FFF; }
+    border-color: transparent transparent transparent #81D725; }
 
 .benyon-cca-wysiwyg-container {
   overflow: hidden;

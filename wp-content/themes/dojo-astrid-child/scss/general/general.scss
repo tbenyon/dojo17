@@ -5,3 +5,16 @@ p {
     margin-top: $size-basic-padding;
   }
 }
+
+//Theme override
+.woocommerce .woocommerce-message:before,.woocommerce #payment #place_order,.woocommerce-page #payment #place_order,.woocommerce .cart .button, .woocommerce .cart input.button,.woocommerce-cart .wc-proceed-to-checkout a.checkout-button,.woocommerce #review_form #respond .form-submit input,.woocommerce a.button,.woocommerce div.product form.cart .button,.woocommerce .star-rating,.page-header .page-title .fa,.site-footer a:hover,.footer-info a:hover,.footer-widgets a:hover,.testimonial-title a:hover,.employee-title a:hover,.fact .fa,.service-title a:hover,.widget-area .widget a:hover,.entry-meta a:hover,.entry-footer a:hover,.entry-title a:hover,.comment-navigation a:hover,.posts-navigation a:hover,.post-navigation a:hover,.main-navigation a:hover,.main-navigation li.focus > a,a,a:hover,button,.button,input[type="button"],input[type="reset"],input[type="submit"] {
+  color: $color-accent;
+}
+
+.social-menu-widget a,.woocommerce span.onsale,.woocommerce #payment #place_order:hover, .woocommerce-page #payment #place_order:hover,.woocommerce .cart .button:hover, .woocommerce .cart input.button:hover,.woocommerce-cart .wc-proceed-to-checkout a.checkout-button:hover,.woocommerce #review_form #respond .form-submit input:hover,.woocommerce div.product form.cart .button:hover,.woocommerce a.button:hover,.preloader-inner ul li,.progress-animate,button:hover,.button:hover,input[type="button"]:hover,input[type="reset"]:hover,input[type="submit"]:hover {
+  background-color: $color-accent;
+}
+
+.woocommerce .woocommerce-message,.woocommerce #payment #place_order,.woocommerce-page #payment #place_order,.woocommerce .cart .button, .woocommerce .cart input.button,.woocommerce-cart .wc-proceed-to-checkout a.checkout-button,.woocommerce #review_form #respond .form-submit input,.woocommerce a.button,.woocommerce div.product form.cart .button,.main-navigation li a::after,.main-navigation li a::before,button,.button,input[type="button"],input[type="reset"],input[type="submit"] {
+  border-color: $color-accent;
+}
