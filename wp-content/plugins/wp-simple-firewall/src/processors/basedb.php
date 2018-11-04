@@ -4,7 +4,7 @@ if ( class_exists( 'ICWP_WPSF_BaseDbProcessor', false ) ) {
 	return;
 }
 
-require_once( dirname( __FILE__ ).DIRECTORY_SEPARATOR.'base_wpsf.php' );
+require_once( dirname( __FILE__ ).'/base_wpsf.php' );
 
 abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -18,6 +18,11 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 	 * @var boolean
 	 */
 	protected $bTableExists;
+
+	/**
+	 * @var bool
+	 */
+	protected $bTableStructureIsValid;
 
 	/**
 	 * @var integer
@@ -40,7 +45,7 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 	 * @return bool
 	 */
 	public function isReadyToRun() {
-		return ( parent::isReadyToRun() && $this->getTableExists() );
+		return ( parent::isReadyToRun() && $this->getTableExists() && $this->isTableStructureValid() );
 	}
 
 	/**
@@ -58,17 +63,22 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 	protected function createTable() {
 		$sSql = $this->getCreateTableSql();
 		if ( !empty( $sSql ) ) {
+			$this->clearTableIsValid();
 			return $this->loadDbProcessor()->dbDelta( $sSql );
 		}
 		return true;
 	}
 
 	/**
+	 * @return $this
 	 */
 	protected function initializeTable() {
 		if ( $this->getTableExists() ) {
-			if ( !$this->tableIsValid() ) {
-				$this->recreateTable();
+			if ( !$this->isTableStructureValid() ) {
+				$this->createTable(); // First attempt the delta
+				if ( !$this->isTableStructureValid( true ) ) {
+					$this->recreateTable();
+				}
 			}
 			$sFullHookName = $this->getDbCleanupHookName();
 			add_action( $sFullHookName, array( $this, 'cleanupDatabase' ) );
@@ -76,81 +86,23 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 		else {
 			$this->createTable();
 		}
+		return $this;
 	}
 
 	/**
-	 * @param array $aData
-	 * @return bool|int
+	 * @param int $nTimeStamp
+	 * @return bool
 	 */
-	public function insertData( $aData ) {
-		return $this->loadDbProcessor()->insertDataIntoTable( $this->getTableName(), $aData );
+	protected function deleteRowsOlderThan( $nTimeStamp ) {
+		return $this->getQueryDeleter()
+					->addWhereOlderThan( $nTimeStamp )
+					->query();
 	}
 
 	/**
-	 * Returns all active, non-deleted rows
-	 * @return array
+	 * @return ICWP_WPSF_Query_BaseDelete
 	 */
-	public function selectAll() {
-		return $this->query_selectAll();
-	}
-
-	/**
-	 * @param array $aColumns Leave empty to select all (*) columns
-	 * @param bool  $bExcludeDeletedRows
-	 * @return array
-	 */
-	protected function query_selectAll( $aColumns = array(), $bExcludeDeletedRows = true ) {
-
-		// Try to get the database entry that corresponds to this set of data. If we get nothing, fail.
-		$sQuery = "SELECT %s FROM `%s` %s";
-
-		$aColumns = $this->validateColumnsParameter( $aColumns );
-		$sColumnsSelection = empty( $aColumns ) ? '*' : implode( ',', $aColumns );
-
-		$sQuery = sprintf( $sQuery,
-			$sColumnsSelection,
-			$this->getTableName(),
-			( $bExcludeDeletedRows && $this->getHasColumn( 'deleted_at' ) ) ? "WHERE `deleted_at` = 0" : ''
-		);
-		$mResult = $this->selectCustom( $sQuery );
-		return ( is_array( $mResult ) && isset( $mResult[ 0 ] ) ) ? $mResult : array();
-	}
-
-	/**
-	 * @param string $sQuery
-	 * @param        $nFormat
-	 * @return array|boolean
-	 */
-	public function selectCustom( $sQuery, $nFormat = ARRAY_A ) {
-		return $this->loadDbProcessor()->selectCustom( $sQuery, $nFormat );
-	}
-
-	/**
-	 * @param array $aData  - new insert data (associative array, column=>data)
-	 * @param array $aWhere - insert where (associative array)
-	 * @return integer|boolean (number of rows affected)
-	 */
-	public function updateRowsWhere( $aData, $aWhere ) {
-		return $this->loadDbProcessor()->updateRowsFromTableWhere( $this->getTableName(), $aData, $aWhere );
-	}
-
-	/**
-	 * @param integer $nTimeStamp
-	 * @return bool|int
-	 */
-	protected function deleteAllRowsOlderThan( $nTimeStamp ) {
-		$sQuery = "
-				DELETE from `%s`
-				WHERE
-					`created_at` < '%s'
-			";
-		$sQuery = sprintf(
-			$sQuery,
-			$this->getTableName(),
-			esc_sql( $nTimeStamp )
-		);
-		return $this->loadDbProcessor()->doSql( $sQuery );
-	}
+	abstract protected function getQueryDeleter();
 
 	/**
 	 * @return string
@@ -168,7 +120,7 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 	/**
 	 * @return bool
 	 */
-	protected function tableIsValid() {
+	protected function testTableStructure() {
 		$aColumnsByDefinition = array_map( 'strtolower', $this->getTableColumnsByDefinition() );
 		$aActualColumns = $this->loadDbProcessor()->getColumnsForTable( $this->getTableName(), 'strtolower' );
 		$bValid = ( count( array_diff( $aActualColumns, $aColumnsByDefinition ) ) <= 0
@@ -258,7 +210,7 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 			return false;
 		}
 		$nTimeStamp = $this->time() - $nAutoExpirePeriod;
-		return $this->deleteAllRowsOlderThan( $nTimeStamp );
+		return $this->deleteRowsOlderThan( $nTimeStamp );
 	}
 
 	/**
@@ -291,6 +243,25 @@ abstract class ICWP_WPSF_BaseDbProcessor extends ICWP_WPSF_Processor_BaseWpsf {
 	 */
 	protected function getAutoExpirePeriod() {
 		return null;
+	}
+
+	/**
+	 * @return $this
+	 */
+	protected function clearTableIsValid() {
+		unset( $this->bTableStructureIsValid );
+		return $this;
+	}
+
+	/**
+	 * @param bool $bRetest
+	 * @return bool
+	 */
+	protected function isTableStructureValid( $bRetest = false ) {
+		if ( $bRetest || !isset( $this->bTableStructureIsValid ) ) {
+			$this->bTableStructureIsValid = $this->testTableStructure();
+		}
+		return $this->bTableStructureIsValid;
 	}
 
 	/**

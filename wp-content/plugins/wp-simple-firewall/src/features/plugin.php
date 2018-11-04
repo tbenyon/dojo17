@@ -107,23 +107,28 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 
 		if ( !$this->isVisitorAddressSourceAutoDetect() ) {
 
-			$sIp = $oDp->FetchServer( $this->getVisitorAddressSource() );
-			if ( $oIpService->isViablePublicVisitorIp( $sIp, $this->getMyServerIp() ) ) {
-				$oIpService->setRequestIpAddress( $sIp );
-			}
-			else {
-				$sIp = null;
+			$sMaybeIp = $oDp->server( $this->getVisitorAddressSource() );
+
+			if ( !empty( $sMaybeIp ) ) {
+				$aMaybeIps = array_map( 'trim', explode( ',', $sMaybeIp ) ); // TODO:streamline this comma handling
+				foreach ( $aMaybeIps as $sMaybeIp ) {
+					if ( $oIpService->isViablePublicVisitorIp( $sMaybeIp, $this->getMyServerIp() ) ) {
+						$oIpService->setRequestIpAddress( $sMaybeIp );
+						$sIp = $sMaybeIp;
+						break;
+					}
+				}
 			}
 		}
 
 		// If the address at this stage is null, then the current setting is failing for IP detection
 		// So we try and rediscover a more correct source for the Request IP Address.
 		if ( empty( $sIp ) ) {
-			$sSource = $oIpService->setServerIpAddress( $this->getMyServerIp() )
-								  ->discoverViableRequestIpSource();
-			if ( !empty( $sSource ) ) {
-				$oIpService->setRequestIpAddress( $oDp->FetchServer( $sSource ) );
-				$this->setVisitorAddressSource( $sSource );
+			$aSourceAndIp = $oIpService->setServerIpAddress( $this->getMyServerIp() )
+									   ->discoverViableRequestIpSource();
+			if ( !empty( $aSourceAndIp[ 'source' ] ) ) {
+				$oIpService->setRequestIpAddress( $aSourceAndIp[ 'ip' ] );
+				$this->setVisitorAddressSource( $aSourceAndIp[ 'source' ] );
 			}
 		}
 	}
@@ -173,6 +178,9 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 						$aAjaxResponse = $this->ajaxExec_SetPluginTrackingPerm();
 					}
 					break;
+				case 'send_deactivate_survey':
+					$aAjaxResponse = $this->ajaxExec_SendDeactivateSurvey();
+					break;
 			}
 		}
 		return parent::handleAjax( $aAjaxResponse );
@@ -220,6 +228,25 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	public function ajaxExec_SetPluginTrackingPerm() {
 		$this->setPluginTrackingPermission( (bool)$this->loadDP()->query( 'agree', false ) );
+		return array( 'success' => true );
+	}
+
+	/**
+	 * @return array
+	 */
+	public function ajaxExec_SendDeactivateSurvey() {
+		$aResults = array();
+		foreach ( $_POST as $sKey => $sValue ) {
+			if ( strpos( $sKey, 'reason_' ) === 0 ) {
+				$aResults[] = str_replace( 'reason_', '', $sKey ).': '.$sValue;
+			}
+		}
+		$this->getEmailProcessor()
+			 ->send(
+				 $this->getSurveyEmail(),
+				 'Shield Deactivation Survey',
+				 implode( "\n<br/>", $aResults )
+			 );
 		return array( 'success' => true );
 	}
 
@@ -711,6 +738,29 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		return $this->prefixOptionKey( $this->getDef( 'db_notes_name' ) );
 	}
 
+	public function insertCustomJsVars() {
+		parent::insertCustomJsVars();
+
+		if ( $this->loadWp()->isCurrentPage( 'plugins.php' ) ) {
+			$sFile = $this->getConn()->getPluginBaseFile();
+			wp_localize_script(
+				$this->prefix( 'global-plugin' ),
+				'icwp_wpsf_vars_plugin',
+				array(
+					'file'  => $sFile,
+					'ajax'  => array(
+						'send_deactivate_survey' => $this->getAjaxActionData( 'send_deactivate_survey' ),
+					),
+					'hrefs' => array(
+						'deactivate' => $this->loadWpPlugins()->getUrl_Deactivate( $sFile ),
+					),
+				)
+			);
+			wp_enqueue_script( 'jquery-ui-dialog' ); // jquery and jquery-ui should be dependencies, didn't check though...
+			wp_enqueue_style( 'wp-jquery-ui-dialog' );
+		}
+	}
+
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
@@ -917,6 +967,13 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		$aOptionsParams[ 'summary' ] = $sSummary;
 		$aOptionsParams[ 'description' ] = $sDescription;
 		return $aOptionsParams;
+	}
+
+	/**
+	 * @return string
+	 */
+	private function getSurveyEmail() {
+		return base64_decode( $this->getDef( 'survey_email' ) );
 	}
 
 	/**

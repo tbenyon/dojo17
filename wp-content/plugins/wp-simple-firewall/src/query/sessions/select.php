@@ -16,42 +16,6 @@ class ICWP_WPSF_Query_Sessions_Select extends ICWP_WPSF_Query_BaseSelect {
 	}
 
 	/**
-	 * @param string $sWpUsername
-	 * @return ICWP_WPSF_SessionVO[]
-	 */
-	public function allForUsername( $sWpUsername ) {
-		return $this->addWhereEquals( 'wp_username', $sWpUsername )
-					->query();
-	}
-
-	/**
-	 * @param string $sWpUsername
-	 * @param string $sSessionId
-	 * @return ICWP_WPSF_SessionVO|null
-	 */
-	public function retrieveUserSession( $sWpUsername, $sSessionId ) {
-		$aData = $this->selectForUserSession( $sWpUsername, $sSessionId );
-		return ( count( $aData ) == 1 ) ? array_shift( $aData ) : null;
-	}
-
-	/**
-	 * @param string $sWpUsername
-	 * @param string $sSessionId
-	 * @return ICWP_WPSF_SessionVO[]
-	 */
-	protected function selectForUserSession( $sWpUsername = '', $sSessionId = '' ) {
-		if ( !empty( $sWpUsername ) ) {
-			$this->addWhereEquals( 'wp_username', $sWpUsername );
-		}
-		if ( !empty( $sSessionId ) ) {
-			$this->addWhereEquals( 'session_id', $sSessionId );
-		}
-
-		return $this->setOrderBy( 'last_activity_at', 'DESC' )
-					->query();
-	}
-
-	/**
 	 * @param int $nExpiredBoundary
 	 * @return $this
 	 */
@@ -68,19 +32,45 @@ class ICWP_WPSF_Query_Sessions_Select extends ICWP_WPSF_Query_BaseSelect {
 	}
 
 	/**
-	 * @return ICWP_WPSF_SessionVO[]|stdClass[]
+	 * @param int $sUsername
+	 * @return $this
 	 */
-	public function query() {
-		$aData = parent::query();
-		if ( $this->isResultsAsVo() ) {
-			foreach ( $aData as $nKey => $oSess ) {
-				$aData[ $nKey ] = new ICWP_WPSF_SessionVO( $oSess );
-			}
-		}
-		return $aData;
+	public function filterByUsername( $sUsername ) {
+		return $this->addWhereEquals( 'wp_username', $sUsername );
 	}
 
-	protected function customInit() {
-		require_once( dirname( __FILE__ ).'/ICWP_WPSF_SessionVO.php' );
+	/**
+	 * @param string $sSessionId
+	 * @param string $sWpUsername
+	 * @return ICWP_WPSF_SessionVO|null
+	 */
+	public function retrieveUserSession( $sSessionId, $sWpUsername = '' ) {
+		$aData = $this->selectForUserSession( $sSessionId, $sWpUsername );
+		return ( count( $aData ) == 1 ) ? array_shift( $aData ) : null;
+	}
+
+	/**
+	 * @param string $sSessionId
+	 * @param string $sWpUsername
+	 * @return ICWP_WPSF_SessionVO[]
+	 */
+	protected function selectForUserSession( $sSessionId = '', $sWpUsername = '' ) {
+		if ( !empty( $sWpUsername ) ) {
+			$this->addWhereEquals( 'wp_username', $sWpUsername );
+		}
+		if ( !empty( $sSessionId ) ) {
+			$this->addWhereEquals( 'session_id', $sSessionId );
+		}
+
+		/** @var ICWP_WPSF_SessionVO[] $aRes */
+		$aRes = $this->setOrderBy( 'last_activity_at', 'DESC' )->query();
+		return $aRes;
+	}
+
+	/**
+	 * @return string
+	 */
+	protected function getVoName() {
+		return 'ICWP_WPSF_SessionVO';
 	}
 }
