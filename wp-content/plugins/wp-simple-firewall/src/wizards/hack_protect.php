@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Wizard_HackProtect', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 /**
  * Class ICWP_WPSF_Wizard_HackProtect
@@ -76,11 +72,11 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 	private function process_Exclusions() {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
-		$oFO->setUfcFileExclusions( explode( "\n", $this->loadDP()->post( 'exclusions' ) ) );
+		$oFO->setUfcFileExclusions( explode( "\n", $this->loadRequest()->post( 'exclusions' ) ) );
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( true )
-						 ->setMessageText( 'File exclusions list has been updated.' );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( true )
+			->setMessageText( 'File exclusions list has been updated.' );
 	}
 
 	/**
@@ -90,31 +86,24 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		if ( $this->loadDP()->post( 'DeleteFiles' ) === 'Y' ) {
-			// First get the current setting and if necessary, modify it and then reset it.
-			$sDesiredOption = 'enabled_delete_only';
-			$sCurrentOption = $oFO->getUnrecognisedFileScannerOption();
-			if ( $sCurrentOption != $sDesiredOption ) {
-				$oFO->setUfcOption( $sDesiredOption );
-			}
+		$bIsDelete = $this->loadRequest()->post( 'DeleteFiles' ) === 'Y';
+		if ( $bIsDelete ) {
 
 			/** @var ICWP_WPSF_Processor_HackProtect $oProc */
 			$oProc = $oFO->getProcessor();
-			$oProc->getSubProcessorFileCleanerScan()
-				  ->runScan();
-			$oFO->setUfcOption( $sCurrentOption )
-				->savePluginOptions();
+			$oProc->getSubProScanner()
+				  ->getSubProcessorUfc()
+				  ->doScanAndFullRepair();
 
-			$oResponse->setSuccessful( true );
 			$sMessage = 'If your filesystem permissions allowed it, the scanner will have deleted these files.';
 		}
 		else {
-			$oResponse->setSuccessful( false );
 			$sMessage = 'No attempt was made to delete any files since the checkbox was not checked.';
 		}
 
-		return $oResponse->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bIsDelete )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -124,20 +113,22 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
 
-		if ( $this->loadDP()->post( 'RestoreFiles' ) === 'Y' ) {
+		if ( $this->loadRequest()->post( 'RestoreFiles' ) === 'Y' ) {
 			/** @var ICWP_WPSF_Processor_HackProtect $oProc */
 			$oProc = $oFO->getProcessor();
-			$oProc->getSubProcessorChecksumScan()->doChecksumScan( true );
+			$oProc->getSubProScanner()
+				  ->getSubProcessorWcf()
+				  ->doScanAndFullRepair();
 
-			$sMessage = 'The scanner will have restore these files if your filesystem permissions allowed it.';
+			$sMessage = 'The scanner will have restored these files if your filesystem permissions allowed it.';
 		}
 		else {
 			$sMessage = 'No attempt was made to restore the files since the checkbox was not checked.';
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( true )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( true )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -147,7 +138,7 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
 
-		$sSetting = $this->loadDP()->post( 'enable_scan' );
+		$sSetting = $this->loadRequest()->post( 'enable_scan' );
 		$oFO->setPtgEnabledOption( $sSetting )
 			->savePluginOptions();
 
@@ -160,9 +151,9 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 			$sMessage = 'There was a problem with saving this option. You may need to reload.';
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -172,7 +163,7 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
 
-		$sSetting = $this->loadDP()->post( 'enable_scan' );
+		$sSetting = $this->loadRequest()->post( 'enable_scan' );
 		$oFO->setUfcOption( $sSetting )
 			->savePluginOptions();
 
@@ -190,9 +181,9 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 			$sMessage = 'There was a problem with saving this option. You may need to reload.';
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -202,7 +193,7 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
 
-		$sSetting = $this->loadDP()->post( 'enable_scan' );
+		$sSetting = $this->loadRequest()->post( 'enable_scan' );
 
 		$bEnabled = true;
 		$bRestore = false;
@@ -243,9 +234,9 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 			$sMessage = 'Scanner automation is unchanged because of failed request.';
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -254,11 +245,11 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 	private function process_AssetAction() {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getModCon();
-		$oDP = $this->loadDP();
+		$oReq = Services::Request();
 
-		$sSlug = $oDP->post( 'slug' );
-		$sContext = $oDP->post( 'context' );
-		$sItemAction = $oDP->post( 'ptgaction' );
+		$sSlug = $oReq->post( 'slug' );
+		$sContext = $oReq->post( 'context' );
+		$sItemAction = $oReq->post( 'ptgaction' );
 
 		$oWpPlugins = $this->loadWpPlugins();
 		$oWpThemes = $this->loadWpThemes();
@@ -275,9 +266,11 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		/** @var ICWP_WPSF_Processor_HackProtect $oP */
 		$oP = $oFO->getProcessor();
-		$oGuard = $oP->getSubProcessorGuard();
+		$oGuard = $oP->getSubProScanner()
+					 ->getSubProcessorPtg();
 
 		$bSuccess = false;
+		$sMessage = '';
 		if ( empty( $mAsset ) && $sItemAction != 'ignore' ) { // we can only ignore "empty"/missing assets
 			$sMessage = 'Item could not be found.';
 		}
@@ -286,14 +279,14 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 
 				case 'reinstall':
 					if ( $bWpOrg ) {
-						$bSuccess = $oGuard->reinstall( $sSlug, $sContext );
+						$bSuccess = $oGuard->reinstall_DEP( $sSlug, $sContext );
 						$sMessage = 'The item has been re-installed from WordPress.org sources.';
 					}
 					break;
 
 				case 'ignore':
 					if ( empty( $mAsset ) ) {
-						$oGuard->deleteItemFromSnapshot( $sSlug, $sContext );
+						$oGuard->deleteItemFromSnapshot_DEP( $sSlug, $sContext );
 					}
 					else {
 						$oGuard->updateItemInSnapshot( $sSlug, $sContext );
@@ -318,9 +311,9 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		//_wpsf__( 'Success.' )
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -433,7 +426,11 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 					break;
 
 				case 'scanresult':
-					$aFiles = $this->cleanAbsPath( $oProc->getSubProcessorFileCleanerScan()->discoverFiles() );
+					/** @var \FernleafSystems\Wordpress\Plugin\Shield\Scans\Ufc\ResultsSet $oRes */
+					$oRes = $oProc->getSubProScanner()
+								  ->getSubProcessorUfc()
+								  ->doScan();
+					$aFiles = $oRes->getItemsPathsFragments();
 
 					$aAdditional[ 'data' ] = array(
 						'files' => array(
@@ -449,23 +446,23 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 
 			switch ( $sStep ) {
 				case 'scanresult':
-					$aFiles = $oProc->getSubProcessorChecksumScan()->doChecksumScan( false );
-					$aChecksum = $this->cleanAbsPath( $aFiles[ 'checksum_mismatch' ] );
-					$aMissing = $this->cleanAbsPath( $aFiles[ 'missing' ] );
+					$oResult = $oProc->getSubProScanner()
+									 ->getSubProcessorWcf()
+									 ->doScan();
 
 					$aAdditional[ 'data' ] = array(
 						'files' => array(
-							'count'    => count( $aChecksum ) + count( $aMissing ),
-							'has'      => !empty( $aChecksum ) || !empty( $aMissing ),
+							'count'    => $oResult->countItems(),
+							'has'      => $oResult->hasItems(),
 							'checksum' => array(
-								'count' => count( $aChecksum ),
-								'has'   => !empty( $aChecksum ),
-								'list'  => $aChecksum,
+								'count' => $oResult->countChecksumFailed(),
+								'has'   => $oResult->hasChecksumFailed(),
+								'list'  => $oResult->getChecksumFailedPaths(),
 							),
 							'missing'  => array(
-								'count' => count( $aMissing ),
-								'has'   => !empty( $aMissing ),
-								'list'  => $aMissing,
+								'count' => $oResult->countMissing(),
+								'has'   => $oResult->hasMissing(),
+								'list'  => $oResult->getMissingPaths(),
 							)
 						)
 					);
@@ -493,17 +490,17 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 	private function getPtgScanResults( $sContext ) {
 		/** @var ICWP_WPSF_Processor_HackProtect $oProc */
 		$oProc = $this->getModCon()->getProcessor();
-		$oP = $oProc->getSubProcessorGuard();
+		$oP = $oProc->getSubProScanner()->getSubProcessorPtg();
 		if ( $sContext == 'plugins' ) {
-			$aResults = $oP->scanPlugins();
+			$oResults = $oP->scanPlugins();
 		}
 		else {
-			$aResults = $oP->scanThemes();
+			$oResults = $oP->scanThemes();
 		}
 
 		$oWpPlugins = $this->loadWpPlugins();
 		$oWpThemes = $this->loadWpThemes();
-		foreach ( $aResults as $sSlug => $aItem ) {
+		foreach ( $oResults->getUniqueSlugs() as $sSlug ) {
 
 			if ( $sContext == 'plugins' ) {
 				$bIsWpOrg = $oWpPlugins->isWpOrg( $sSlug );
@@ -525,7 +522,7 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 
 			if ( empty( $sName ) ) {
-				$sName = isset( $aItem[ 'meta' ][ 'name' ] ) ? $aItem[ 'meta' ][ 'name' ] : 'Unknown: '.$sSlug;
+				$sName = $sSlug;
 			}
 
 			$aResults[ $sName ] = $this->stripPaths( $aItem );
@@ -560,24 +557,16 @@ class ICWP_WPSF_Wizard_HackProtect extends ICWP_WPSF_Wizard_BaseWpsf {
 	}
 
 	/**
-	 * @param array[] $aLists
-	 * @return array[]
+	 * @param string[] $aPaths
+	 * @return string[]
 	 */
-	private function stripPaths( $aLists ) {
-		foreach ( $aLists as $sKey => $aList ) {
-			if ( is_array( $aList ) ) {
-				$aLists[ $sKey ] = array_map(
-					function ( $sPath ) {
-						return ltrim( str_replace( WP_CONTENT_DIR, '', $sPath ), '/' );
-					},
-					$aList
-				);
-			}
-			else {
-				$aLists[ $sKey ] = $aList;
-			}
-		}
-		return $aLists;
+	private function stripPaths( $aPaths ) {
+		return array_map(
+			function ( $sPath ) {
+				return ltrim( str_replace( WP_CONTENT_DIR, '', $sPath ), '/' );
+			},
+			$aPaths
+		);
 	}
 
 	/**

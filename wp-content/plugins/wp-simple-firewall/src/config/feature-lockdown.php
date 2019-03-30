@@ -1,9 +1,10 @@
 {
-  "slug":       "lockdown",
-  "properties": {
+  "slug":        "lockdown",
+  "properties":  {
     "slug":                  "lockdown",
     "name":                  "Lockdown",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "lockdown",
     "tagline":               "Harden the more loosely controlled settings of your site",
     "show_central":          true,
@@ -11,9 +12,10 @@
     "premium":               false,
     "run_if_whitelisted":    false,
     "run_if_verified_bot":   false,
+    "run_if_wpcli":          false,
     "order":                 90
   },
-  "sections":   [
+  "sections":    [
     {
       "slug":        "section_apixml",
       "primary":     true,
@@ -56,7 +58,7 @@
       "hidden": true
     }
   ],
-  "options":    [
+  "options":     [
     {
       "key":         "enable_lockdown",
       "section":     "section_enable_plugin_feature_wordpress_lockdown",
@@ -73,7 +75,7 @@
       "section":     "section_apixml",
       "default":     "N",
       "type":        "checkbox",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/e6",
       "link_blog":   "",
       "name":        "Disable XML-RPC",
       "summary":     "Disable The XML-RPC System",
@@ -162,15 +164,26 @@
     },
     {
       "key":          "insights_xml_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     },
     {
       "key":          "insights_restapi_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     }
-  ]
+  ],
+  "definitions": {
+    "default_restapi_exclusions": [
+      "contact-form-7",
+      "jetpack",
+      "tho",
+      "wpstatistics",
+      "woocommerce"
+    ]
+  }
 }

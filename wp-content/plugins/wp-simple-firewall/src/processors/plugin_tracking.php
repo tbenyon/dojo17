@@ -1,20 +1,9 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_Plugin_Tracking', false ) ) {
-	return;
-}
+use FernleafSystems\Wordpress\Plugin\Shield;
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_Plugin_Tracking extends ICWP_WPSF_Processor_BasePlugin {
-
-	public function run() {
-		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
-		$oFO = $this->getMod();
-
-		if ( $oFO->isTrackingEnabled() ) {
-			$this->createTrackingCollectionCron();
-		}
-		add_action( $oFO->prefix( 'delete_plugin' ), array( $this, 'deleteCron' ) );
-	}
 
 	/**
 	 * @see autoAddToAdminNotices()
@@ -24,7 +13,7 @@ class ICWP_WPSF_Processor_Plugin_Tracking extends ICWP_WPSF_Processor_BasePlugin
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
 		if ( $this->getIfShowAdminNotices() && !$oFO->isTrackingPermissionSet() ) {
-			$oCon = $this->getController();
+			$oCon = $this->getCon();
 			$aRenderData = array(
 				'notice_attributes' => $aNoticeAttributes,
 				'strings'           => array(
@@ -53,34 +42,33 @@ class ICWP_WPSF_Processor_Plugin_Tracking extends ICWP_WPSF_Processor_BasePlugin
 	}
 
 	/**
+	 * @return bool
 	 */
-	public function sendTrackingData() {
+	private function sendTrackingData() {
+		$bSuccess = false;
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		if ( !$oFO->isTrackingEnabled() || !$oFO->readyToSendTrackingData() ) {
-			return false;
+
+		if ( $oFO->isTrackingEnabled() && $oFO->readyToSendTrackingData() ) {
+
+			$aData = $this->collectTrackingData();
+			if ( !empty( $aData ) && is_array( $aData ) ) {
+				$oFO->setTrackingLastSentAt();
+				$bSuccess = Services::HttpRequest()->post(
+					$oFO->getDef( 'tracking_post_url' ),
+					[
+						'timeout'     => 20,
+						'redirection' => 5,
+						'httpversion' => '1.1',
+						'blocking'    => true,
+						'body'        => [ 'tracking_data' => $aData ],
+						'user-agent'  => 'SHIELD/'.$this->getCon()->getVersion().';'
+					]
+				);
+			}
 		}
 
-		$aData = $this->collectTrackingData();
-		if ( empty( $aData ) || !is_array( $aData ) ) {
-			return false;
-		}
-
-		$mResult = $this->loadFS()->requestUrl(
-			$oFO->getDef( 'tracking_post_url' ),
-			array(
-				'method'      => 'POST',
-				'timeout'     => 20,
-				'redirection' => 5,
-				'httpversion' => '1.1',
-				'blocking'    => true,
-				'body'        => array( 'tracking_data' => $aData ),
-				'user-agent'  => 'SHIELD/'.$this->getController()->getVersion().';'
-			),
-			true
-		);
-		$oFO->setTrackingLastSentAt();
-		return $mResult;
+		return $bSuccess;
 	}
 
 	/**
@@ -98,17 +86,17 @@ class ICWP_WPSF_Processor_Plugin_Tracking extends ICWP_WPSF_Processor_BasePlugin
 	 * @return array
 	 */
 	protected function getBaseTrackingData() {
-		$oDP = $this->loadDP();
-		$oWP = $this->loadWp();
-		$oWpPlugins = $this->loadWpPlugins();
+		$oWP = Services::WpGeneral();
+		$oWpPlugins = Services::WpPlugins();
 		return array(
 			'env' => array(
 				'options' => array(
-					'php'             => $oDP->getPhpVersionCleaned(),
+					'php'             => Services::Data()->getPhpVersionCleaned(),
 					'wordpress'       => $oWP->getVersion(),
-					'slug'            => $this->getController()->getPluginSlug(),
-					'version'         => $this->getController()->getVersion(),
+					'slug'            => $this->getCon()->getPluginSlug(),
+					'version'         => $this->getCon()->getVersion(),
 					'is_wpms'         => $oWP->isMultisite() ? 1 : 0,
+					'is_cp'           => $oWP->isClassicPress() ? 1 : 0,
 					'ssl'             => is_ssl() ? 1 : 0,
 					'locale'          => get_locale(),
 					'plugins_total'   => count( $oWpPlugins->getPlugins() ),
@@ -120,25 +108,13 @@ class ICWP_WPSF_Processor_Plugin_Tracking extends ICWP_WPSF_Processor_BasePlugin
 	}
 
 	/**
-	 * @throws Exception
+	 * Cron callback
 	 */
-	protected function createTrackingCollectionCron() {
-		$sFullHookName = $this->getCronName();
-		$this->loadWpCronProcessor()
-			 ->setNextRun( strtotime( 'tomorrow 3am' ) - get_option( 'gmt_offset' )*HOUR_IN_SECONDS + rand( 0, 1800 ) )
-			 ->setRecurrence( 'daily' )
-			 ->createCronJob( $sFullHookName, array( $this, 'sendTrackingData' ) );
-	}
-
-	public function deleteCron() {
-		$this->loadWpCronProcessor()->deleteCronJob( $this->getCronName() );
-	}
-
-	/**
-	 * @return string
-	 */
-	public function getCronName() {
+	public function runDailyCron() {
+		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		return $oFO->prefix( $oFO->getDef( 'tracking_cron_handle' ) );
+		if ( $oFO->isTrackingEnabled() ) {
+			$this->sendTrackingData();
+		}
 	}
 }

@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_LoginProtect_IntentProviderBase', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -36,7 +32,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 		add_action( 'show_user_profile', array( $this, 'addOptionsToUserProfile' ) );
 		add_action( 'personal_options_update', array( $this, 'handleUserProfileSubmit' ) );
 
-		if ( $this->getController()->isValidAdminArea( true ) ) {
+		if ( $this->getCon()->isPluginAdmin() ) {
 			add_action( 'edit_user_profile', array( $this, 'addOptionsToUserEditProfile' ) );
 			add_action( 'edit_user_profile_update', array( $this, 'handleEditOtherUserProfileSubmit' ) );
 		}
@@ -47,7 +43,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @param WP_User $oUser
 	 */
 	public function onWpLogin( $sUsername, $oUser ) {
-		$this->processLoginAttempt_Filter( $oUser );
+		$this->processLoginAttempt( $oUser );
 	}
 
 	/**
@@ -57,7 +53,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @param int    $nUserId
 	 */
 	public function onWpSetLoggedInCookie( $sCookie, $nExpire, $nExpiration, $nUserId ) {
-		$this->processLoginAttempt_Filter( $this->loadWpUsers()->getUserById( $nUserId ) );
+		$this->processLoginAttempt( Services::WpUsers()->getUserById( $nUserId ) );
 	}
 
 	/**
@@ -88,7 +84,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @return bool
 	 */
 	public function getCurrentUserHasValidatedProfile() {
-		return $this->hasValidatedProfile( $this->loadWpUsers()->getCurrentWpUser() );
+		return $this->hasValidatedProfile( Services::WpUsers()->getCurrentWpUser() );
 	}
 
 	/**
@@ -100,18 +96,16 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 		$sKey = $this->getStub().'_validated';
 		return ( $oUser instanceof WP_User )
 			   && $this->hasValidSecret( $oUser )
-			   && $this->loadWpUsers()->metaVoForUser( $this->prefix(), $oUser->ID )->{$sKey} === true;
+			   && $this->getCon()->getUserMeta( $oUser )->{$sKey} === true;
 	}
 
 	/**
-	 * @since 6.9.0 removed fallback to old user meta
 	 * @param WP_User $oUser
 	 * @return string
 	 */
 	protected function getSecret( WP_User $oUser ) {
 		$sKey = $this->getStub().'_secret';
-		$oMeta = $this->loadWpUsers()
-					  ->metaVoForUser( $this->prefix(), $oUser->ID );
+		$oMeta = $this->getCon()->getUserMeta( $oUser );
 		$sSecret = $oMeta->{$sKey};
 		return empty( $sSecret ) ? '' : $oMeta->{$sKey};
 	}
@@ -145,7 +139,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @return $this
 	 */
 	public function deleteSecret( $oUser ) {
-		$oMeta = $this->loadWpUsers()->metaVoForUser( $this->prefix(), $oUser->ID );
+		$oMeta = $this->getCon()->getUserMeta( $oUser );
 		$sKey = $this->getStub().'_secret';
 		$oMeta->{$sKey} = null;
 		return $this;
@@ -168,7 +162,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 */
 	public function setProfileValidated( $oUser, $bValidated = true ) {
 		$sKey = $this->getStub().'_validated';
-		$oMeta = $this->loadWpUsers()->metaVoForUser( $this->prefix(), $oUser->ID );
+		$oMeta = $this->getCon()->getUserMeta( $oUser );
 		$oMeta->{$sKey} = $bValidated;
 		return $this;
 	}
@@ -179,7 +173,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @return $this
 	 */
 	protected function setSecret( $oUser, $sNewSecret ) {
-		$oMeta = $this->loadWpUsers()->metaVoForUser( $this->prefix(), $oUser->ID );
+		$oMeta = $this->getCon()->getUserMeta( $oUser );
 		$sKey = $this->getStub().'_secret';
 		$oMeta->{$sKey} = $sNewSecret;
 		return $this;
@@ -247,7 +241,7 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @param WP_Error|WP_User $oUser
 	 * @return WP_Error|WP_User
 	 */
-	public function processLoginAttempt_Filter( $oUser ) {
+	public function processLoginAttempt( $oUser ) {
 		return $oUser;
 	}
 
@@ -287,11 +281,11 @@ abstract class ICWP_WPSF_Processor_LoginProtect_IntentProviderBase extends ICWP_
 	 * @return string
 	 */
 	protected function fetchCodeFromRequest() {
-		return esc_attr( trim( $this->loadDP()->request( $this->getLoginFormParameter(), false, '' ) ) );
+		return esc_attr( Services::Request()->request( $this->getLoginFormParameter(), false, '' ) );
 	}
 
 	/**
-	 * @param bool $bIsSubjectTo
+	 * @param bool    $bIsSubjectTo
 	 * @param WP_User $oUser
 	 * @return bool
 	 */

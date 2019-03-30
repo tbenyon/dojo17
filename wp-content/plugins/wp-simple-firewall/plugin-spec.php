@@ -1,7 +1,7 @@
 {
   "properties":   {
-    "version":                 "6.10.2",
-    "release_timestamp":       1540289000,
+    "version":                 "7.2.3",
+    "release_timestamp":       1553515200,
     "slug_parent":             "icwp",
     "slug_plugin":             "wpsf",
     "human_name":              "Shield",
@@ -17,15 +17,17 @@
     "enable_premium":          true
   },
   "requirements": {
-    "php":       "5.2.4",
+    "php":       "5.4.0",
     "wordpress": "3.5.0"
   },
   "paths":        {
     "source":    "src",
+    "autoload":  "lib/vendor/autoload.php",
     "assets":    "resources",
     "languages": "languages",
     "templates": "templates",
-    "flags":     "flags"
+    "flags":     "flags",
+    "cache":     "shield"
   },
   "includes":     {
     "admin":        {
@@ -47,7 +49,8 @@
         "bootstrap4.bundle.min",
         "jquery",
         "plugin",
-        "featherlight"
+        "featherlight",
+        "jquery.fileDownload"
       ]
     },
     "frontend":     {
@@ -74,6 +77,10 @@
     "icon_url_16x16":   "pluginlogo_16x16.png",
     "icon_url_32x32":   "pluginlogo_32x32.png",
     "icon_url_128x128": "pluginlogo_128x128.png"
+  },
+  "meta":         {
+    "url_repo_home":        "https://icwp.io/eh",
+    "headway_changelog_id": "xaoEZJ"
   },
   "plugin_meta":  [
     {

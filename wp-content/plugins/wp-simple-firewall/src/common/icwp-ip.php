@@ -1,7 +1,6 @@
 <?php
-if ( class_exists( 'ICWP_WPSF_Ip', false ) ) {
-	return;
-}
+
+use FernleafSystems\Wordpress\Services\Services;
 
 /**
  * This is taken straight out of https://github.com/symfony/HttpFoundation/blob/master/IpUtils.php
@@ -131,21 +130,20 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param string $sIp
+	 * @return string
+	 */
+	public function getIpWhoisLookup( $sIp ) {
+		return sprintf( 'https://apps.db.ripe.net/db-web-ui/#/query?bflag&searchtext=%s#resultsSection', $sIp );
+	}
+
+	/**
+	 * @deprecated
 	 * @param boolean $bAsHuman
 	 * @return int|string|bool - visitor IP Address as IP2Long
 	 */
 	public function getRequestIp( $bAsHuman = true ) {
-
-		if ( empty( $this->sIp ) ) {
-			$aResult = $this->findViableVisitorIp();
-			$this->sIp = $aResult[ 'ip' ];
-		}
-		if ( !$this->sIp || $bAsHuman ) {
-			return $this->sIp;
-		}
-
-		// If it's IPv6 we never return as long (we can't!)
-		return ( $this->getIpVersion( $this->sIp ) == 4 ) ? ip2long( $this->sIp ) : $this->sIp;
+		return Services::IP()->getRequestIp( $bAsHuman );
 	}
 
 	/**
@@ -174,7 +172,21 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 	 * @return boolean
 	 */
 	public function isValidIp( $sIp, $flags = null ) {
-		return filter_var( $sIp, FILTER_VALIDATE_IP, $flags );
+		/*preg_replace( '#[^a-f0-9:.]#i', '', $sIp )*/
+		return filter_var( trim( $sIp ), FILTER_VALIDATE_IP, $flags );
+	}
+
+	/**
+	 * @param string $sIp
+	 * @return boolean
+	 */
+	public function isValidIp4Range( $sIp ) {
+		$bIsRange = false;
+		if ( strpos( $sIp, '/' ) ) {
+			list( $sIp, $sCIDR ) = explode( '/', $sIp );
+			$bIsRange = $this->isValidIp( $sIp ) && ( (int)$sCIDR >= 0 && (int)$sCIDR <= 32 );
+		}
+		return $bIsRange;
 	}
 
 	/**
@@ -247,19 +259,11 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @return string|null
+	 * @deprecated
+	 * @return string|false
 	 */
 	public function whatIsMyIp() {
-
-		if ( empty( $this->sMyIp ) ) {
-			$sIp = $this->loadFS()
-						->getUrlContent( self::IpifyEndpoint );
-			if ( is_string( $sIp ) ) {
-				$sIp = trim( $sIp );
-			}
-			$this->sMyIp = $this->isValidIp_PublicRemote( $sIp ) ? $sIp : null;
-		}
-		return $this->sMyIp;
+		return Services::IP()->whatIsMyIp();
 	}
 
 	/**
@@ -267,12 +271,12 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function determineSourceFromIp( $sVisitorIp ) {
-		$oDp = $this->loadDP();
+		$oReq = Services::Request();
 
 		$sBestSource = null;
 		foreach ( $this->getIpSourceOptions() as $sSource ) {
 
-			$sIpToTest = $oDp->server( $sSource );
+			$sIpToTest = $oReq->server( $sSource );
 			if ( empty( $sIpToTest ) ) {
 				continue;
 			}
@@ -309,10 +313,10 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 
 		$sIpToReturn = false;
 		$sSource = false;
-		$oDp = $this->loadDP();
+		$oReq = Services::Request();
 		foreach ( $this->getIpSourceOptions() as $sMaybeSource ) {
 
-			$sIpToTest = $oDp->server( $sMaybeSource );
+			$sIpToTest = $oReq->server( $sMaybeSource );
 			if ( empty( $sIpToTest ) ) {
 				continue;
 			}
@@ -347,6 +351,7 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 			'HTTP_X_REAL_IP',
 			'HTTP_X_SUCURI_CLIENTIP',
 			'HTTP_INCAP_CLIENT_IP',
+			'HTTP_X_SP_FORWARDED_IP',
 			'HTTP_FORWARDED',
 			'HTTP_CLIENT_IP'
 		);
@@ -390,36 +395,29 @@ class ICWP_WPSF_Ip extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @deprecated
 	 * @param int $sIpVersion
 	 * @return string[]
 	 */
 	public function getServiceIps_Pingdom( $sIpVersion = 4 ) {
-		$sUrl = sprintf( 'https://my.pingdom.com/probes/ipv%s', $sIpVersion );
-		return array_filter( array_map( 'trim', explode( "\n", $this->loadFS()->getUrlContent( $sUrl ) ) ) );
+		return $this->loadServiceProviders()->getIps_Pingdom()[ $sIpVersion ];
 	}
 
 	/**
+	 * @deprecated
 	 * @return string[]
 	 */
 	public function getServiceIps_StatusCake() {
-		$aIps = array();
-		$aData = @json_decode( $this->loadFS()
-									->getUrlContent( 'https://app.statuscake.com/Workfloor/Locations.php?format=json' ), true );
-		if ( is_array( $aData ) ) {
-			foreach ( $aData as $aItem ) {
-				$aIps[] = $aItem[ 'ip' ];
-			}
-		}
-		return $aIps;
+		return $this->loadServiceProviders()->getIps_Statuscake();
 	}
 
 	/**
+	 * @deprecated
 	 * @param int $sIpVersion
 	 * @return string[]
 	 */
 	public function getServiceIps_UptimeRobot( $sIpVersion = 4 ) {
-		$sUrl = sprintf( 'https://uptimerobot.com/inc/files/ips/IPv%s.txt', $sIpVersion );
-		return array_filter( array_map( 'trim', explode( "\n", $this->loadFS()->getUrlContent( $sUrl ) ) ) );
+		return $this->loadServiceProviders()->getIps_UptimeRobot()[ $sIpVersion ];
 	}
 
 	/**

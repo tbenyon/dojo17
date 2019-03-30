@@ -3,7 +3,8 @@
   "properties":  {
     "slug":                  "autoupdates",
     "name":                  "Automatic Updates",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "autoupdates",
     "tagline":               "Take back full control of WordPress automatic updates",
     "show_central":          true,
@@ -11,6 +12,7 @@
     "premium":               false,
     "run_if_whitelisted":    true,
     "run_if_verified_bot":   true,
+    "run_if_wpcli":          true,
     "order":                 60
   },
   "sections":    [
@@ -154,11 +156,36 @@
       "premium":     true,
       "default":     "0",
       "type":        "integer",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/e5",
       "link_blog":   "",
       "name":        "Update Delay",
       "summary":     "Delay Automatic Updates For Period Of Stability",
       "description": "Shield will delay upgrades until the new update has been available for the set number of days."
+    },
+    {
+      "key":           "autoupdate_plugin_self",
+      "section":       "section_options",
+      "default":       "auto",
+      "type":          "select",
+      "value_options": [
+        {
+          "value_key": "auto",
+          "text":      "Let Shield Decide"
+        },
+        {
+          "value_key": "disabled",
+          "text":      "Disabled"
+        },
+        {
+          "value_key": "immediate",
+          "text":      "As Soon As Possible"
+        }
+      ],
+      "link_info":     "https://icwp.io/3x",
+      "link_blog":     "",
+      "name":          "WordPress Core Updates",
+      "summary":       "Decide how the WordPress Core will automatically update, if at all",
+      "description":   "At least automatically upgrading minor versions is recommended (and is the WordPress default)."
     },
     {
       "key":         "enable_upgrade_notification_email",
@@ -185,15 +212,18 @@
     },
     {
       "key":          "delay_tracking",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      [],
-      "section":      "section_non_ui"
+      "sensitive":    true,
+      "type":         "array",
+      "default":      []
     },
     {
       "key":          "selected_plugins",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      [],
-      "section":      "section_non_ui"
+      "type":         "array",
+      "default":      []
     }
   ],
   "definitions": {

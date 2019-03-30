@@ -1,7 +1,4 @@
 <?php
-if ( class_exists( 'ICWP_WPSF_WpFunctions', false ) ) {
-	return;
-}
 
 class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 
@@ -30,11 +27,6 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 */
 	protected $sWpVersion;
 
-	/**
-	 * @var boolean
-	 */
-	protected $bIsMultisite;
-
 	public function __construct() {
 	}
 
@@ -50,7 +42,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @return null|string
 	 */
 	public function findWpCoreFile( $sFilename ) {
-		$sLoaderPath = dirname( __FILE__ );
+		$sLoaderPath = __DIR__;
 		$nLimiter = 0;
 		$nMaxLimit = count( explode( DIRECTORY_SEPARATOR, trim( $sLoaderPath, DIRECTORY_SEPARATOR ) ) );
 		$bFound = false;
@@ -106,7 +98,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 			 || ( isset( $GLOBALS[ 'pagenow' ] ) && $GLOBALS[ 'pagenow' ] == 'update.php' ) ) {
 			return true;
 		}
-		wp_redirect( $oWpPlugins->getLinkPluginUpgrade( $sPluginFile ) );
+		wp_redirect( $oWpPlugins->getUrl_Upgrade( $sPluginFile ) );
 		exit();
 	}
 
@@ -134,33 +126,6 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 */
 	public function getAutoRedirectLocations() {
 		return array( 'wp-admin', 'dashboard', 'admin', 'login', 'wp-login.php' );
-	}
-
-	/**
-	 * @return string[]
-	 */
-	public function getCoreChecksums() {
-		$aChecksumData = false;
-		$sCurrentVersion = $this->getVersion();
-
-		if ( function_exists( 'get_core_checksums' ) ) { // if it's loaded, we use it.
-			$aChecksumData = get_core_checksums( $sCurrentVersion, $this->getLocale( true ) );
-		}
-		else {
-			$aQueryArgs = array(
-				'version' => $sCurrentVersion,
-				'locale'  => $this->getLocale( true )
-			);
-			$sQueryUrl = add_query_arg( $aQueryArgs, 'https://api.wordpress.org/core/checksums/1.0/' );
-			$sResponse = $this->loadFS()->getUrlContent( $sQueryUrl );
-			if ( !empty( $sResponse ) ) {
-				$aDecodedResponse = json_decode( trim( $sResponse ), true );
-				if ( is_array( $aDecodedResponse ) && isset( $aDecodedResponse[ 'checksums' ] ) && is_array( $aDecodedResponse[ 'checksums' ] ) ) {
-					$aChecksumData = $aDecodedResponse[ 'checksums' ];
-				}
-			}
-		}
-		return is_array( $aChecksumData ) ? $aChecksumData : array();
 	}
 
 	/**
@@ -220,16 +185,19 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @param bool $bForChecksums
+	 * @param string $sSeparator
 	 * @return string
 	 */
-	public function getLocale( $bForChecksums = false ) {
-		$sLocale = get_locale();
-		if ( $bForChecksums ) {
-			global $wp_local_package;
-			$sLocale = empty( $wp_local_package ) ? 'en_US' : $wp_local_package;
-		}
-		return $sLocale;
+	public function getLocale( $sSeparator = '_' ) {
+		return str_replace( '_', $sSeparator, get_locale() );
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getLocaleForChecksums() {
+		global $wp_local_package;
+		return empty( $wp_local_package ) ? 'en_US' : $wp_local_package;
 	}
 
 	/**
@@ -362,7 +330,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @param string $sPluginBaseFilename
 	 * @return boolean
 	 */
-	public function getIsPluginAutomaticallyUpdated( $sPluginBaseFilename ) {
+	public function isPluginAutomaticallyUpdated( $sPluginBaseFilename ) {
 		$oUpdater = $this->getWpAutomaticUpdater();
 		if ( !$oUpdater ) {
 			return false;
@@ -405,7 +373,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	}
 
 	public function redirectHere() {
-		$this->doRedirect( $this->loadDP()->getRequestUri() );
+		$this->doRedirect( $this->loadRequest()->getUri() );
 	}
 
 	/**
@@ -438,14 +406,14 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	public function doRedirect( $sUrl, $aQueryParams = array(), $bSafe = true, $bProtectAgainstInfiniteLoops = true ) {
 		$sUrl = empty( $aQueryParams ) ? $sUrl : add_query_arg( $aQueryParams, $sUrl );
 
-		$oDp = $this->loadDP();
+		$oReq = $this->loadRequest();
 		// we prevent any repetitive redirect loops
 		if ( $bProtectAgainstInfiniteLoops ) {
-			if ( $oDp->cookie( 'icwp-isredirect' ) == 'yes' ) {
+			if ( $oReq->cookie( 'icwp-isredirect' ) == 'yes' ) {
 				return;
 			}
 			else {
-				$oDp->setCookie( 'icwp-isredirect', 'yes', 5 );
+				$oReq->setCookie( 'icwp-isredirect', 'yes', 5 );
 			}
 		}
 
@@ -503,7 +471,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @param bool   $bWpmsOnly
 	 * @return string
 	 */
-	public function getAdminUrl( $sPath, $bWpmsOnly = false ) {
+	public function getAdminUrl( $sPath = '', $bWpmsOnly = false ) {
 		return $bWpmsOnly ? network_admin_url( $sPath ) : admin_url( $sPath );
 	}
 
@@ -541,7 +509,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 
 		//special case for plugin admin pages.
 		if ( $sPage == 'admin.php' ) {
-			$sSubPage = $this->loadDP()->query( 'page' );
+			$sSubPage = $this->loadRequest()->query( 'page' );
 			if ( !empty( $sSubPage ) ) {
 				$aQueryArgs = array(
 					'page' => $sSubPage,
@@ -564,7 +532,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @param string
 	 * @return string
 	 */
-	public function getIsPage_Updates() {
+	public function isPage_Updates() {
 		return $this->isCurrentPage( 'update.php' );
 	}
 
@@ -581,33 +549,33 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	public function isRequestLoginUrl() {
-		return $this->isLoginUrl( $this->loadDP()->getRequestPath() );
+		return $this->isLoginUrl( $this->loadRequest()->getPath() );
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isRequestUserLogin() {
-		$oDp = $this->loadDP();
-		return $this->isRequestLoginUrl() && $oDp->isMethodPost()
-			   && !is_null( $oDp->post( 'log' ) ) && !is_null( $oDp->post( 'pwd' ) );
+		$oReq = $this->loadRequest();
+		return $this->isRequestLoginUrl() && $oReq->isMethodPost()
+			   && !is_null( $oReq->post( 'log' ) ) && !is_null( $oReq->post( 'pwd' ) );
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isRequestUserRegister() {
-		$oDp = $this->loadDP();
-		return $oDp->isMethodPost() && !is_null( $oDp->post( 'user_login' ) )
-			   && !is_null( $oDp->post( 'user_email' ) ) && $this->isRequestLoginUrl();
+		$oReq = $this->loadRequest();
+		return $oReq->isMethodPost() && !is_null( $oReq->post( 'user_login' ) )
+			   && !is_null( $oReq->post( 'user_email' ) ) && $this->isRequestLoginUrl();
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isRequestUserResetPasswordStart() {
-		$oDp = $this->loadDP();
-		return $this->isRequestLoginUrl() && $oDp->isMethodPost() && !is_null( $oDp->post( 'user_login' ) );
+		$oReq = $this->loadRequest();
+		return $this->isRequestLoginUrl() && $oReq->isMethodPost() && !is_null( $oReq->post( 'user_login' ) );
 	}
 
 	/**
@@ -717,10 +685,14 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	public function isMultisite() {
-		if ( !isset( $this->bIsMultisite ) ) {
-			$this->bIsMultisite = function_exists( 'is_multisite' ) && is_multisite();
-		}
-		return $this->bIsMultisite;
+		return function_exists( 'is_multisite' ) && is_multisite();
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isMultisite_SubdomainInstall() {
+		return $this->isMultisite() && defined( 'SUBDOMAIN_INSTALL' ) && SUBDOMAIN_INSTALL;
 	}
 
 	/**
@@ -729,10 +701,11 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	public function isRest() {
 		$bIsRest = ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || !empty( $_REQUEST[ 'rest_route' ] );
 
-		if ( !$bIsRest && function_exists( 'rest_url' ) ) {
+		global $wp_rewrite;
+		if ( !$bIsRest && function_exists( 'rest_url' ) && is_object( $wp_rewrite ) ) {
 			$sRestUrlBase = get_rest_url( get_current_blog_id(), '/' );
 			$sRestPath = trim( parse_url( $sRestUrlBase, PHP_URL_PATH ), '/' );
-			$sRequestPath = trim( $this->loadDP()->getRequestPath(), '/' );
+			$sRequestPath = trim( $this->loadRequest()->getPath(), '/' );
 			$bIsRest = !empty( $sRequestPath ) && !empty( $sRestPath )
 					   && ( strpos( $sRequestPath, $sRestPath ) === 0 );
 		}
@@ -763,11 +736,11 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 		$sPath = null;
 
 		if ( $this->isRest() ) {
-			$oDP = $this->loadDP();
+			$oReq = $this->loadRequest();
 
-			$sPath = $oDP->request( 'rest_route' );
+			$sPath = $oReq->request( 'rest_route' );
 			if ( empty( $sPath ) && $this->isPermalinksEnabled() ) {
-				$sFullUri = $this->loadWp()->getHomeUrl( $oDP->getRequestPath() );
+				$sFullUri = $this->loadWp()->getHomeUrl( $oReq->getPath() );
 				$sPath = substr( $sFullUri, strlen( get_rest_url( get_current_blog_id() ) ) );
 			}
 		}
@@ -814,10 +787,10 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 */
 	public function getCurrentWpAdminPage() {
 
-		$oDp = $this->loadDP();
-		$sScript = $oDp->getScriptName();
+		$oReq = $this->loadRequest();
+		$sScript = $oReq->getScriptName();
 		if ( is_admin() && !empty( $sScript ) && basename( $sScript ) == 'admin.php' ) {
-			$sCurrentPage = $oDp->query( 'page' );
+			$sCurrentPage = $oReq->query( 'page' );
 		}
 		return empty( $sCurrentPage ) ? '' : $sCurrentPage;
 	}
@@ -829,7 +802,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getTimeStringForDisplay( $nTime = null, $bShowTime = true, $bShowDate = true ) {
-		$nTime = empty( $nTime ) ? $this->loadDP()->time() : $nTime;
+		$nTime = empty( $nTime ) ? $this->loadRequest()->ts() : $nTime;
 
 		$sFullTimeString = $bShowTime ? $this->getTimeFormat() : '';
 		if ( empty( $sFullTimeString ) ) {
@@ -846,7 +819,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function getTimeStampForDisplay( $nTime = null ) {
-		$nTime = empty( $nTime ) ? $this->loadDP()->time() : $nTime;
+		$nTime = empty( $nTime ) ? $this->loadRequest()->ts() : $nTime;
 		return date_i18n( DATE_RFC2822, $this->getTimeAsGmtOffset( $nTime ) );
 	}
 
@@ -864,7 +837,7 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 			}
 		}
 
-		$nTime = is_null( $nTime ) ? $this->loadDP()->time() : $nTime;
+		$nTime = is_null( $nTime ) ? $this->loadRequest()->ts() : $nTime;
 		return $nTime + ( $nTimezoneOffset*HOUR_IN_SECONDS );
 	}
 
@@ -949,5 +922,13 @@ class ICWP_WPSF_WpFunctions extends ICWP_WPSF_Foundation {
 			$this->turnOffCache();
 		}
 		wp_die( $sMessage, $sTitle );
+	}
+
+	/**
+	 * @deprecated
+	 * @return string[]
+	 */
+	public function getCoreChecksums() {
+		return \FernleafSystems\Wordpress\Services\Services::WpGeneral()->getCoreChecksums();
 	}
 }

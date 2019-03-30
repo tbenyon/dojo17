@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_CommentsFilter_HumanSpam', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_commentsfilter.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_CommentsFilter_HumanSpam extends ICWP_WPSF_Processor_CommentsFilter_Base {
 
@@ -61,7 +57,7 @@ class ICWP_WPSF_Processor_CommentsFilter_HumanSpam extends ICWP_WPSF_Processor_C
 				$aCommentData[ 'comment_author_url' ],
 				$aCommentData[ 'comment_content' ],
 				$this->ip(),
-				substr( $this->loadDP()->server( 'HTTP_USER_AGENT', '' ), 0, 254 )
+				substr( Services::Request()->getUserAgent(), 0, 254 )
 			);
 
 			// Now we check whether comment status is to completely reject and then we simply redirect to "home"
@@ -91,7 +87,7 @@ class ICWP_WPSF_Processor_CommentsFilter_HumanSpam extends ICWP_WPSF_Processor_C
 
 		$sCurrentStatus = $this->getStatus();
 		// Check that we haven't already marked the comment through another scan, say GASP
-		if ( !empty( $sCurrentStatus ) || !$oFO->isOpt( 'enable_comments_human_spam_filter', 'Y' ) ) {
+		if ( !empty( $sCurrentStatus ) ) {
 			return;
 		}
 		// read the file of spam words
@@ -122,8 +118,8 @@ class ICWP_WPSF_Processor_CommentsFilter_HumanSpam extends ICWP_WPSF_Processor_C
 					$this->doStatIncrement( sprintf( 'spam.human.%s', $sKey ) );
 					$this->setCommentStatus( $this->getOption( 'comments_default_action_human_spam' ) );
 					$this->setCommentStatusExplanation( sprintf( _wpsf__( 'Human SPAM filter found "%s" in "%s"' ), $sWord, $sKey ) );
-					$this->setIpTransgressed(); // black mark this IP
-					$oFO->setOptInsightsAt( 'last_comment_block_at' );
+					$oFO->setOptInsightsAt( 'last_comment_block_at' )
+						->setIpTransgressed();
 					break 2;
 				}
 			}
@@ -162,7 +158,7 @@ class ICWP_WPSF_Processor_CommentsFilter_HumanSpam extends ICWP_WPSF_Processor_C
 	/**
 	 */
 	protected function doSpamBlacklistUpdate() {
-		$this->loadFS()->deleteFile( $this->getSpamBlacklistFile() );
+		Services::WpFs()->deleteFile( $this->getSpamBlacklistFile() );
 		$this->doSpamBlacklistImport();
 	}
 
@@ -202,14 +198,13 @@ class ICWP_WPSF_Processor_CommentsFilter_HumanSpam extends ICWP_WPSF_Processor_C
 	 * @return string
 	 */
 	protected function doSpamBlacklistDownload() {
-		$oFs = $this->loadFS();
-		return $oFs->getUrlContent( self::Spam_Blacklist_Source );
+		return \FernleafSystems\Wordpress\Services\Services::HttpRequest()->getContent( self::Spam_Blacklist_Source );
 	}
 
 	/**
 	 * @return string
 	 */
 	protected function getSpamBlacklistFile() {
-		return $this->getMod()->getResourcesDir().'spamblacklist.txt';
+		return $this->getCon()->getPath_Assets( 'spamblacklist.txt' );
 	}
 }

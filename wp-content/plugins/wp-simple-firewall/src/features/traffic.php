@@ -1,38 +1,20 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_FeatureHandler_Traffic', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Plugin\Shield;
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf {
-
-	protected function doPostConstruction() {
-		parent::doPostConstruction();
-		$this->loadAutoload();
-	}
 
 	/**
 	 * Hooked to the plugin's main plugin_shutdown action
 	 */
 	public function action_doFeatureShutdown() {
-		if ( $this->isAutoDisable() && $this->loadDP()->time() - $this->getAutoDisableAt() > 0 ) {
+		if ( $this->isAutoDisable() && Services::Request()->ts() - $this->getAutoDisableAt() > 0 ) {
 			$this->setOpt( 'auto_disable', 'N' )
 				 ->setOpt( 'autodisable_at', 0 )
 				 ->setIsMainFeatureEnabled( false );
 		}
 		parent::action_doFeatureShutdown();
-	}
-
-	/**
-	 * We clean the database after saving.
-	 */
-	protected function doPrePluginOptionsSave() {
-		/** @var ICWP_WPSF_Processor_Traffic $oPro */
-		$oPro = $this->getProcessor();
-		$oPro->getProcessorLogger()
-			 ->cleanupDatabase();
 	}
 
 	/**
@@ -44,7 +26,7 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 		$oPro->getProcessorLogger()
 			 ->cleanupDatabase();
 
-		$this->setOpt( 'autodisable_at', $this->isAutoDisable() ? $this->loadDP()->time() + WEEK_IN_SECONDS : 0 );
+		$this->setOpt( 'autodisable_at', $this->isAutoDisable() ? Services::Request()->ts() + WEEK_IN_SECONDS : 0 );
 
 		$aExcls = $this->getCustomExclusions();
 		foreach ( $aExcls as &$sExcl ) {
@@ -57,7 +39,7 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 	 * @return bool
 	 */
 	protected function isReadyToExecute() {
-		$oIp = $this->loadIpService();
+		$oIp = Services::IP();
 		return $oIp->isValidIp_PublicRange( $oIp->getRequestIp() ) && parent::isReadyToExecute();
 	}
 
@@ -72,8 +54,8 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 			$aWarnings[] = sprintf( _wpsf__( '%s is a Pro-only feature.' ), _wpsf__( 'Traffic Watch' ) );
 		}
 		else {
-			$oIp = $this->loadIpService();
-			if ( !$this->loadIpService()->isValidIp_PublicRange( $oIp->getRequestIp() ) ) {
+			$oIp = Services::IP();
+			if ( !$oIp->isValidIp_PublicRange( $oIp->getRequestIp() ) ) {
 				$aWarnings[] = _wpsf__( 'Traffic Watcher will not run because visitor IP address detection is not correctly configured.' );
 			}
 		}
@@ -122,14 +104,7 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 	 * @return string
 	 */
 	protected function getAutoDisableTimestamp() {
-		return $this->loadWp()->getTimeStampForDisplay( $this->getAutoDisableAt() );
-	}
-
-	/**
-	 * @return string
-	 */
-	public function getTrafficTableName() {
-		return $this->prefix( $this->getDef( 'traffic_table_name' ), '_' );
+		return Services::WpGeneral()->getTimeStampForDisplay( $this->getAutoDisableAt() );
 	}
 
 	/**
@@ -189,30 +164,16 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 	}
 
 	/**
-	 * @return array
-	 */
-	protected function getContentCustomActionsData() {
-		return array(
-			'sYourIp'           => $this->loadIpService()->getRequestIp(),
-			'sLiveTrafficTable' => $this->renderLiveTrafficTable(),
-			'sTitle'            => _wpsf__( 'Traffic Watch Viewer' ),
-			'ajax'              => array(
-				'render_table' => $this->getAjaxActionData( 'render_traffic_table', true )
-			)
-		);
-	}
-
-	/**
 	 * @param array $aAjaxResponse
 	 * @return array
 	 */
 	public function handleAuthAjax( $aAjaxResponse ) {
 
 		if ( empty( $aAjaxResponse ) ) {
-			switch ( $this->loadDP()->request( 'exec' ) ) {
+			switch ( Services::Request()->request( 'exec' ) ) {
 
-				case 'render_traffic_table':
-					$aAjaxResponse = $this->ajaxExec_RenderTrafficTable();
+				case 'render_table_traffic':
+					$aAjaxResponse = $this->ajaxExec_BuildTableTraffic();
 					break;
 
 				default:
@@ -222,239 +183,24 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 		return parent::handleAuthAjax( $aAjaxResponse );
 	}
 
-	protected function ajaxExec_RenderTrafficTable() {
-		$oDP = $this->loadDP();
-		parse_str( $oDP->post( 'filters', '' ), $aFilters );
-		$aParams = array_intersect_key(
-			array_merge( $_POST, array_map( 'trim', $aFilters ) ),
-			array_flip( array(
-				'paged',
-				'order',
-				'orderby',
-				'fIp',
-				'fPath',
-				'fResponse',
-				'fUsername',
-				'fLoggedIn',
-				'fTransgression',
-				'fExludeYou'
-			) )
-		);
+	private function ajaxExec_BuildTableTraffic() {
+		/** @var ICWP_WPSF_Processor_Traffic $oPro */
+		$oPro = $this->getProcessor();
+		$oTableBuilder = ( new Shield\Tables\Build\Traffic() )
+			->setMod( $this )
+			->setDbHandler( $oPro->getProcessorLogger()->getDbHandler() )
+			->setGeoIpDbSource( $this->getCon()->getPath_Assets( 'db/GeoIp2/GeoLite2-Country.mmdb' ) );
+
 		return array(
 			'success' => true,
-			'html'    => $this->renderLiveTrafficTable( $aParams )
-		);
-	}
-
-	/**
-	 * @param string $sContext
-	 * @param array  $aParams
-	 * @return string
-	 */
-	protected function renderLiveTrafficTable( $aParams = array() ) {
-
-		// clean any params of nonsense
-		foreach ( $aParams as $sKey => $sValue ) {
-			if ( preg_match( '#[^a-z0-9_]#i', $sKey ) || preg_match( '#[^a-z0-9._-]#i', $sValue ) ) {
-				unset( $aParams[ $sKey ] );
-			}
-		}
-		$aParams = array_merge(
-			array(
-				'orderby'        => 'created_at',
-				'order'          => 'DESC',
-				'paged'          => 1,
-				'fIp'            => '',
-				'fUsername'      => '',
-				'fLoggedIn'      => -1,
-				'fPath'          => '',
-				'fTransgression' => -1,
-				'fResponse'      => '',
-				'fExludeYou'     => '',
-			),
-			$aParams
-		);
-		$nPage = (int)$aParams[ 'paged' ];
-
-		/** @var ICWP_WPSF_Processor_Traffic $oTrafficPro */
-		$oTrafficPro = $this->loadProcessor();
-		$oSelector = $oTrafficPro->getProcessorLogger()
-								 ->getQuerySelector()
-								 ->setPage( $nPage )
-								 ->setOrderBy( $aParams[ 'orderby' ], $aParams[ 'order' ] )
-								 ->setLimit( $this->getDefaultPerPage() )
-								 ->setResultsAsVo( true );
-		// Filters
-		{
-			$oIp = $this->loadIpService();
-			// If an IP is specified, it takes priority
-			if ( $oIp->isValidIp( $aParams[ 'fIp' ] ) ) {
-				$oSelector->filterByIp( inet_pton( $aParams[ 'fIp' ] ) );
-			}
-			else if ( $aParams[ 'fExludeYou' ] == 'Y' ) {
-				$oSelector->filterByNotIp( inet_pton( $oIp->getRequestIp() ) );
-			}
-
-			// if username is provided, this takes priority over "logged-in" (even if it's invalid)
-			if ( !empty( $aParams[ 'fUsername' ] ) ) {
-				$oUser = $this->loadWpUsers()->getUserByUsername( $aParams[ 'fUsername' ] );
-				if ( !empty( $oUser ) ) {
-					$oSelector->filterByUserId( $oUser->ID );
-				}
-			}
-			else if ( $aParams[ 'fLoggedIn' ] >= 0 ) {
-				$oSelector->filterByIsLoggedIn( $aParams[ 'fLoggedIn' ] );
-			}
-
-			if ( $aParams[ 'fTransgression' ] >= 0 ) {
-				$oSelector->filterByIsTransgression( $aParams[ 'fTransgression' ] );
-			}
-
-			$oSelector->filterByPathContains( $aParams[ 'fPath' ] );
-			$oSelector->filterByResponseCode( $aParams[ 'fResponse' ] );
-		}
-
-		$aEntries = $oSelector->query();
-
-		$oTable = $this->getTableRenderer()
-					   ->setItemEntries( $this->formatEntriesForDisplay( $aEntries ) )
-					   ->setPerPage( $this->getDefaultPerPage() )
-					   ->prepare_items();
-		ob_start();
-		$oTable->display();
-		return ob_get_clean();
-	}
-
-	/**
-	 * Move to table
-	 * @param ICWP_WPSF_TrafficEntryVO[] $aEntries
-	 * @return array
-	 */
-	public function formatEntriesForDisplay( $aEntries ) {
-
-		if ( is_array( $aEntries ) ) {
-			$oCon = $this->getController();
-			$oWpUsers = $this->loadWpUsers();
-			$oGeo = $this->loadGeoIp2();
-			$sYou = $this->loadIpService()->getRequestIp();
-
-			$aUsers = array( _wpsf__( 'No' ) );
-			foreach ( $aEntries as $nKey => $oEntry ) {
-				$sIp = $oEntry->ip;
-
-				$aEntry = $oEntry->getRawDataAsArray();
-
-				list( $sPreQuery, $sQuery ) = explode( '?', $oEntry->path.'?', 2 );
-				$sQuery = trim( $sQuery, '?' );
-				$sPath = strtoupper( $oEntry->verb ).': <code>'.$sPreQuery
-						 .( empty( $sQuery ) ? '' : '?<br/>'.$sQuery ).'</code>';
-
-				$sCodeType = 'success';
-				if ( $oEntry->code >= 400 ) {
-					$sCodeType = 'danger';
-				}
-				else if ( $oEntry->code >= 300 ) {
-					$sCodeType = 'warning';
-				}
-
-				$aEntry[ 'path' ] = $sPath;
-				$aEntry[ 'code' ] = sprintf( '<span class="badge badge-%s">%s</span>', $sCodeType, $oEntry->code );
-				$aEntry[ 'trans' ] = sprintf(
-					'<span class="badge badge-%s">%s</span>',
-					$oEntry->trans ? 'danger' : 'info',
-					$oEntry->trans ? _wpsf__( 'Yes' ) : _wpsf__( 'No' )
-				);
-				$aEntry[ 'ip' ] = $sIp;
-				$aEntry[ 'created_at' ] = $this->loadWp()->getTimeStampForDisplay( $aEntry[ 'created_at' ] );
-				$aEntry[ 'is_you' ] = $sIp == $sYou;
-
-				if ( $oEntry->uid > 0 ) {
-					if ( !isset( $aUsers[ $oEntry->uid ] ) ) {
-						$oUser = $oWpUsers->getUserById( $oEntry->uid );
-						$aUsers[ $oEntry->uid ] = empty( $oUser ) ? _wpsf__( 'unknown' ) :
-							sprintf( '<a href="%s" target="_blank" title="Go To Profile">%s</a>',
-								$oWpUsers->getAdminUrl_ProfileEdit( $oUser ), $oUser->user_login );
-					}
-				}
-
-				$sCountry = $oGeo->countryName( $sIp );
-				if ( empty( $sCountry ) ) {
-					$sCountry = _wpsf__( 'Unknown' );
-				}
-				else {
-					$sFlag = $oCon->getPluginUrl_Image( 'flags/'.strtolower( $oGeo->countryIso( $sIp ) ).'.png' );
-					$sCountry = sprintf( '<img class="icon-flag" src="%s"/> %s', $sFlag, $sCountry );
-				}
-
-				$sIpLink = sprintf( '<a href="%s" target="_blank" title="IP Whois">%s</a>%s',
-					$this->getIpWhoisLookup( $sIp ), $sIp,
-					$aEntry[ 'is_you' ] ? ' <span style="font-size: smaller;">('._wpsf__( 'You' ).')</span>' : ''
-				);
-
-				$aDetails = array(
-					sprintf( '%s: %s', _wpsf__( 'IP' ), $sIpLink ),
-					sprintf( '%s: %s', _wpsf__( 'Logged-In' ), $aUsers[ $oEntry->uid ] ),
-					sprintf( '%s: %s', _wpsf__( 'Location' ), $sCountry ),
-					esc_html( esc_js( sprintf( '%s - %s', _wpsf__( 'User Agent' ), $oEntry->ua ) ) )
-				);
-				$aEntry[ 'visitor' ] = '<div>'.implode( '</div><div>', $aDetails ).'</div>';
-
-				$aInfo = array(
-					sprintf( '%s: %s', _wpsf__( 'Response' ), $aEntry[ 'code' ] ),
-					sprintf( '%s: %s', _wpsf__( 'Transgression' ), $aEntry[ 'trans' ] ),
-				);
-				$aEntry[ 'request_info' ] = '<div>'.implode( '</div><div>', $aInfo ).'</div>';
-				$aEntries[ $nKey ] = $aEntry;
-			}
-		}
-		return $aEntries;
-	}
-
-	/**
-	 * @param string $sIp
-	 * @return string
-	 */
-	protected function getIpWhoisLookup( $sIp ) {
-		return sprintf( 'https://apps.db.ripe.net/db-web-ui/#/query?bflag&searchtext=%s#resultsSection', $sIp );
-	}
-
-	/**
-	 * @return LiveTrafficTable
-	 */
-	protected function getTableRenderer() {
-		$this->requireCommonLib( 'Components/Tables/LiveTrafficTable.php' );
-		/** @var ICWP_WPSF_Processor_Traffic $oTrafficPro */
-		$oTrafficPro = $this->loadProcessor();
-		$nCount = $oTrafficPro->getProcessorLogger()
-							  ->getQuerySelector()
-							  ->count();
-		return ( new LiveTrafficTable() )->setTotalRecords( $nCount );
-	}
-
-	/**
-	 * @return int
-	 */
-	protected function getDefaultPerPage() {
-		return $this->getDef( 'default_per_page' );
-	}
-
-	/**
-	 * @return array
-	 */
-	protected function getDisplayStrings() {
-		return $this->loadDP()->mergeArraysRecursive(
-			parent::getDisplayStrings(),
-			array(
-				'btn_actions'         => _wpsf__( 'Traffic Watch Log' ),
-				'btn_actions_summary' => _wpsf__( 'Review Site Traffic Logs ' ),
-			)
+			'html'    => $oTableBuilder->buildTable()
 		);
 	}
 
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_SectionTitles( $aOptionsParams ) {
 
@@ -480,7 +226,7 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 				break;
 
 			default:
-				throw new Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
+				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
 		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
@@ -491,7 +237,7 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_Options( $aOptionsParams ) {
 
@@ -547,7 +293,7 @@ class ICWP_WPSF_FeatureHandler_Traffic extends ICWP_WPSF_FeatureHandler_BaseWpsf
 				break;
 
 			default:
-				throw new Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
+				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
 		}
 
 		$aOptionsParams[ 'name' ] = $sName;

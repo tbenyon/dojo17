@@ -1,46 +1,63 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_FeatureHandler_Lockdown', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
 	/**
-	 * @return array
+	 * @return string[]
 	 */
-	public function getRestApiAnonymousExclusions() {
-		return array();//$this->getOpt( 'api_namespace_exclusions' ); TODO: reenabled for next release
+	private function getRestApiAnonymousExclusions() {
+		$aExcl = $this->getOpt( 'api_namespace_exclusions' );
+		if ( !is_array( $aExcl ) ) {
+			$aExcl = [];
+		}
+		return array_merge( $this->getDef( 'default_restapi_exclusions' ), $aExcl );
+	}
+
+	/**
+	 * @param string $sNamespace
+	 * @return bool
+	 */
+	public function isPermittedAnonRestApiNamespace( $sNamespace ) {
+		return in_array( $sNamespace, $this->getRestApiAnonymousExclusions() );
 	}
 
 	/**
 	 * @return bool
 	 */
-	public function isRestApiAnonymousAccessAllowed() {
-		return $this->isOpt( 'disable_anonymous_restapi', 'N' );
+	public function isOptFileEditingDisabled() {
+		return $this->isOpt( 'disable_file_editing', 'Y' );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isRestApiAnonymousAccessDisabled() {
+		return $this->isOpt( 'disable_anonymous_restapi', 'Y' );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isXmlrpcDisabled() {
+		return $this->isOpt( 'disable_xmlrpc', 'Y' );
+	}
+
+	protected function doExtraSubmitProcessing() {
+		$sMask = $this->getOpt( 'mask_wordpress_version' );
+		if ( !empty( $sMask ) ) {
+			$this->setOpt( 'mask_wordpress_version', preg_replace( '/[^a-z0-9_.-]/i', '', $sMask ) );
+		}
+		$this->cleanApiExclusions();
 	}
 
 	/**
 	 * @return $this
 	 */
-	protected function cleanApiExclusions() {
+	private function cleanApiExclusions() {
 		$aExt = $this->cleanStringArray( $this->getRestApiAnonymousExclusions(), '#[^a-z0-9_-]#i' );
 		return $this->setOpt( 'api_namespace_exclusions', $aExt );
-	}
-
-	protected function doExtraSubmitProcessing() {
-
-		if ( $this->isModuleOptionsRequest() ) { // Move this IF to base
-
-			$sMask = $this->getOpt( 'mask_wordpress_version' );
-			if ( !empty( $sMask ) ) {
-				$this->setOpt( 'mask_wordpress_version', preg_replace( '/[^a-z0-9_.-]/i', '', $sMask ) );
-			}
-
-			$this->cleanApiExclusions();
-		}
 	}
 
 	/**
@@ -54,11 +71,12 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 		);
 
 		{ //edit plugins
-			if ( current_user_can( 'edit_plugins' ) ) { //assumes current user is admin
+			$bEditingDisabled = $this->isOptFileEditingDisabled() || !current_user_can( 'edit_plugins' );
+			if ( !$bEditingDisabled ) { //assumes current user is admin
 				$aNotices[ 'messages' ][ 'disallow_file_edit' ] = array(
 					'title'   => 'Code Editor',
 					'message' => _wpsf__( 'Direct editing of plugin/theme files is permitted.' ),
-					'href'    => $this->getUrl_AdminPage(),
+					'href'    => $this->getUrl_DirectLinkToOption( 'disable_file_editing' ),
 					'action'  => sprintf( 'Go To %s', _wpsf__( 'Options' ) ),
 					'rec'     => _wpsf__( 'WP Plugin file editing should be disabled.' )
 				);
@@ -72,9 +90,65 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 	}
 
 	/**
+	 * @param array $aAllData
+	 * @return array
+	 */
+	public function addInsightsConfigData( $aAllData ) {
+		$aThis = array(
+			'strings'      => array(
+				'title' => _wpsf__( 'WordPress Lockdown' ),
+				'sub'   => _wpsf__( 'Restrict WP Functionality e.g. XMLRPC & REST API' ),
+			),
+			'key_opts'     => array(),
+			'href_options' => $this->getUrl_AdminPage()
+		);
+
+		if ( !$this->isModOptEnabled() ) {
+			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
+		}
+		else {
+			$bEditingDisabled = $this->isOptFileEditingDisabled() || !current_user_can( 'edit_plugins' );
+			$aThis[ 'key_opts' ][ 'editing' ] = array(
+				'name'    => _wpsf__( 'WP File Editing' ),
+				'enabled' => $bEditingDisabled,
+				'summary' => $bEditingDisabled ?
+					_wpsf__( 'File editing is disabled' )
+					: _wpsf__( "File editing is permitted through WP admin" ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToOption( 'disable_file_editing' ),
+			);
+
+			$bXml = $this->isXmlrpcDisabled();
+			$aThis[ 'key_opts' ][ 'xml' ] = array(
+				'name'    => _wpsf__( 'XML-RPC' ),
+				'enabled' => $bXml,
+				'summary' => $bXml ?
+					_wpsf__( 'XML-RPC is disabled' )
+					: _wpsf__( "XML-RPC is not blocked" ),
+				'weight'  => 1,
+				'href'    => $this->getUrl_DirectLinkToOption( 'disable_xmlrpc' ),
+			);
+
+			$bApi = $this->isRestApiAnonymousAccessDisabled();
+			$aThis[ 'key_opts' ][ 'api' ] = array(
+				'name'    => _wpsf__( 'REST API' ),
+				'enabled' => $bApi,
+				'summary' => $bApi ?
+					_wpsf__( 'Anonymous REST API is disabled' )
+					: _wpsf__( "Anonymous REST API is allowed" ),
+				'weight'  => 1,
+				'href'    => $this->getUrl_DirectLinkToOption( 'disable_anonymous_restapi' ),
+			);
+		}
+
+		$aAllData[ $this->getSlug() ] = $aThis;
+		return $aAllData;
+	}
+
+	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_SectionTitles( $aOptionsParams ) {
 
@@ -118,7 +192,7 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 				break;
 
 			default:
-				throw new Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
+				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
 		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
@@ -129,7 +203,7 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_Options( $aOptionsParams ) {
 
@@ -195,7 +269,7 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 				break;
 
 			default:
-				throw new Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
+				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
 		}
 
 		$aOptionsParams[ 'name' ] = $sName;
@@ -205,7 +279,7 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 	}
 
 	protected function getCanDoAuthSalts() {
-		$oWpFs = $this->loadFS();
+		$oWpFs = Services::WpFs();
 
 		if ( !$oWpFs->getCanWpRemoteGet() ) {
 			return false;
@@ -215,7 +289,7 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 			return false;
 		}
 
-		$sWpConfigPath = $oWpFs->exists( ABSPATH.'wp-config.php' ) ? ABSPATH.'wp-config.php' : ABSPATH.'..'.DIRECTORY_SEPARATOR.'wp-config.php';
+		$sWpConfigPath = $oWpFs->exists( ABSPATH.'wp-config.php' ) ? ABSPATH.'wp-config.php' : ABSPATH.'../wp-config.php';
 
 		if ( !$oWpFs->exists( $sWpConfigPath ) ) {
 			return false;

@@ -2,15 +2,16 @@
   "slug":        "user_management",
   "properties":  {
     "name":                  "User Management",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "user_management",
     "tagline":               "Control user sessions, duration, timeouts and account sharing",
     "show_central":          true,
     "access_restricted":     true,
     "premium":               false,
-    "has_custom_actions":    true,
     "run_if_whitelisted":    false,
     "run_if_verified_bot":   false,
+    "run_if_wpcli":          false,
     "order":                 40
   },
   "sections":    [
@@ -27,13 +28,22 @@
     {
       "slug":        "section_passwords",
       "reqs":        {
-        "php_min": "5.4",
         "wp_min":  "4.4"
       },
       "title":       "Password Policies",
       "title_short": "Password Policies",
       "summary":     [
         "Purpose - Have full control over passwords used by users on the site.",
+        "Recommendation - Use of this feature is highly recommend."
+      ]
+    },
+    {
+      "slug":        "section_suspend",
+      "hidden": true,
+      "title":       "Automatic And Manual User Suspension",
+      "title_short": "User Suspension",
+      "summary":     [
+        "Purpose - Automatically suspend accounts to prevent login by certain users.",
         "Recommendation - Use of this feature is highly recommend."
       ]
     },
@@ -66,7 +76,7 @@
       "section":     "section_enable_plugin_feature_user_accounts_management",
       "default":     "Y",
       "type":        "checkbox",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/e3",
       "link_blog":   "",
       "name":        "Enable User Management",
       "summary":     "Enable (or Disable) The User Management module",
@@ -79,7 +89,7 @@
       "sensitive":   false,
       "default":     "N",
       "type":        "checkbox",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/e2",
       "link_blog":   "",
       "name":        "User Login Notification Email",
       "summary":     "Send Email Notification To Each User Upon Successful Login",
@@ -101,6 +111,7 @@
       "key":         "session_timeout_interval",
       "section":     "section_user_session_management",
       "default":     2,
+      "min":         0,
       "type":        "integer",
       "link_info":   "",
       "link_blog":   "",
@@ -112,8 +123,9 @@
       "key":         "session_idle_timeout_interval",
       "section":     "section_user_session_management",
       "default":     48,
+      "min":         0,
       "type":        "integer",
-      "link_info":   "",
+      "link_info":   "https://icontrolwp.freshdesk.com/support/solutions/articles/3000070590",
       "link_blog":   "",
       "name":        "Idle Timeout",
       "summary":     "Specify How Many Hours After Inactivity To Automatically Logout User",
@@ -146,8 +158,8 @@
       "section":     "section_passwords",
       "type":        "checkbox",
       "default":     "N",
-      "link_info":   "https://icwp.io/c4",
-      "link_blog":   "",
+      "link_info":   "https://icwp.io/e1",
+      "link_blog":   "https://icwp.io/c4",
       "name":        "Enable Password Policies",
       "summary":     "Enable The Password Policies Below",
       "description": "Turn on/off all password policies."
@@ -227,6 +239,7 @@
       "premium":     true,
       "type":        "integer",
       "default":     "60",
+      "min":         0,
       "link_info":   "",
       "link_blog":   "",
       "name":        "Password Expiration",
@@ -234,25 +247,72 @@
       "description": "Users will be forced to reset their passwords after the number of days specified."
     },
     {
+      "key":         "manual_suspend",
+      "section":     "section_suspend",
+      "premium":     true,
+      "type":        "checkbox",
+      "default":     "Y",
+      "link_info":   "",
+      "link_blog":   "",
+      "name":        "Allow Manual User Suspension",
+      "summary":     "Manually Suspend User Accounts To Prevent Login",
+      "description": "Users may be suspended by administrators to prevent login."
+    },
+    {
+      "key":         "auto_password",
+      "section":     "section_suspend",
+      "premium":     true,
+      "type":        "checkbox",
+      "default":     "Y",
+      "link_info":   "",
+      "link_blog":   "",
+      "name":        "Auto-Suspend Expired Passwords",
+      "summary":     "Automatically Suspend Users With Expired Passwords",
+      "description": "Suspend login by users and require password reset to unsuspend."
+    },
+    {
+      "key":         "auto_idle",
+      "section":     "section_suspend",
+      "premium":     true,
+      "type":        "integer",
+      "default":     0,
+      "min":         0,
+      "link_info":   "",
+      "link_blog":   "",
+      "name":        "Auto-Suspend Idle Users",
+      "summary":     "Automatically Suspend Idle User Accounts",
+      "description": "Prevent login by idle users and require password reset to unsuspend."
+    },
+    {
       "key":          "autoadd_sessions_started_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "insights_last_idle_logout_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     },
     {
       "key":          "insights_last_password_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
+    },
+    {
+      "key":          "hard_suspended_userids",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "array",
+      "default":      []
     }
   ],
   "definitions": {
-    "cron_name_sessionscleanup":     "sessionscleanup",
     "pwned_api_url_password_single": "https://api.pwnedpasswords.com/pwnedpassword/",
     "pwned_api_url_password_range":  "https://api.pwnedpasswords.com/range/"
   }

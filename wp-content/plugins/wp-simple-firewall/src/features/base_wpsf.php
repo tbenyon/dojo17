@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_FeatureHandler_BaseWpsf', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 
@@ -26,7 +22,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	}
 
 	/**
-	 * @return ICWP_WPSF_SessionVO|null
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\Databases\Session\EntryVO|null
 	 */
 	public function getSession() {
 		$oP = $this->getSessionsProcessor();
@@ -37,26 +33,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	 * @return bool
 	 */
 	public function hasSession() {
-		return ( $this->getSession() instanceof ICWP_WPSF_SessionVO );
-	}
-
-	public function insertCustomJsVars() {
-		parent::insertCustomJsVars();
-
-		wp_localize_script(
-			$this->prefix( 'plugin' ),
-			'icwp_wpsf_vars_secadmin',
-			array(
-				'reqajax'      => $this->getSecAdminCheckAjaxData(),
-				'is_sec_admin' => true, // if $nSecTimeLeft > 0
-				'timeleft'     => $this->getSecAdminTimeLeft(), // JS uses milliseconds
-				'strings'      => array(
-					'confirm' => _wpsf__( 'Security Admin session has timed-out.' ).' '._wpsf__( 'Reload now?' ),
-					'nearly'  => _wpsf__( 'Security Admin session has nearly timed-out.' ),
-					'expired' => _wpsf__( 'Security Admin session has timed-out.' )
-				)
-			)
-		);
+		return ( $this->getSession() instanceof \FernleafSystems\Wordpress\Plugin\Shield\Databases\Session\EntryVO );
 	}
 
 	/**
@@ -64,7 +41,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	 */
 	protected function getSecAdminTimeLeft() {
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
-		$oFO = $this->getConn()
+		$oFO = $this->getCon()
 					->getModule( 'admin_access_restriction' );
 		return $oFO->getSecAdminTimeLeft();
 	}
@@ -124,7 +101,14 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	public function isGoogleRecaptchaReady() {
 		$sKey = $this->getGoogleRecaptchaSiteKey();
 		$sSecret = $this->getGoogleRecaptchaSecretKey();
-		return ( !empty( $sSecret ) && !empty( $sKey ) && $this->loadDP()->getPhpSupportsNamespaces() );
+		return ( !empty( $sSecret ) && !empty( $sKey ) );
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isWlEnabled() {
+		return $this->getCon()->getModule_SecAdmin()->isWlEnabled();
 	}
 
 	/**
@@ -151,7 +135,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	 * @return string
 	 */
 	public function getPluginDefaultRecipientAddress() {
-		return apply_filters( $this->prefix( 'report_email_address' ), $this->loadWp()->getSiteAdminEmail() );
+		return apply_filters( $this->prefix( 'report_email_address' ), Services::WpGeneral()->getSiteAdminEmail() );
 	}
 
 	/**
@@ -159,6 +143,8 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	 * @return array
 	 */
 	protected function getBaseDisplayData( $bRenderEmbeddedContent = true ) {
+		$sHelpUrl = $this->isWlEnabled() ? $this->getCon()->getLabels()[ 'AuthorURI' ] : 'https://icwp.io/b5';
+
 		return $this->loadDP()->mergeArraysRecursive(
 			parent::getBaseDisplayData( $bRenderEmbeddedContent ),
 			array(
@@ -193,8 +179,11 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 					'has_session' => $this->hasSession()
 				),
 				'hrefs'   => array(
-					'aar_forget_key' => 'https://icwp.io/b5',
-				)
+					'aar_forget_key' => $sHelpUrl
+				),
+				'classes' => array(
+					'top_container' => $this->isPremium() ? 'is-pro' : 'is-not-pro'
+				),
 			)
 		);
 	}
@@ -206,6 +195,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 		return $this->loadDP()->mergeArraysRecursive(
 			parent::getDisplayStrings(),
 			array(
+				'back_to_dashboard' => sprintf( _wpsf__( 'Back To %s Dashboard' ), $this->getCon()->getHumanName() ),
 				'go_to_settings'    => _wpsf__( 'Settings' ),
 				'on'                => _wpsf__( 'On' ),
 				'off'               => _wpsf__( 'Off' ),
@@ -252,6 +242,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 		$oOpts = $this->getOptionsVo();
 		return ( $oOpts->isModuleRunIfWhitelisted() || !$this->isVisitorWhitelisted() )
 			   && ( $oOpts->isModuleRunIfVerifiedBot() || !$this->isVerifiedBot() )
+			   && ( $oOpts->isModuleRunUnderWpCli() || !Services::WpGeneral()->isWpCli() )
 			   && parent::isReadyToExecute();
 	}
 
@@ -260,22 +251,21 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	 */
 	protected function isVisitorWhitelisted() {
 		/** @var ICWP_WPSF_Processor_Ips $oPro */
-		$oPro = $this->getConn()
+		$oPro = $this->getCon()
 					 ->getModule( 'ips' )
 					 ->getProcessor();
 		return $oPro->isCurrentIpWhitelisted();
 	}
 
 	/**
-	 * Only test for bots that we can actually verify based on IP, hostname
 	 * @return bool
 	 */
 	public function isVerifiedBot() {
 		if ( !isset( self::$bIsVerifiedBot ) ) {
 			$oSp = $this->loadServiceProviders();
 
-			$sIp = $this->loadIpService()->getRequestIp();
-			$sAgent = (string)$this->loadDP()->server( 'HTTP_USER_AGENT' );
+			$sIp = Services::IP()->getRequestIp();
+			$sAgent = Services::Request()->getUserAgent();
 			if ( empty( $sAgent ) ) {
 				$sAgent = 'Unknown';
 			}
@@ -285,6 +275,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 									|| $oSp->isIp_YahooBot( $sIp, $sAgent )
 									|| $oSp->isIp_DuckDuckGoBot( $sIp, $sAgent )
 									|| $oSp->isIp_YandexBot( $sIp, $sAgent )
+									|| ( class_exists( 'ICWP_Plugin' ) && $oSp->isIp_iControlWP( $sIp ) )
 									|| $oSp->isIp_BaiduBot( $sIp, $sAgent );
 		}
 		return self::$bIsVerifiedBot;
@@ -295,7 +286,7 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	 */
 	public function isXmlrpcBypass() {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
-		$oFO = $this->getConn()
+		$oFO = $this->getCon()
 					->getModule( 'plugin' );
 		return $oFO->isXmlrpcBypass();
 	}
@@ -344,9 +335,22 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 	}
 
 	/**
+	 * @return array
+	 */
+	protected function getModDisabledInsight() {
+		return array(
+			'name'    => _wpsf__( 'Module Disabled' ),
+			'enabled' => false,
+			'summary' => _wpsf__( 'All features of this module are completely disabled' ),
+			'weight'  => 2,
+			'href'    => $this->getUrl_DirectLinkToOption( $this->getEnableModOptKey() ),
+		);
+	}
+
+	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_SectionTitlesDefaults( $aOptionsParams ) {
 
@@ -363,9 +367,27 @@ class ICWP_WPSF_FeatureHandler_BaseWpsf extends ICWP_WPSF_FeatureHandler_Base {
 				break;
 
 			default:
-				throw new Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $aOptionsParams[ 'slug' ] ) );
+				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $aOptionsParams[ 'slug' ] ) );
 		}
 
 		return array( $sTitle, $sTitleShort, $aSummary );
+	}
+
+	/**
+	 * Used to mark an IP address for immediate block
+	 * @return $this
+	 */
+	public function setIpBlocked() {
+		add_filter( $this->prefix( 'ip_block_it' ), '__return_true' );
+		return $this;
+	}
+
+	/**
+	 * Used to mark an IP address for transgression/black-mark
+	 * @return $this
+	 */
+	public function setIpTransgressed() {
+		add_filter( $this->prefix( 'ip_black_mark' ), '__return_true' );
+		return $this;
 	}
 }

@@ -1,7 +1,4 @@
 <?php
-if ( class_exists( 'ICWP_WPSF_WpComments', false ) ) {
-	return;
-}
 
 class ICWP_WPSF_WpComments extends ICWP_WPSF_Foundation {
 
@@ -80,6 +77,6 @@ class ICWP_WPSF_WpComments extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	public function isCommentPost() {
-		return $this->loadDP()->isMethodPost() && $this->loadWp()->isCurrentPage( 'wp-comments-post.php' );
+		return $this->loadRequest()->isMethodPost() && $this->loadWp()->isCurrentPage( 'wp-comments-post.php' );
 	}
 }

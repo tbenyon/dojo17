@@ -2,7 +2,9 @@
   "properties":    {
     "slug":                  "plugin",
     "name":                  "General",
+    "menu_title":            "Settings",
     "show_module_menu_item": true,
+    "show_module_options":   true,
     "storage_key":           "plugin",
     "tagline":               "General Plugin Settings",
     "auto_enabled":          true,
@@ -12,15 +14,17 @@
     "has_custom_actions":    false,
     "run_if_whitelisted":    true,
     "run_if_verified_bot":   true,
+    "run_if_wpcli":          true,
     "order":                 10
   },
   "admin_notices": {
     "override-forceoff":          {
-      "id":          "override-forceoff",
-      "schedule":    "conditions",
-      "valid_admin": true,
-      "can_dismiss": false,
-      "type":        "error"
+      "id":               "override-forceoff",
+      "schedule":         "conditions",
+      "valid_admin":      true,
+      "plugin_page_only": false,
+      "can_dismiss":      false,
+      "type":             "error"
     },
     "plugin-update-available":    {
       "id":          "plugin-update-available",
@@ -47,7 +51,8 @@
       "schedule":    "once",
       "valid_admin": true,
       "delay_days":  15,
-      "type":        "promo"
+      "type":        "promo",
+      "twig":        true
     },
     "rate-plugin":                {
       "id":          "rate-plugin",
@@ -164,7 +169,7 @@
           "text":      "HTTP_CLIENT_IP"
         }
       ],
-      "link_info":     "",
+      "link_info":     "https://icwp.io/dn",
       "link_blog":     "",
       "name":          "Visitor IP Address",
       "summary":       "Which Address Is Yours",
@@ -221,8 +226,8 @@
       "premium":     true,
       "default":     "Y",
       "type":        "checkbox",
-      "link_info":   "",
-      "link_blog":   "",
+      "link_info":   "https://icwp.io/do",
+      "link_blog":   "https://icwp.io/dp",
       "name":        "Allow Import/Export",
       "summary":     "Allow Import Of Options To, And Export Of Options From, This Site",
       "description": "Uncheck this box to completely disable import and export of options."
@@ -305,7 +310,7 @@
           "text":      "Invisible reCAPTCHA"
         }
       ],
-      "link_info":     "",
+      "link_info":     "https://icwp.io/dq",
       "link_blog":     "",
       "name":          "reCAPTCHA Style",
       "summary":       "How Google reCAPTCHA Will Be Displayed By Default",
@@ -319,9 +324,9 @@
       "type":        "text",
       "link_info":   "https://icwp.io/shld5",
       "link_blog":   "",
-      "name":        "reCAPTCHA Secret",
-      "summary":     "Google reCAPTCHA Secret Key",
-      "description": "Enter your Google reCAPTCHA secret key for use throughout the plugin."
+      "name":        "reCAPTCHA Site Key",
+      "summary":     "Google reCAPTCHA Site Key - Only v2 or Invisible. v3 NOT supported.",
+      "description": "Enter your Google reCAPTCHA site key for use throughout the plugin."
     },
     {
       "key":         "google_recaptcha_secret_key",
@@ -331,65 +336,86 @@
       "type":        "text",
       "link_info":   "https://icwp.io/shld5",
       "link_blog":   "",
-      "name":        "reCAPTCHA Site Key",
-      "summary":     "Google reCAPTCHA Site Key",
-      "description": "Enter your Google reCAPTCHA site key for use throughout the plugin."
+      "name":        "reCAPTCHA Secret",
+      "summary":     "Google reCAPTCHA Secret Key - Only v2 or Invisible. v3 NOT supported.",
+      "description": "Enter your Google reCAPTCHA secret key for use throughout the plugin."
     },
     {
       "key":          "tracking_last_sent_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "unique_installation_id",
       "section":      "section_non_ui",
       "transferable": false,
-      "default":      ""
+      "type":         "text",
+      "default":      0
     },
     {
       "key":     "tracking_permission_set_at",
-      "default": 0,
-      "section": "section_non_ui"
+      "section": "section_non_ui",
+      "type":    "integer",
+      "default": 0
     },
     {
       "key":          "installation_time",
+      "section":      "section_non_ui",
       "transferable": false,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "importexport_secretkey_expires_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "importexport_handshake_expires_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "importexport_last_import_hash",
+      "section":      "section_non_ui",
       "transferable": false,
-      "section":      "section_non_ui"
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "this_server_ip",
+      "section":      "section_non_ui",
       "transferable": false,
       "sensitive":    true,
-      "section":      "section_non_ui",
-      "value":        ""
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "this_server_ip_last_check_at",
-      "transferable": false,
       "section":      "section_non_ui",
-      "value":        0
+      "transferable": false,
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "insights_test_cron_last_run_at",
       "transferable": false,
       "section":      "section_non_ui",
-      "value":        0
+      "type":         "integer",
+      "default":      0
+    },
+    {
+      "key":          "last_ip_detect_source",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "type":         "text",
+      "default":      ""
     }
   ],
   "definitions":   {
@@ -417,7 +443,7 @@
       {
         "slug":          "admin_access_restriction",
         "storage_key":   "admin_access_restriction",
-        "load_priority": 20
+        "load_priority": 11
       },
       {
         "slug":        "hack_protect",
@@ -492,7 +518,7 @@
       }
     ],
     "wizards":                {
-      "welcome":      {
+      "welcome": {
         "title":                "Getting Started Setup Wizard",
         "desc":                 "An introduction to this security plugin, helping you get setup and started quickly with the core features.",
         "min_user_permissions": "manage_options",
@@ -506,9 +532,6 @@
           },
           "license":                  {
             "title": "Go Pro"
-          },
-          "import":                   {
-            "title": "Import"
           },
           "admin_access_restriction": {
             "title": "Security Admin"
@@ -537,7 +560,7 @@
           }
         }
       },
-      "gdpr":         {
+      "gdpr":    {
         "title":                "GDPR Data Wizard",
         "desc":                 "Walks you through the searching and removal of personally identifiable data.",
         "min_user_permissions": "manage_options",
@@ -556,25 +579,6 @@
           "finished": {
             "security_admin": false,
             "title":          "Finished: GDPR Compliance"
-          }
-        }
-      },
-      "importexport": {
-        "title":                "Options Import/Export Wizard",
-        "desc":                 "Walks you through the import and export of options, as well as configuring ongoing automated options-sync.",
-        "min_user_permissions": "manage_options",
-        "has_premium":          true,
-        "steps":                {
-          "start":    {
-            "security_admin": false,
-            "title":          "Start: Options Import"
-          },
-          "import":   {
-            "title": "Run Options Import"
-          },
-          "finished": {
-            "security_admin": false,
-            "title":          "Finished: Options Import"
           }
         }
       }

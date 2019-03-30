@@ -1,10 +1,7 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_Plugin_ImportExport', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Plugin\Shield;
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -15,13 +12,44 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		add_action( $this->prefix( 'importexport_notify' ), array( $this, 'runWhitelistNotify' ) );
 
 		if ( $oFO->hasImportExportMasterImportUrl() ) {
-			try {
-				$this->setupCronImport();
-			}
-			catch ( Exception $oE ) {
-				error_log( $oE->getMessage() );
-			}
+			// For auto update whitelist notifications:
+			add_action( $oFO->prefix( 'importexport_updatenotified' ), array( $this, 'runImport' ) );
 		}
+	}
+
+	/**
+	 * @return array
+	 */
+	public function buildInsightsVars() {
+		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oMod */
+		$oMod = $this->getMod();
+		$aData = [
+			'vars'  => array(
+				'form_nonce'  => $oMod->getNonceActionData( 'import_file_upload' ),
+				'form_action' => $oMod->getUrl_AdminPage()
+			),
+			'ajax'  => array(
+				'import_from_site' => $oMod->getAjaxActionData( 'import_from_site', true ),
+			),
+			'flags' => array(
+				'can_importexport' => $this->getCon()->isPremiumActive(),
+			),
+			'hrefs' => array(
+				'export_file_download' => $this->createExportFileDownloadLink()
+			)
+		];
+
+		return $aData;
+	}
+
+	/**
+	 * @return string
+	 */
+	private function createExportFileDownloadLink() {
+		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
+		$oFO = $this->getMod();
+		$aActionNonce = $oFO->getNonceActionData( 'export_file_download' );
+		return add_query_arg( $aActionNonce, $oFO->getUrl_AdminPage() );
 	}
 
 	public function runWhitelistNotify() {
@@ -30,9 +58,8 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 
 		if ( $oFO->hasImportExportWhitelistSites() ) {
 
-			$oFs = $this->loadFS();
 			foreach ( $oFO->getImportExportWhitelist() as $sUrl ) {
-				$oFs->getUrl(
+				$this->loadFS()->getUrl(
 					$sUrl,
 					array(
 						'blocking' => false,
@@ -50,23 +77,181 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 	}
 
 	public function runAction() {
-		$oDP = $this->loadDP();
-		switch ( $oDP->query( 'shield_action' ) ) {
 
-			case 'importexport_export':
-				add_action( 'init', array( $this, 'runOptionsExport' ) );
-				break;
+		try {
+			$oReq = Services::Request();
+			switch ( $oReq->query( 'shield_action' ) ) {
 
-			case 'importexport_handshake':
-				add_action( 'init', array( $this, 'runOptionsExportHandshake' ) );
-				break;
+				case 'importexport_export':
+					$this->executeExport( $oReq->query( 'method' ) );
+					break;
 
-			case 'importexport_updatenotified':
-				add_action( 'init', array( $this, 'runOptionsUpdateNotified' ) );
-				break;
+				case 'importexport_import':
+					$this->executeImport( $oReq->query( 'method' ) );
+					break;
 
-			default:
-				break;
+				case 'importexport_handshake':
+					$this->runOptionsExportHandshake();
+					break;
+
+				case 'importexport_updatenotified':
+					$this->runOptionsUpdateNotified();
+					break;
+
+				default:
+					break;
+			}
+		}
+		catch ( \Exception $oE ) {
+		}
+	}
+
+	/**
+	 * @param string $sMethod
+	 */
+	private function executeExport( $sMethod = 'json' ) {
+
+		try {
+			$this->preActionVerify();
+
+			switch ( $sMethod ) {
+				case 'file':
+					$this->downloadExportToFile();
+					break;
+
+				case 'json':
+				default:
+					$this->exportToJsonResponse();
+					break;
+			}
+		}
+		catch ( \Exception $oE ) {
+		}
+		die();
+	}
+
+	/**
+	 * @param string $sMethod
+	 */
+	private function executeImport( $sMethod = 'file' ) {
+
+		try {
+			$this->preActionVerify();
+
+			switch ( $sMethod ) {
+				case 'file':
+				default:
+					$this->importFromUploadFile();
+					break;
+			}
+		}
+		catch ( \Exception $oE ) {
+		}
+		die();
+	}
+
+	/**
+	 * @throws \Exception
+	 */
+	private function downloadExportToFile() {
+		if ( !$this->getCon()->isPluginAdmin() ) {
+			throw new \Exception( 'Not currently logged-in as admin' );
+		}
+		$this->doExportDownload();
+	}
+
+	public function doExportDownload() {
+		$sExport = json_encode( $this->getExportData() );
+		$aData = [
+			'# Site URL: '.Services::WpGeneral()->getHomeUrl(),
+			'# Export Date: '.Services::WpGeneral()->getTimeStringForDisplay(),
+			'# Hash: '.sha1( $sExport ),
+			$sExport
+		];
+		Services::Data()->downloadStringAsFile(
+			implode( "\n", $aData ),
+			sprintf( 'shieldexport-%s-%s.json',
+				Services::WpGeneral()->getHomeUrl( '', true ),
+				$sFilename = date( 'Ymd_His' )
+			)
+		);
+	}
+
+	/**
+	 * @throws \Exception
+	 */
+	public function importFromUploadFile() {
+		if ( !$this->getCon()->isPluginAdmin() ) {
+			throw new \Exception( 'Not currently logged-in as admin' );
+		}
+
+		if ( Services::Request()->post( 'confirm' ) != 'Y' ) {
+			throw new \Exception( _wpsf__( 'Please check the box to confirm your intent to overwrite settings' ) );
+		};
+
+		$oFs = Services::WpFs();
+		if ( empty( $_FILES ) || !isset( $_FILES[ 'import_file' ] )
+			 || empty( $_FILES[ 'import_file' ][ 'tmp_name' ] ) ) {
+			throw new \Exception( 'Please select a file to upload' );
+		}
+		if ( $_FILES[ 'import_file' ][ 'size' ] == 0
+			 || isset( $_FILES[ 'error' ] ) && $_FILES[ 'error' ] != UPLOAD_ERR_OK
+			 || !$oFs->isFile( $_FILES[ 'import_file' ][ 'tmp_name' ] )
+			 || filesize( $_FILES[ 'import_file' ][ 'tmp_name' ] ) === 0
+		) {
+			throw new \Exception( 'Uploading of file failed' );
+		}
+
+		$sContent = Services::WpFs()->getFileContent( $_FILES[ 'import_file' ][ 'tmp_name' ] );
+		if ( empty( $sContent ) ) {
+			throw new \Exception( 'File uploaded was empty' );
+		}
+
+		{//filter any comment lines
+			$aParts = array_filter(
+				array_map( 'trim', explode( "\n", $sContent ) ),
+				function ( $sLine ) {
+					return ( strpos( $sLine, '{' ) === 0 );
+				}
+			);
+			if ( empty( $aParts ) ) {
+				throw new \Exception( 'Options JSON could not be found in uploaded content.' );
+			}
+		}
+		{//parse the options json
+			$aData = @json_decode( array_shift( $aParts ), true );
+			if ( empty( $aData ) || !is_array( $aData ) ) {
+				throw new \Exception( 'Uploaded options data was not of the correct format' );
+			}
+		}
+
+		$this->processDataImport( $aData, _wpsf__( 'uploaded file' ) );
+		$oFs->deleteFile( $_FILES[ 'import_file' ][ 'tmp_name' ] );
+	}
+
+	/**
+	 * @return array
+	 */
+	private function getExportData() {
+		$aD = apply_filters( $this->getMod()->prefix( 'gather_options_for_export' ), array() );
+		return is_array( $aD ) ? $aD : [];
+	}
+
+	/**
+	 * @throws \Exception
+	 */
+	private function preActionVerify() {
+		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
+		$oFO = $this->getMod();
+
+		if ( !$oFO->isPremium() ) {
+			throw new \Exception(
+				sprintf( _wpsf__( 'Not currently running %s Pro.' ), $this->getCon()->getHumanName() ),
+				1
+			);
+		}
+		if ( !$oFO->isImportExportPermitted() ) {
+			throw new \Exception( _wpsf__( 'Export of options is currently disabled.' ), 2 );
 		}
 	}
 
@@ -79,7 +264,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
 		if ( $oFO->isPremium() && $oFO->isImportExportPermitted() &&
-			 ( $this->loadDP()->time() < $oFO->getImportExportHandshakeExpiresAt() ) ) {
+			 ( Services::Request()->ts() < $oFO->getImportExportHandshakeExpiresAt() ) ) {
 			echo json_encode( array( 'success' => true ) );
 			die();
 		}
@@ -94,6 +279,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 	public function runOptionsUpdateNotified() {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
+		$oReq = Services::Request();
 
 		$sCronHook = $oFO->prefix( 'importexport_updatenotified' );
 		if ( wp_next_scheduled( $sCronHook ) ) {
@@ -102,9 +288,9 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 
 		if ( !wp_next_scheduled( $sCronHook ) ) {
 
-			wp_schedule_single_event( $this->loadDP()->time() + 12, $sCronHook );
+			wp_schedule_single_event( $oReq->ts() + 12, $sCronHook );
 
-			preg_match( '#.*WordPress/.*\s+(.*)\s?#', $this->loadDP()->server( 'HTTP_USER_AGENT' ), $aMatches );
+			preg_match( '#.*WordPress/.*\s+(.*)\s?#', $oReq->server( 'HTTP_USER_AGENT' ), $aMatches );
 			if ( !empty( $aMatches[ 1 ] ) && filter_var( $aMatches[ 1 ], FILTER_VALIDATE_URL ) ) {
 				$sUrl = parse_url( $aMatches[ 1 ], PHP_URL_HOST );
 				if ( !empty( $sUrl ) ) {
@@ -127,14 +313,16 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 
 	/**
 	 */
-	public function runOptionsExport() {
+	private function exportToJsonResponse() {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		$oDP = $this->loadDP();
+		$oReq = Services::Request();
 
-		$sSecretKey = $oDP->query( 'secret', '' );
-		$bNetwork = $oDP->query( 'network', '' ) === 'Y';
-		$sUrl = $oDP->validateSimpleHttpUrl( $oDP->query( 'url', '' ) );
+		$sSecretKey = $oReq->query( 'secret', '' );
+
+		$sNetworkOpt = $oReq->query( 'network', '' );
+		$bDoNetwork = !empty( $sNetworkOpt );
+		$sUrl = Services::Data()->validateSimpleHttpUrl( $oReq->query( 'url', '' ) );
 
 		if ( !$oFO->isImportExportSecretKey( $sSecretKey ) && !$this->isUrlOnWhitelist( $sUrl ) ) {
 			return; // we show no signs of responding to invalid secret keys or unwhitelisted URLs
@@ -145,7 +333,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 
 		if ( !$oFO->isPremium() ) {
 			$nCode = 1;
-			$sMessage = sprintf( _wpsf__( 'Not currently running %s Pro.' ), $oFO->getConn()->getHumanName() );
+			$sMessage = sprintf( _wpsf__( 'Not currently running %s Pro.' ), $this->getCon()->getHumanName() );
 		}
 		else if ( !$oFO->isImportExportPermitted() ) {
 			$nCode = 2;
@@ -158,20 +346,30 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		else {
 			$nCode = 0;
 			$bSuccess = true;
-			$aData = apply_filters( $oFO->prefix( 'gather_options_for_export' ), array() );
+			$aData = $this->getExportData();
 			$sMessage = 'Options Exported Successfully';
 
 			$this->addToAuditEntry(
 				sprintf( _wpsf__( 'Options exported to site %s.' ), $sUrl ), 1, 'options_exported'
 			);
 
-			if ( $bNetwork ) {
-				$oFO->addUrlToImportExportWhitelistUrls( $sUrl );
-				$this->addToAuditEntry(
-					sprintf( _wpsf__( 'Site added to export white list: %s.' ), $sUrl ),
-					1,
-					'export_whitelist_site_added'
-				);
+			if ( $bDoNetwork ) {
+				if ( $sNetworkOpt === 'Y' ) {
+					$oFO->addUrlToImportExportWhitelistUrls( $sUrl );
+					$this->addToAuditEntry(
+						sprintf( _wpsf__( 'Site added to export white list: %s.' ), $sUrl ),
+						1,
+						'export_whitelist_site_added'
+					);
+				}
+				else {
+					$oFO->removeUrlFromImportExportWhitelistUrls( $sUrl );
+					$this->addToAuditEntry(
+						sprintf( _wpsf__( 'Site removed from export white list: %s.' ), $sUrl ),
+						1,
+						'export_whitelist_site_removed'
+					);
+				}
 			}
 		}
 
@@ -199,50 +397,38 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 	 * @param string $sUrl
 	 * @return bool
 	 */
-	protected function verifyUrlWithHandshake( $sUrl ) {
+	private function verifyUrlWithHandshake( $sUrl ) {
 		$bVerified = false;
 
 		if ( !empty( $sUrl ) ) {
-			$sFinalUrl = add_query_arg(
-				array( 'shield_action' => 'importexport_handshake' ),
-				$sUrl
-			);
-			$aParts = @json_decode( $this->loadFS()->getUrlContent( $sFinalUrl ), true );
-			$bVerified = !empty( $aParts ) && is_array( $aParts )
-						 && isset( $aParts[ 'success' ] ) && ( $aParts[ 'success' ] === true );
+			$sReqUrl = add_query_arg( array( 'shield_action' => 'importexport_handshake' ), $sUrl );
+			$aResp = @json_decode( Services::HttpRequest()->getContent( $sReqUrl ), true );
+			$bVerified = is_array( $aResp ) && isset( $aResp[ 'success' ] ) && ( $aResp[ 'success' ] === true );
 		}
 
 		return $bVerified;
 	}
 
 	/**
-	 * @throws Exception
-	 */
-	protected function setupCronImport() {
-		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
-		$oFO = $this->getMod();
-		$this->loadWpCronProcessor()
-			 ->setNextRun( strtotime( 'tomorrow 1am' ) - get_option( 'gmt_offset' )*HOUR_IN_SECONDS + rand( 0, 1800 ) )
-			 ->createCronJob( $this->getCronName(), array( $this, 'cron_autoImport' ) );
-		// For auto update whitelist notifications:
-		add_action( $oFO->prefix( 'importexport_updatenotified' ), array( $this, 'cron_autoImport' ) );
-		add_action( $this->getMod()->prefix( 'delete_plugin' ), array( $this, 'deleteCron' ) );
-	}
-
-	/**
-	 * @param string $sMasterSiteUrl
-	 * @param string $sSecretKey
-	 * @param bool   $bEnableNetwork
-	 * @param string $sSiteResponse
+	 * @param string    $sMasterSiteUrl
+	 * @param string    $sSecretKey
+	 * @param bool|null $bEnableNetwork
+	 * @param string    $sSiteResponse
 	 * @return int
 	 */
-	public function runImport( $sMasterSiteUrl, $sSecretKey = '', $bEnableNetwork = false, &$sSiteResponse = '' ) {
+	public function runImport( $sMasterSiteUrl = '', $sSecretKey = '', $bEnableNetwork = null, &$sSiteResponse = '' ) {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		$oDP = $this->loadDP();
+		$oDP = Services::Data();
+
+		if ( empty( $sMasterSiteUrl ) ) {
+			$sMasterSiteUrl = $oFO->getImportExportMasterImportUrl();
+		}
 
 		$aParts = parse_url( $sMasterSiteUrl );
 
+		$sOriginalMasterSiteUrl = $oFO->getImportExportMasterImportUrl();
+		$bHadMasterSiteUrl = $oFO->hasImportExportMasterImportUrl();
 		$bCheckKeyFormat = !$oFO->hasImportExportMasterImportUrl();
 		$sSecretKey = preg_replace( '#[^0-9a-z]#i', '', $sSecretKey );
 
@@ -279,15 +465,15 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 				$aData = array(
 					'shield_action' => 'importexport_export',
 					'secret'        => $sSecretKey,
-					'url'           => $this->loadWp()->getHomeUrl()
+					'url'           => Services::WpGeneral()->getHomeUrl()
 				);
 				// Don't send the network setup request if it's the cron.
-				if ( !$this->loadWp()->isCron() ) {
+				if ( !is_null( $bEnableNetwork ) && !Services::WpGeneral()->isCron() ) {
 					$aData[ 'network' ] = $bEnableNetwork ? 'Y' : 'N';
 				}
 
 				$sFinalUrl = add_query_arg( $aData, $sMasterSiteUrl );
-				$sResponse = $this->loadFS()->getUrlContent( $sFinalUrl );
+				$sResponse = Services::HttpRequest()->getContent( $sFinalUrl );
 				$aParts = @json_decode( $sResponse, true );
 
 				if ( empty( $aParts ) ) {
@@ -307,30 +493,25 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 					$nErrorCode = 8;
 				}
 				else {
-					$sHash = md5( serialize( $aParts[ 'data' ] ) );
-					if ( $sHash != $oFO->getImportExportLastImportHash() ) {
-						do_action( $oFO->prefix( 'import_options' ), $aParts[ 'data' ] );
-						$this->addToAuditEntry(
-							sprintf( _wpsf__( 'Options imported from %s.' ), $sMasterSiteUrl ),
-							1,
-							'options_imported'
-						);
-						$oFO->setImportExportLastImportHash( md5( serialize( $aParts[ 'data' ] ) ) );
+					$this->processDataImport( $aParts[ 'data' ] );
 
-						// Fix for the overwriting of the Master Site URL with an empty string.
-						if ( !$oFO->hasImportExportMasterImportUrl() ) {
-							$oFO->setImportExportMasterImportUrl( $sMasterSiteUrl );
+					// Fix for the overwriting of the Master Site URL with an empty string.
+					// Only do so if we're not turning it off. i.e on or no-change
+					if ( is_null( $bEnableNetwork ) ) {
+						if ( $bHadMasterSiteUrl && !$oFO->hasImportExportMasterImportUrl() ) {
+							$oFO->setImportExportMasterImportUrl( $sOriginalMasterSiteUrl );
 						}
 					}
-
-					// if it's network enabled, we save the new master URL.
-					if ( $bEnableNetwork ) {
+					else if ( $bEnableNetwork === true ) {
 						$this->addToAuditEntry(
 							sprintf( _wpsf__( 'Master Site URL set to %s.' ), $sMasterSiteUrl ),
 							1,
 							'options_master_set'
 						);
 						$oFO->setImportExportMasterImportUrl( $sMasterSiteUrl );
+					}
+					else if ( $bEnableNetwork === false ) {
+						$oFO->setImportExportMasterImportUrl( '' );
 					}
 
 					$nErrorCode = 0;
@@ -341,21 +522,32 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		return $nErrorCode;
 	}
 
-	public function cron_autoImport() {
+	/**
+	 * @param array  $aImportData
+	 * @param string $sImportSource
+	 * @return bool
+	 */
+	private function processDataImport( $aImportData, $sImportSource = 'unspecified' ) {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		$this->runImport( $oFO->getImportExportMasterImportUrl() );
-	}
-
-	public function deleteCron() {
-		$this->loadWpCronProcessor()->deleteCronJob( $this->getCronName() );
+		$bImported = false;
+		if ( md5( serialize( $aImportData ) ) != $oFO->getImportExportLastImportHash() ) {
+			do_action( $oFO->prefix( 'import_options' ), $aImportData );
+			$this->addToAuditEntry(
+				sprintf( _wpsf__( 'Options imported from %s.' ), $sImportSource ),
+				1, 'options_imported'
+			);
+			$oFO->setImportExportLastImportHash( md5( serialize( $aImportData ) ) );
+		}
+		return $bImported;
 	}
 
 	/**
-	 * @return string
+	 * Cron callback
 	 */
-	protected function getCronName() {
+	public function runDailyCron() {
+		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		return $oFO->prefixOptionKey( $oFO->getDef( 'importexport_cron_name' ) );
+		$this->runImport( $oFO->getImportExportMasterImportUrl() );
 	}
 }

@@ -3,7 +3,8 @@
   "properties":    {
     "slug":                  "comments_filter",
     "name":                  "Comments SPAM",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "commentsfilter",
     "tagline":               "Block comment SPAM and retain your privacy",
     "use_sessions":          true,
@@ -12,6 +13,7 @@
     "premium":               false,
     "run_if_whitelisted":    false,
     "run_if_verified_bot":   false,
+    "run_if_wpcli":          false,
     "order":                 50
   },
   "admin_notices": {
@@ -261,7 +263,7 @@
           "text":      "Invisible reCAPTCHA"
         }
       ],
-      "link_info":     "",
+      "link_info":     "https://icwp.io/e4",
       "link_blog":     "",
       "name":          "reCAPTCHA Style",
       "summary":       "How Google reCAPTCHA Will Be Displayed",
@@ -329,8 +331,9 @@
     },
     {
       "key":          "insights_last_comment_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     }
   ],

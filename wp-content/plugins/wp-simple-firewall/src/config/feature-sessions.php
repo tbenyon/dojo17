@@ -11,7 +11,8 @@
     "access_restricted":     true,
     "auto_load_processor":   true,
     "run_if_whitelisted":    true,
-    "run_if_verified_bot":   true
+    "run_if_verified_bot":   true,
+    "run_if_wpcli":          false
   },
   "sections":    [
     {
@@ -43,8 +44,10 @@
     },
     {
       "key":          "autoadd_sessions_started_at",
+      "section":      "section_non_ui",
+      "type":         "integer",
       "transferable": false,
-      "section":      "section_non_ui"
+      "default":      0
     }
   ],
   "definitions": {

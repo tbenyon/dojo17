@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_BasePlugin', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -57,7 +53,7 @@ class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 
 	/**
 	 * @param $aAttr
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function addNotice_rate_plugin( $aAttr ) {
 
@@ -77,15 +73,13 @@ class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 
 	/**
 	 * @param array $aNoticeAttributes
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function addNotice_wizard_welcome( $aNoticeAttributes ) {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
 
-		$bCanWizardWelcome = $oFO->canRunWizards();
-
-		$sName = $oFO->getConn()->getHumanName();
+		$sName = $this->getCon()->getHumanName();
 		$aRenderData = array(
 			'notice_attributes' => $aNoticeAttributes,
 			'strings'           => array(
@@ -95,41 +89,9 @@ class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 				'no_setup' => sprintf( _wpsf__( "%s has a helpful setup wizard to walk you through the main features. Unfortunately your PHP version is reeeaally old as it needs PHP 5.4+" ), $sName ),
 			),
 			'hrefs'             => array(
-				'wizard' => $bCanWizardWelcome ? $oFO->getUrl_Wizard( 'welcome' ) : 'javascript:{event.preventDefault();}',
+				'wizard' => $oFO->getUrl_Wizard( 'welcome' ),
 			),
-			'flags'             => array(
-				'can_wizard' => $bCanWizardWelcome,
-			)
-		);
-		$this->insertAdminNotice( $aRenderData );
-	}
-
-	/**
-	 * removed
-	 * @see autoAddToAdminNotices()
-	 * @param array $aAttr
-	 * @throws Exception
-	 */
-	protected function addNotice_php54_version_warning( $aAttr ) {
-		$oDp = $this->loadDP();
-		if ( $oDp->getPhpVersionIsAtLeast( '5.4.0' ) ) {
-			return;
-		}
-
-		$oCon = $this->getController();
-		$aRenderData = array(
-			'notice_attributes' => $aAttr,
-			'strings'           => array(
-				'title'         => sprintf( _wpsf__( 'Your PHP version is very old: %s' ), $oDp->getPhpVersion() ),
-				'not_supported' => sprintf( _wpsf__( 'Newer features of %s do not support your PHP version.' ), $oCon->getHumanName() ),
-				'ask_host'      => _wpsf__( 'You should ask your host to upgrade or provide a much newer PHP version.' ),
-				'questions'     => _wpsf__( 'Please read here for further information:' ),
-				'dismiss'       => _wpsf__( 'Dismiss this notice' ),
-				'help'          => _wpsf__( 'Dropping support for PHP 5.2 and 5.3' )
-			),
-			'hrefs'             => array(
-				'help' => 'https://icwp.io/aq',
-			)
+			'flags'             => array()
 		);
 		$this->insertAdminNotice( $aRenderData );
 	}
@@ -137,10 +99,10 @@ class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 	/**
 	 * @see autoAddToAdminNotices()
 	 * @param array $aNoticeAttributes
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function addNotice_plugin_update_available( $aNoticeAttributes ) {
-		$oPlugin = $this->getController();
+		$oPlugin = $this->getCon();
 		$oNotices = $this->loadWpNotices();
 
 		if ( $oNotices->isDismissed( 'plugin-update-available' ) ) {
@@ -150,25 +112,21 @@ class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 			}
 		}
 
-		if ( !$this->getIfShowAdminNotices() ) {
-			return;
-		}
-
-		$oWp = $this->loadWp();
-		$oWpPlugins = $this->loadWpPlugins();
+		$oWpPlugins = Services::WpPlugins();
 		$sBaseFile = $oPlugin->getPluginBaseFile();
-		if ( !$oWp->getIsPage_Updates() && $oWpPlugins->isUpdateAvailable( $sBaseFile ) ) { // Don't show on the update page
+		if ( $this->getIfShowAdminNotices() && $oWpPlugins->isUpdateAvailable( $sBaseFile )
+			 && !Services::WpPost()->isPage_Updates() ) { // Don't show on the update page
 			$aRenderData = array(
 				'notice_attributes' => $aNoticeAttributes,
 				'render_slug'       => 'plugin-update-available',
 				'strings'           => array(
-					'title'        => sprintf( _wpsf__( 'Update available for the %s plugin.' ), $this->getController()
+					'title'        => sprintf( _wpsf__( 'Update available for the %s plugin.' ), $this->getCon()
 																									  ->getHumanName() ),
 					'click_update' => _wpsf__( 'Please click to update immediately' ),
 					'dismiss'      => _wpsf__( 'Dismiss this notice' )
 				),
 				'hrefs'             => array(
-					'upgrade_link' => $oWpPlugins->getLinkPluginUpgrade( $sBaseFile )
+					'upgrade_link' => $oWpPlugins->getUrl_Upgrade( $sBaseFile )
 				)
 			);
 			$this->insertAdminNotice( $aRenderData );
@@ -185,7 +143,7 @@ class ICWP_WPSF_Processor_BasePlugin extends ICWP_WPSF_Processor_BaseWpsf {
 				'notice_attributes' => $aNoticeAttributes,
 				'strings'           => array(
 					'title'        => 'Você não fala Inglês? No hablas Inglés? Heeft u geen Engels spreekt?',
-					'like_to_help' => sprintf( _wpsf__( "Can you help translate the %s plugin?" ), $this->getController()
+					'like_to_help' => sprintf( _wpsf__( "Can you help translate the %s plugin?" ), $this->getCon()
 																										->getHumanName() ),
 					'head_over_to' => sprintf( _wpsf__( 'Head over to: %s' ), '' ),
 					'site_url'     => 'translate.icontrolwp.com',

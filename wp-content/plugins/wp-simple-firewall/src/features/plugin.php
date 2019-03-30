@@ -1,19 +1,35 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_FeatureHandler_Plugin', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Plugin\Shield;
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
 	protected function doPostConstruction() {
-		add_action( 'deactivate_plugin', array( $this, 'onWpHookDeactivatePlugin' ), 1, 1 );
-		add_filter( $this->prefix( 'report_email_address' ), array( $this, 'supplyPluginReportEmail' ) );
-		add_filter( $this->prefix( 'globally_disabled' ), array( $this, 'filter_IsPluginGloballyDisabled' ) );
-		add_filter( $this->prefix( 'google_recaptcha_config' ), array( $this, 'supplyGoogleRecaptchaConfig' ), 10, 0 );
 		$this->setVisitorIp();
+	}
+
+	protected function setupCustomHooks() {
+		add_filter( $this->prefix( 'report_email_address' ), [ $this, 'supplyPluginReportEmail' ] );
+		add_filter( $this->prefix( 'globally_disabled' ), [ $this, 'filter_IsPluginGloballyDisabled' ] );
+		add_filter( $this->prefix( 'google_recaptcha_config' ), [ $this, 'supplyGoogleRecaptchaConfig' ], 10, 0 );
+	}
+
+	protected function updateHandler() {
+		$this->deleteAllPluginCrons();
+	}
+
+	private function deleteAllPluginCrons() {
+		$oWpCron = $this->loadWpCronProcessor();
+
+		foreach ( $oWpCron->getCrons() as $nKey => $aCronArgs ) {
+			foreach ( $aCronArgs as $sHook => $aCron ) {
+				if ( strpos( $sHook, $this->prefix() ) === 0
+					 || strpos( $sHook, $this->prefixOptionKey() ) === 0 ) {
+					$oWpCron->deleteCronJob( $sHook );
+				}
+			}
+		}
 	}
 
 	/**
@@ -25,35 +41,10 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
-	 * @return array
-	 */
-	protected function getContentCustomActionsData() {
-		$bCanWizard = $this->canRunWizards();
-		$bCanWizardWelcome = $bCanWizard;
-		$bCanWizardImport = $bCanWizard && $this->isPremium();
-
-		return array(
-			'strings' => $this->getDisplayStrings(),
-			'hrefs'   => array(
-				'wizard_welcome' => $bCanWizardWelcome ? $this->getUrl_Wizard( 'welcome' ) : 'javascript:{event.preventDefault();}',
-				'wizard_import'  => $bCanWizardImport ? $this->getUrl_Wizard( 'import' ) : 'javascript:{event.preventDefault();}',
-			),
-			'flags'   => array(
-				'can_php54'   => $bCanWizard,
-				'can_welcome' => $bCanWizardWelcome,
-				'can_import'  => $bCanWizardImport
-			),
-			'data'    => array(
-				'phpversion' => $this->loadDP()->getPhpVersion(),
-			)
-		);
-	}
-
-	/**
 	 * @return bool
 	 */
 	public function getLastCheckServerIpAtHasExpired() {
-		return ( ( $this->loadDP()->time() - $this->getLastCheckServerIpAt() ) > DAY_IN_SECONDS );
+		return ( Services::Request()->ts() - $this->getLastCheckServerIpAt() > DAY_IN_SECONDS );
 	}
 
 	/**
@@ -70,13 +61,12 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 
 		$sThisServerIp = $this->getOpt( 'this_server_ip', '' );
 		if ( $this->getLastCheckServerIpAtHasExpired() ) {
-			$oIp = $this->loadIpService();
-			$sThisServerIp = $oIp->whatIsMyIp();
+			$sThisServerIp = Services::IP()->whatIsMyIp();
 			if ( !empty( $sThisServerIp ) ) {
 				$this->setOpt( 'this_server_ip', $sThisServerIp );
 			}
 			// we always update so we don't forever check on every single page load
-			$this->setOpt( 'this_server_ip_last_check_at', $this->loadDP()->time() );
+			$this->setOptAt( 'this_server_ip_last_check_at' );
 		}
 		return $sThisServerIp;
 	}
@@ -86,7 +76,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	public function isDisplayPluginBadge() {
 		return $this->isOpt( 'display_plugin_badge', 'Y' )
-			   && ( $this->loadDP()->cookie( $this->getCookieIdBadgeState() ) != 'closed' );
+			   && ( Services::Request()->cookie( $this->getCookieIdBadgeState() ) != 'closed' );
 	}
 
 	/**
@@ -101,35 +91,18 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * Forcefully sets the Visitor IP address in the Data component for use throughout the plugin
 	 */
 	protected function setVisitorIp() {
-		$sIp = null;
-		$oIpService = $this->loadIpService();
-		$oDp = $this->loadDP();
-
+		$oDetector = ( new Shield\Utilities\VisitorIpDetection() )
+			->setPotentialHostIps(
+				[ $this->getMyServerIp(), Services::Request()->getServerAddress() ]
+			);
 		if ( !$this->isVisitorAddressSourceAutoDetect() ) {
-
-			$sMaybeIp = $oDp->server( $this->getVisitorAddressSource() );
-
-			if ( !empty( $sMaybeIp ) ) {
-				$aMaybeIps = array_map( 'trim', explode( ',', $sMaybeIp ) ); // TODO:streamline this comma handling
-				foreach ( $aMaybeIps as $sMaybeIp ) {
-					if ( $oIpService->isViablePublicVisitorIp( $sMaybeIp, $this->getMyServerIp() ) ) {
-						$oIpService->setRequestIpAddress( $sMaybeIp );
-						$sIp = $sMaybeIp;
-						break;
-					}
-				}
-			}
+			$oDetector->setPreferredSource( $this->getVisitorAddressSource() );
 		}
 
-		// If the address at this stage is null, then the current setting is failing for IP detection
-		// So we try and rediscover a more correct source for the Request IP Address.
-		if ( empty( $sIp ) ) {
-			$aSourceAndIp = $oIpService->setServerIpAddress( $this->getMyServerIp() )
-									   ->discoverViableRequestIpSource();
-			if ( !empty( $aSourceAndIp[ 'source' ] ) ) {
-				$oIpService->setRequestIpAddress( $aSourceAndIp[ 'ip' ] );
-				$this->setVisitorAddressSource( $aSourceAndIp[ 'source' ] );
-			}
+		$sIp = $oDetector->detect();
+		if ( !empty( $sIp ) ) {
+			Services::IP()->setRequestIpAddress( $sIp );
+			$this->setOpt( 'last_ip_detect_source', $oDetector->getLastSuccessfulSource() );
 		}
 	}
 
@@ -169,15 +142,18 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	public function handleAjax( $aAjaxResponse ) {
 
 		if ( empty( $aAjaxResponse ) ) {
-			switch ( $this->loadDP()->request( 'exec' ) ) {
+			switch ( Services::Request()->request( 'exec' ) ) {
+
 				case 'plugin_badge_close':
 					$aAjaxResponse = $this->ajaxExec_PluginBadgeClose();
 					break;
+
 				case 'set_plugin_tracking_perm':
 					if ( !$this->isTrackingPermissionSet() ) {
 						$aAjaxResponse = $this->ajaxExec_SetPluginTrackingPerm();
 					}
 					break;
+
 				case 'send_deactivate_survey':
 					$aAjaxResponse = $this->ajaxExec_SendDeactivateSurvey();
 					break;
@@ -193,10 +169,30 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	public function handleAuthAjax( $aAjaxResponse ) {
 
 		if ( empty( $aAjaxResponse ) ) {
-			switch ( $this->loadDP()->request( 'exec' ) ) {
+			switch ( Services::Request()->request( 'exec' ) ) {
+
+				case 'bulk_action':
+					$aAjaxResponse = $this->ajaxExec_BulkItemAction();
+					break;
 
 				case 'delete_forceoff':
 					$aAjaxResponse = $this->ajaxExec_DeleteForceOff();
+					break;
+
+				case 'render_table_adminnotes':
+					$aAjaxResponse = $this->ajaxExec_RenderTableAdminNotes();
+					break;
+
+				case 'note_delete':
+					$aAjaxResponse = $this->ajaxExec_AdminNotesDelete();
+					break;
+
+				case 'note_insert':
+					$aAjaxResponse = $this->ajaxExec_AdminNotesInsert();
+					break;
+
+				case 'import_from_site':
+					$aAjaxResponse = $this->ajaxExec_ImportFromSite();
 					break;
 
 				default:
@@ -207,10 +203,94 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
+	 */
+	public function handleModRequest() {
+		switch ( Services::Request()->request( 'exec' ) ) {
+
+			case 'export_file_download':
+				header( 'Set-Cookie: fileDownload=true; path=/' );
+				/** @var ICWP_WPSF_Processor_Plugin $oPro */
+				$oPro = $this->getProcessor();
+				$oPro->getSubProImportExport()
+					 ->doExportDownload();
+				break;
+
+			case 'import_file_upload':
+				/** @var ICWP_WPSF_Processor_Plugin $oPro */
+				$oPro = $this->getProcessor();
+				try {
+					$oPro->getSubProImportExport()
+						 ->importFromUploadFile();
+					$bSuccess = true;
+					$sMessage = _wpsf__( 'Options imported successfully' );
+				}
+				catch ( \Exception $oE ) {
+					$bSuccess = false;
+					$sMessage = $oE->getMessage();
+				}
+				$this->loadWpNotices()
+					 ->addFlashUserMessage( $sMessage, !$bSuccess );
+				Services::Response()->redirect( $this->getUrlImportExport() );
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	/**
+	 * TODO: build better/dynamic direct linking to insights sub-pages
+	 * see also hackprotect getUrlManualScan()
+	 */
+	private function getUrlImportExport() {
+		return add_query_arg(
+			[ 'inav' => 'importexport' ],
+			$this->getCon()->getModule( 'insights' )->getUrl_AdminPage()
+		);
+	}
+
+	/**
+	 * @return array
+	 */
+	private function ajaxExec_BulkItemAction() {
+		$oReq = Services::Request();
+
+		$bSuccess = false;
+
+		$aIds = $oReq->post( 'ids' );
+		if ( empty( $aIds ) || !is_array( $aIds ) ) {
+			$bSuccess = false;
+			$sMessage = _wpsf__( 'No items selected.' );
+		}
+		else if ( !in_array( $oReq->post( 'bulk_action' ), [ 'delete' ] ) ) {
+			$sMessage = _wpsf__( 'Not a supported action.' );
+		}
+		else {
+
+			/** @var ICWP_WPSF_Processor_Plugin $oPro */
+			$oPro = $this->getProcessor();
+			/** @var Shield\Databases\AdminNotes\Delete $oDel */
+			$oDel = $oPro->getSubProcessorNotes()->getDbHandler()->getQueryDeleter();
+			foreach ( $aIds as $nId ) {
+				if ( is_numeric( $nId ) ) {
+					$oDel->deleteById( $nId );
+				}
+			}
+			$bSuccess = true;
+			$sMessage = _wpsf__( 'Selected items were deleted.' );
+		}
+
+		return array(
+			'success' => $bSuccess,
+			'message' => $sMessage,
+		);
+	}
+
+	/**
 	 * @return array
 	 */
 	public function ajaxExec_PluginBadgeClose() {
-		$bSuccess = $this->loadDP()
+		$bSuccess = $this->loadRequest()
 						 ->setCookie(
 							 $this->getCookieIdBadgeState(),
 							 'closed',
@@ -227,7 +307,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return array
 	 */
 	public function ajaxExec_SetPluginTrackingPerm() {
-		$this->setPluginTrackingPermission( (bool)$this->loadDP()->query( 'agree', false ) );
+		$this->setPluginTrackingPermission( (bool)Services::Request()->query( 'agree', false ) );
 		return array( 'success' => true );
 	}
 
@@ -254,7 +334,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return array
 	 */
 	public function ajaxExec_DeleteForceOff() {
-		$bStillActive = $this->getConn()
+		$bStillActive = $this->getCon()
 							 ->deleteForceOffFile()
 							 ->getIfForceOffActive();
 		if ( $bStillActive ) {
@@ -264,12 +344,128 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
+	 * @return array
+	 */
+	protected function ajaxExec_AdminNotesDelete() {
+
+		$sItemId = Services::Request()->post( 'rid' );
+		if ( empty( $sItemId ) ) {
+			$sMessage = _wpsf__( 'Note not found.' );
+		}
+		else {
+			/** @var ICWP_WPSF_Processor_Plugin $oPro */
+			$oPro = $this->getProcessor();
+			try {
+				$bSuccess = $oPro->getSubProcessorNotes()
+								 ->getDbHandler()
+								 ->getQueryDeleter()
+								 ->deleteById( $sItemId );
+
+				if ( $bSuccess ) {
+					$sMessage = 'Note deleted';
+				}
+				else {
+					$sMessage = "Note couldn't be deleted";
+				}
+			}
+			catch ( \Exception $oE ) {
+				$sMessage = $oE->getMessage();
+			}
+		}
+
+		return array(
+			'success' => true,
+			'message' => $sMessage
+		);
+	}
+
+	private function ajaxExec_ImportFromSite() {
+		$bSuccess = false;
+		$aFormParams = array_merge(
+			[
+				'confirm' => 'N'
+			],
+			$this->getAjaxFormParams()
+		);
+
+		// TODO: align with wizard AND combine with file upload errors
+		if ( $aFormParams[ 'confirm' ] !== 'Y' ) {
+			$sMessage = _wpsf__( 'Please check the box to confirm your intent to overwrite settings' );
+		}
+		else {
+			$sMasterSiteUrl = $aFormParams[ 'MasterSiteUrl' ];
+			$sSecretKey = $aFormParams[ 'MasterSiteSecretKey' ];
+			$bEnabledNetwork = $aFormParams[ 'ShieldNetwork' ] === 'Y';
+			$bDisableNetwork = $aFormParams[ 'ShieldNetwork' ] === 'N';
+			$bNetwork = $bEnabledNetwork ? true : ( $bDisableNetwork ? false : null );
+
+			/** @var ICWP_WPSF_Processor_Plugin $oP */
+			$oP = $this->getProcessor();
+			/** @var Shield\Databases\AdminNotes\Insert $oInserter */
+			$nCode = $oP->getSubProImportExport()
+						->runImport( $sMasterSiteUrl, $sSecretKey, $bNetwork );
+			$bSuccess = $nCode == 0;
+			$sMessage = $bSuccess ? _wpsf__( 'Options imported successfully' ) : _wpsf__( 'Options failed to import' );
+		}
+		return array(
+			'success' => $bSuccess,
+			'message' => $sMessage
+		);
+	}
+
+	/**
+	 * @return array
+	 */
+	protected function ajaxExec_AdminNotesInsert() {
+		$bSuccess = false;
+		$aFormParams = $this->getAjaxFormParams();
+
+		$sNote = isset( $aFormParams[ 'admin_note' ] ) ? $aFormParams[ 'admin_note' ] : '';
+		if ( !$this->getCanAdminNotes() ) {
+			$sMessage = _wpsf__( 'Sorry, Admin Notes is only available for Pro subscriptions.' );
+		}
+		else if ( empty( $sNote ) ) {
+			$sMessage = _wpsf__( 'Sorry, but it appears your note was empty.' );
+		}
+		else {
+			/** @var ICWP_WPSF_Processor_Plugin $oP */
+			$oP = $this->getProcessor();
+			/** @var Shield\Databases\AdminNotes\Insert $oInserter */
+			$oInserter = $oP->getSubProcessorNotes()
+							->getDbHandler()
+							->getQueryInserter();
+			$bSuccess = $oInserter->create( $sNote );
+			$sMessage = $bSuccess ? _wpsf__( 'Note created successfully.' ) : _wpsf__( 'Note could not be created.' );
+		}
+		return array(
+			'success' => $bSuccess,
+			'message' => $sMessage
+		);
+	}
+
+	/**
+	 * @return array
+	 */
+	protected function ajaxExec_RenderTableAdminNotes() {
+		/** @var ICWP_WPSF_Processor_Plugin $oPro */
+		$oPro = $this->getProcessor();
+		$oTableBuilder = ( new Shield\Tables\Build\AdminNotes() )
+			->setMod( $this )
+			->setDbHandler( $oPro->getSubProcessorNotes()->getDbHandler() );
+
+		return array(
+			'success' => true,
+			'html'    => $oTableBuilder->buildTable()
+		);
+	}
+
+	/**
 	 * @param bool $bOnOrOff
 	 * @return $this
 	 */
 	public function setPluginTrackingPermission( $bOnOrOff = true ) {
 		$this->setOpt( 'enable_tracking', $bOnOrOff ? 'Y' : 'N' )
-			 ->setOpt( 'tracking_permission_set_at', $this->loadDP()->time() )
+			 ->setOpt( 'tracking_permission_set_at', Services::Request()->ts() )
 			 ->savePluginOptions();
 		return $this;
 	}
@@ -313,22 +509,6 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
-	 * Hooked to 'deactivate_plugin' and can be used to interrupt the deactivation of this plugin.
-	 * @param string $sPlugin
-	 */
-	public function onWpHookDeactivatePlugin( $sPlugin ) {
-		$oCon = self::getConn();
-		if ( strpos( $oCon->getRootFile(), $sPlugin ) !== false ) {
-			if ( !$oCon->getHasPermissionToManage() ) {
-				$this->loadWp()->wpDie(
-					_wpsf__( 'Sorry, you do not have permission to disable this plugin.' )
-					._wpsf__( 'You need to authenticate first.' )
-				);
-			}
-		}
-	}
-
-	/**
 	 * @return int
 	 */
 	public function getTrackingLastSentAt() {
@@ -342,7 +522,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	public function getLinkToTrackingDataDump() {
 		return add_query_arg(
 			array( 'shield_action' => 'dump_tracking_data' ),
-			$this->loadWp()->getUrl_WpAdmin()
+			Services::WpGeneral()->getAdminUrl()
 		);
 	}
 
@@ -364,21 +544,23 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return $this
 	 */
 	public function setTrackingLastSentAt() {
-		return $this->setOpt( 'tracking_last_sent_at', $this->loadDP()->time() );
+		return $this->setOpt( 'tracking_last_sent_at', Services::Request()->ts() );
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function readyToSendTrackingData() {
-		return ( ( $this->loadDP()->time() - $this->getTrackingLastSentAt() ) > WEEK_IN_SECONDS );
+		return ( Services::Request()->ts() - $this->getTrackingLastSentAt() > WEEK_IN_SECONDS );
 	}
 
 	/**
+	 * @param string $sEmail
 	 * @return string
 	 */
-	public function supplyPluginReportEmail() {
-		return $this->getOpt( 'block_send_email_address' );
+	public function supplyPluginReportEmail( $sEmail = '' ) {
+		$sE = $this->getOpt( 'block_send_email_address' );
+		return Services::Data()->validEmail( $sE ) ? $sE : $sEmail;
 	}
 
 	/**
@@ -386,13 +568,10 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	protected function doPrePluginOptionsSave() {
 
-		$nInstalledAt = $this->getPluginInstallationTime();
-		if ( empty( $nInstalledAt ) || $nInstalledAt <= 0 ) {
-			$this->setOpt( 'installation_time', $this->loadDP()->time() );
-		}
+		$this->storeRealInstallDate();
 
 		if ( $this->isTrackingEnabled() && !$this->isTrackingPermissionSet() ) {
-			$this->setOpt( 'tracking_permission_set_at', $this->loadDP()->time() );
+			$this->setOpt( 'tracking_permission_set_at', Services::Request()->ts() );
 		}
 
 		$this->cleanRecaptchaKey( 'google_recaptcha_site_key' );
@@ -402,6 +581,46 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		$this->cleanImportExportMasterImportUrl();
 
 		$this->setPluginInstallationId();
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getFirstInstallDate() {
+		return Services::WpGeneral()->getOption( $this->prefixOptionKey( 'install_date' ) );
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getInstallDate() {
+		return $this->getOpt( 'installation_time', 0 );
+	}
+
+	/**
+	 * @return int - the real install timestamp
+	 */
+	public function storeRealInstallDate() {
+		$oWP = Services::WpGeneral();
+		$nNow = Services::Request()->ts();
+
+		$sOptKey = $this->prefixOptionKey( 'install_date' );
+
+		$nWpDate = $oWP->getOption( $sOptKey );
+		if ( empty( $nWpDate ) ) {
+			$nWpDate = $nNow;
+		}
+
+		$nPluginDate = $this->getInstallDate();
+		if ( $nPluginDate == 0 ) {
+			$nPluginDate = $nNow;
+		}
+
+		$nFinal = min( $nPluginDate, $nWpDate );
+		$oWP->updateOption( $sOptKey, $nFinal );
+		$this->setOpt( 'installation_time', $nPluginDate );
+
+		return $nFinal;
 	}
 
 	/**
@@ -422,6 +641,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 
 	/**
 	 * Ensure we always a valid installation ID.
+	 *
 	 * @deprecated but still used because it aligns with stats collection
 	 * @return string
 	 */
@@ -452,9 +672,9 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	protected function genInstallId() {
 		return sha1(
-			$this->getPluginInstallationTime()
-			.$this->loadWp()->getWpUrl()
-			.$this->loadDbProcessor()->getPrefix()
+			$this->getInstallDate()
+			.Services::WpGeneral()->getWpUrl()
+			.Services::WpDb()->getPrefix()
 		);
 	}
 
@@ -470,7 +690,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 */
 	public function hasImportExportMasterImportUrl() {
 		$sMaster = $this->getImportExportMasterImportUrl();
-		return !empty( $sMaster ) && ( rtrim( $this->loadWp()->getHomeUrl(), '/' ) != $sMaster );
+		return !empty( $sMaster );
 	}
 
 	/**
@@ -484,7 +704,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return int
 	 */
 	public function getImportExportHandshakeExpiresAt() {
-		return $this->getOpt( 'importexport_handshake_expires_at', $this->loadDP()->time() );
+		return $this->getOpt( 'importexport_handshake_expires_at', Services::Request()->ts() );
 	}
 
 	/**
@@ -510,7 +730,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		if ( empty( $sId ) || $this->isImportExportSecretKeyExpired() ) {
 			$sId = sha1( $this->getPluginInstallationId().wp_rand( 0, PHP_INT_MAX ) );
 			$this->setOpt( 'importexport_secretkey', $sId )
-				 ->setOpt( 'importexport_secretkey_expires_at', $this->loadDP()->time() + HOUR_IN_SECONDS );
+				 ->setOpt( 'importexport_secretkey_expires_at', Services::Request()->ts() + HOUR_IN_SECONDS );
 		}
 		return $sId;
 	}
@@ -526,7 +746,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return bool
 	 */
 	protected function isImportExportSecretKeyExpired() {
-		return ( $this->loadDP()->time() > $this->getOpt( 'importexport_secretkey_expires_at' ) );
+		return ( Services::Request()->ts() > $this->getOpt( 'importexport_secretkey_expires_at' ) );
 	}
 
 	/**
@@ -545,6 +765,24 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 		if ( $sUrl !== false ) {
 			$aWhitelistUrls = $this->getImportExportWhitelist();
 			$aWhitelistUrls[] = $sUrl;
+			$this->setOpt( 'importexport_whitelist', $aWhitelistUrls )
+				 ->savePluginOptions();
+		}
+		return $this;
+	}
+
+	/**
+	 * @param string $sUrl
+	 * @return $this
+	 */
+	public function removeUrlFromImportExportWhitelistUrls( $sUrl ) {
+		$sUrl = $this->loadDP()->validateSimpleHttpUrl( $sUrl );
+		if ( $sUrl !== false ) {
+			$aWhitelistUrls = $this->getImportExportWhitelist();
+			$sKey = array_search( $sUrl, $aWhitelistUrls );
+			if ( $sKey !== false ) {
+				unset( $aWhitelistUrls[ $sKey ] );
+			}
 			$this->setOpt( 'importexport_whitelist', $aWhitelistUrls )
 				 ->savePluginOptions();
 		}
@@ -592,7 +830,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return $this
 	 */
 	public function startImportExportHandshake() {
-		$this->setOpt( 'importexport_handshake_expires_at', $this->loadDP()->time() + 30 )
+		$this->setOpt( 'importexport_handshake_expires_at', Services::Request()->ts() + 30 )
 			 ->savePluginOptions();
 		return $this;
 	}
@@ -626,21 +864,22 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	/**
 	 * @return array
 	 */
-	protected function buildIpAddressMap() {
+	private function buildIpAddressMap() {
+		$oReq = Services::Request();
+
 		$aOptionData = $this->getOptionsVo()->getRawData_SingleOption( 'visitor_address_source' );
 		$aValueOptions = $aOptionData[ 'value_options' ];
 
-		$oDp = $this->loadDP();
 		$aMap = array();
 		$aEmpties = array();
 		foreach ( $aValueOptions as $aOptionValue ) {
 			$sKey = $aOptionValue[ 'value_key' ];
 			if ( $sKey == 'AUTO_DETECT_IP' ) {
 				$sKey = 'Auto Detect';
-				$sIp = $oDp->loadIpService()->getRequestIp();
+				$sIp = Services::IP()->getRequestIp().sprintf( ' (%s)', $this->getOpt( 'last_ip_detect_source' ) );
 			}
 			else {
-				$sIp = $oDp->server( $sKey );
+				$sIp = $oReq->server( $sKey );
 			}
 			if ( empty( $sIp ) ) {
 				$aEmpties[] = sprintf( '%s- %s', $sKey, 'ip not available' );
@@ -654,10 +893,10 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 
 	/**
 	 * @return string
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function renderPluginBadge() {
-		$oCon = $this->getConn();
+		$oCon = $this->getCon();
 
 		$aData = array(
 			'ajax' => array(
@@ -692,7 +931,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return array
 	 */
 	protected function getDisplayStrings() {
-		return $this->loadDP()->mergeArraysRecursive(
+		return Services::DataManipulation()->mergeArraysRecursive(
 			parent::getDisplayStrings(),
 			array(
 				'actions_title'   => _wpsf__( 'Plugin Actions' ),
@@ -719,30 +958,21 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	 * @return $this
 	 */
 	public function updateTestCronLastRunAt() {
-		$this->setOptInsightsAt( 'test_cron_last_run_at' )
-			 ->savePluginOptions();
-		return $this;
+		return $this->setOptInsightsAt( 'test_cron_last_run_at' );
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function getCanAdminNotes() {
-		return $this->isPremium();
+		return $this->isPremium() && Services::WpUsers()->isUserAdmin();
 	}
 
-	/**
-	 * @return string
-	 */
-	public function getDbNameNotes() {
-		return $this->prefixOptionKey( $this->getDef( 'db_notes_name' ) );
-	}
+	public function insertCustomJsVars_Admin() {
+		parent::insertCustomJsVars_Admin();
 
-	public function insertCustomJsVars() {
-		parent::insertCustomJsVars();
-
-		if ( $this->loadWp()->isCurrentPage( 'plugins.php' ) ) {
-			$sFile = $this->getConn()->getPluginBaseFile();
+		if ( Services::WpPost()->isCurrentPage( 'plugins.php' ) ) {
+			$sFile = $this->getCon()->getPluginBaseFile();
 			wp_localize_script(
 				$this->prefix( 'global-plugin' ),
 				'icwp_wpsf_vars_plugin',
@@ -752,7 +982,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 						'send_deactivate_survey' => $this->getAjaxActionData( 'send_deactivate_survey' ),
 					),
 					'hrefs' => array(
-						'deactivate' => $this->loadWpPlugins()->getUrl_Deactivate( $sFile ),
+						'deactivate' => Services::WpPlugins()->getUrl_Deactivate( $sFile ),
 					),
 				)
 			);
@@ -762,13 +992,68 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	}
 
 	/**
+	 * @param array $aAllData
+	 * @return array
+	 */
+	public function addInsightsConfigData( $aAllData ) {
+		$aThis = array(
+			'strings'      => array(
+				'title' => _wpsf__( 'General Settings' ),
+				'sub'   => sprintf( _wpsf__( 'General %s Settings' ), $this->getCon()->getHumanName() ),
+			),
+			'key_opts'     => array(),
+			'href_options' => $this->getUrl_AdminPage()
+		);
+
+		if ( $this->isModOptEnabled() ) {
+			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
+		}
+		else {
+			$sSource = $this->getOptionsVo()->getSelectOptionValueText( 'visitor_address_source' );
+			$aThis[ 'key_opts' ][ 'editing' ] = array(
+				'name'    => _wpsf__( 'Visitor IP' ),
+				'enabled' => true,
+				'summary' => sprintf( _wpsf__( 'Visitor IP address source is: %s' ), $sSource ),
+				'weight'  => 0,
+				'href'    => $this->getUrl_DirectLinkToOption( 'visitor_address_source' ),
+			);
+
+			$bHasSupportEmail = Services::Data()->validEmail( $this->supplyPluginReportEmail() );
+			$aThis[ 'key_opts' ][ 'reports' ] = array(
+				'name'    => _wpsf__( 'Reporting Email' ),
+				'enabled' => $bHasSupportEmail,
+				'summary' => $bHasSupportEmail ?
+					sprintf( _wpsf__( 'Email address for reports set to: %s' ), $this->supplyPluginReportEmail() )
+					: sprintf( _wpsf__( 'No address provided - defaulting to: %s' ), Services::WpGeneral()
+																						  ->getSiteAdminEmail() ),
+				'weight'  => 0,
+				'href'    => $this->getUrl_DirectLinkToOption( 'block_send_email_address' ),
+			);
+
+			$bRecap = $this->isGoogleRecaptchaReady();
+			$aThis[ 'key_opts' ][ 'recap' ] = array(
+				'name'    => _wpsf__( 'reCAPTCHA' ),
+				'enabled' => $bRecap,
+				'summary' => $bRecap ?
+					_wpsf__( 'Google reCAPTCHA keys have been provided' )
+					: _wpsf__( "Google reCAPTCHA keys haven't been provided" ),
+				'weight'  => 1,
+				'href'    => $this->getUrl_DirectLinkToOption( 'block_send_email_address' ),
+			);
+		}
+
+		$aAllData[ $this->getSlug() ] = $aThis;
+		return $aAllData;
+	}
+
+	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_SectionTitles( $aOptionsParams ) {
 
-		$sName = $this->getConn()->getHumanName();
+		$sName = $this->getCon()->getHumanName();
 		switch ( $aOptionsParams[ 'slug' ] ) {
 
 			case 'section_global_security_options' :
@@ -820,7 +1105,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 				break;
 
 			default:
-				throw new Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $aOptionsParams[ 'slug' ] ) );
+				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $aOptionsParams[ 'slug' ] ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
 		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
@@ -831,18 +1116,18 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_Options( $aOptionsParams ) {
 
 		$sKey = $aOptionsParams[ 'key' ];
+		$sPlugName = $this->getCon()->getHumanName();
 		switch ( $sKey ) {
 
 			case 'global_enable_plugin_features' :
 				$sName = _wpsf__( 'Enable/Disable Plugin Modules' );
 				$sSummary = _wpsf__( 'Enable/Disable All Plugin Modules' );
-				$sDescription = sprintf( _wpsf__( 'Uncheck this option to disable all %s features.' ), self::getConn()
-																										   ->getHumanName() );
+				$sDescription = sprintf( _wpsf__( 'Uncheck this option to disable all %s features.' ), $sPlugName );
 				break;
 
 			case 'enable_notes' :
@@ -864,7 +1149,12 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 				$sSummary = _wpsf__( 'Which IP Address Is Yours' );
 				$sDescription = _wpsf__( 'There are many possible ways to detect visitor IP addresses. If Auto-Detect is not working, please select yours from the list.' )
 								.'<br />'._wpsf__( 'If the option you select becomes unavailable, we will revert to auto detection.' )
-								.'<br />'.sprintf( _wpsf__( 'Current source is: %s' ), '<strong>'.$this->getVisitorAddressSource().'</strong>' )
+								.'<br />'.sprintf(
+									_wpsf__( 'Current source is: %s (%s)' ),
+									'<strong>'.$this->getVisitorAddressSource().'</strong>',
+									$this->getOpt( 'last_ip_detect_source' )
+								)
+								.'<br />'
 								.'<br />'.implode( '<br />', $this->buildIpAddressMap() );
 				break;
 
@@ -944,13 +1234,15 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 			case 'google_recaptcha_secret_key' :
 				$sName = _wpsf__( 'reCAPTCHA Secret' );
 				$sSummary = _wpsf__( 'Google reCAPTCHA Secret Key' );
-				$sDescription = _wpsf__( 'Enter your Google reCAPTCHA secret key for use throughout the plugin.' );
+				$sDescription = _wpsf__( 'Enter your Google reCAPTCHA secret key for use throughout the plugin.' )
+								.'<br />'.sprintf( '<strong>%s</strong>: %s', _wpsf__( 'Important' ), 'reCAPTCHA v3 not supported.' );
 				break;
 
 			case 'google_recaptcha_site_key' :
 				$sName = _wpsf__( 'reCAPTCHA Site Key' );
 				$sSummary = _wpsf__( 'Google reCAPTCHA Site Key' );
-				$sDescription = _wpsf__( 'Enter your Google reCAPTCHA site key for use throughout the plugin' );
+				$sDescription = _wpsf__( 'Enter your Google reCAPTCHA site key for use throughout the plugin' )
+								.'<br />'.sprintf( '<strong>%s</strong>: %s', _wpsf__( 'Important' ), 'reCAPTCHA v3 not supported.' );
 				break;
 
 			case 'google_recaptcha_style' :
@@ -960,7 +1252,7 @@ class ICWP_WPSF_FeatureHandler_Plugin extends ICWP_WPSF_FeatureHandler_BaseWpsf 
 				break;
 
 			default:
-				throw new Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
+				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
 		}
 
 		$aOptionsParams[ 'name' ] = $sName;

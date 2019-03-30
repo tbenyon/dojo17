@@ -1,12 +1,14 @@
 <?php
-if ( class_exists( 'ICWP_WPSF_ServiceProviders', false ) ) {
-	return;
-}
+
+use FernleafSystems\Wordpress\Services\Services;
 
 /**
  * Class ICWP_WPSF_ServiceProviders
  */
 class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
+
+	const URL_STATUS_CAKE_IPS = 'https://app.statuscake.com/Workfloor/Locations.php?format=json';
+	const URL_ICONTROLWP_IPS = 'https://serviceips.icontrolwp.com/';
 
 	/**
 	 * @var string
@@ -70,6 +72,23 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @param bool $bFlat
+	 * @return array[]|string[]
+	 */
+	public function getIps_iControlWP( $bFlat = false ) {
+		$oWp = $this->loadWp();
+
+		$sStoreKey = $this->prefix( 'serviceips_icontrolwp' );
+		$aIps = $oWp->getTransient( $sStoreKey );
+		if ( empty( $aIps ) ) {
+			$aIps = $this->downloadServiceIps_iControlWP();
+			$oWp->setTransient( $sStoreKey, $aIps, WEEK_IN_SECONDS*2 );
+		}
+
+		return $bFlat ? array_merge( $aIps[ 4 ], $aIps[ 6 ] ) : $aIps;
+	}
+
+	/**
 	 * @return array[]
 	 */
 	public function getIps_ManageWp() {
@@ -85,7 +104,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	}
 
 	/**
-	 * @return array[]
+	 * @return string[][]
 	 */
 	public function getIps_Pingdom() {
 		$oWp = $this->loadWp();
@@ -208,7 +227,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	public function isIp_Cloudflare( $sIp ) {
 		$bIs = false;
 		try {
-			$oIp = $this->loadIpService();
+			$oIp = Services::IP();
 			if ( $oIp->getIpVersion( $sIp ) == 4 ) {
 				$bIs = $oIp->checkIp( $sIp, $this->getIps_CloudFlareV4() );
 			}
@@ -232,6 +251,19 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 		// We check the useragent if available
 		if ( is_null( $sUserAgent ) || stripos( $sUserAgent, 'DuckDuckBot' ) !== false ) {
 			$bIsBot = in_array( $sIp, $this->getIps_DuckDuckGo() );
+		}
+		return $bIsBot;
+	}
+
+	/**
+	 * @param string $sIp
+	 * @param string $sAgent
+	 * @return bool
+	 */
+	public function isIp_iControlWP( $sIp, $sAgent = null ) { //TODO: Agent
+		$bIsBot = false;
+		if ( is_null( $sAgent ) || stripos( $sAgent, 'iControlWPApp' ) !== false ) {
+			$bIsBot = in_array( $sIp, $this->getIps_iControlWP( true ) );
 		}
 		return $bIsBot;
 	}
@@ -282,7 +314,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 		$bIsIp = false;
 		if ( stripos( $sAgent, 'pingdom.com' ) !== false ) {
 			$aIps = $this->getIps_Pingdom();
-			$bIsIp = in_array( $sIp, $aIps[ $this->loadIpService()->getIpVersion( $sIp ) ] );
+			$bIsIp = in_array( $sIp, $aIps[ Services::IP()->getIpVersion( $sIp ) ] );
 		}
 		return $bIsIp;
 	}
@@ -296,7 +328,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 		$bIsIp = false;
 		if ( stripos( $sAgent, 'UptimeRobot' ) !== false ) {
 			$aIps = $this->getIps_UptimeRobot();
-			$bIsIp = in_array( $sIp, $aIps[ $this->loadIpService()->getIpVersion( $sIp ) ] );
+			$bIsIp = in_array( $sIp, $aIps[ Services::IP()->getIpVersion( $sIp ) ] );
 		}
 		return $bIsIp;
 	}
@@ -356,8 +388,8 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	private function verifyIp_AppleBot( $sIp, $sUserAgent = '' ) {
-		return ( $this->loadIpService()->getIpVersion( $sIp ) != 4 || strpos( $sIp, '17.' ) === 0 )
-			   && $this->isIpOfBot( 'Applebot/', '#.*\.applebot.apple.com\.?$#i', $sIp, $sUserAgent );
+		return ( Services::IP()->getIpVersion( $sIp ) != 4 || strpos( $sIp, '17.' ) === 0 )
+			   && $this->isIpOfBot( [ 'Applebot/' ], '#.*\.applebot.apple.com\.?$#i', $sIp, $sUserAgent );
 	}
 
 	/**
@@ -366,7 +398,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	private function verifyIp_BaiduBot( $sIp, $sUserAgent = '' ) {
-		return $this->isIpOfBot( 'baidu', '#.*\.crawl\.baidu\.(com|jp)\.?$#i', $sIp, $sUserAgent );
+		return $this->isIpOfBot( [ 'baidu' ], '#.*\.crawl\.baidu\.(com|jp)\.?$#i', $sIp, $sUserAgent );
 	}
 
 	/**
@@ -375,7 +407,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	private function verifyIp_BingBot( $sIp, $sUserAgent = '' ) {
-		return $this->isIpOfBot( 'bingbot', '#.*\.search\.msn\.com\.?$#i', $sIp, $sUserAgent );
+		return $this->isIpOfBot( [ 'bingbot' ], '#.*\.search\.msn\.com\.?$#i', $sIp, $sUserAgent );
 	}
 
 	/**
@@ -384,7 +416,10 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	private function verifyIp_GoogleBot( $sIp, $sUserAgent = '' ) {
-		return $this->isIpOfBot( 'Googlebot', '#.*\.google(bot)?\.com\.?$#i', $sIp, $sUserAgent );
+		return $this->isIpOfBot(
+			[ 'Googlebot', 'APIs-Google', 'AdsBot-Google', 'Mediapartners-Google' ],
+			'#.*\.google(bot)?\.com\.?$#i', $sIp, $sUserAgent
+		);
 	}
 
 	/**
@@ -393,7 +428,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	private function verifyIp_YandexBot( $sIp, $sUserAgent = '' ) {
-		return $this->isIpOfBot( 'yandex.com/bots', '#.*\.yandex?\.(com|ru|net)\.?$#i', $sIp, $sUserAgent );
+		return $this->isIpOfBot( [ 'yandex.com/bots' ], '#.*\.yandex?\.(com|ru|net)\.?$#i', $sIp, $sUserAgent );
 	}
 
 	/**
@@ -402,28 +437,37 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 * @return bool
 	 */
 	private function verifyIp_YahooBot( $sIp, $sUserAgent = '' ) {
-		return $this->isIpOfBot( 'yahoo!', '#.*\.crawl\.yahoo\.net\.?$#i', $sIp, $sUserAgent );
+		return $this->isIpOfBot( [ 'yahoo!' ], '#.*\.crawl\.yahoo\.net\.?$#i', $sIp, $sUserAgent );
 	}
 
 	/**
 	 * Will test useragent, then attempt to resolve to hostname and back again
 	 * https://www.elephate.com/detect-verify-crawlers/
-	 * @param string $sBotUserAgent
+	 * @param array  $aBotUserAgents
 	 * @param string $sBotHostPattern
 	 * @param string $sReqIp
 	 * @param string $sReqUserAgent
 	 * @return bool
 	 */
-	private function isIpOfBot( $sBotUserAgent, $sBotHostPattern, $sReqIp, $sReqUserAgent = '' ) {
+	private function isIpOfBot( $aBotUserAgents, $sBotHostPattern, $sReqIp, $sReqUserAgent = '' ) {
 		$bIsBot = false;
 
-		// We check the useragent if available
-		if ( is_null( $sReqUserAgent ) || stripos( $sReqUserAgent, $sBotUserAgent ) !== false ) {
+		$bCheckIpHost = is_null( $sReqUserAgent );
+		if ( !$bCheckIpHost ) {
+			$aBotUserAgents = array_map(
+				function ( $sAgent ) {
+					return preg_quote( $sAgent, '#' );
+				},
+				$aBotUserAgents
+			);
+			$bCheckIpHost = (bool)preg_match( sprintf( '#%s#i', implode( '|', $aBotUserAgents ) ), $sReqUserAgent );
+		}
+
+		if ( $bCheckIpHost ) {
 			$sHost = @gethostbyaddr( $sReqIp ); // returns the ip on failure
-			if ( !empty( $sHost ) && ( $sHost != $sReqIp )
-				 && preg_match( $sBotHostPattern, $sHost ) && gethostbyname( $sHost ) === $sReqIp ) {
-				$bIsBot = true;
-			}
+			$bIsBot = !empty( $sHost ) && ( $sHost != $sReqIp )
+					  && preg_match( $sBotHostPattern, $sHost )
+					  && gethostbyname( $sHost ) === $sReqIp;
 		}
 		return $bIsBot;
 	}
@@ -444,6 +488,14 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	}
 
 	/**
+	 * @return array[]
+	 */
+	private function downloadServiceIps_iControlWP() {
+		$aIps = @json_decode( Services::HttpRequest()->getContent( self::URL_ICONTROLWP_IPS ), true );
+		return is_array( $aIps ) ? $aIps : [ 4 => [], 6 => [] ];
+	}
+
+	/**
 	 * @param int $sIpVersion
 	 * @return string[]
 	 */
@@ -456,8 +508,7 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 	 */
 	private function downloadServiceIps_StatusCake() {
 		$aIps = array();
-		$aData = @json_decode( $this->loadFS()
-									->getUrlContent( 'https://app.statuscake.com/Workfloor/Locations.php?format=json' ), true );
+		$aData = @json_decode( Services::HttpRequest()->getContent( self::URL_STATUS_CAKE_IPS ), true );
 		if ( is_array( $aData ) ) {
 			foreach ( $aData as $aItem ) {
 				if ( !empty( $aItem[ 'ip' ] ) ) {
@@ -486,9 +537,9 @@ class ICWP_WPSF_ServiceProviders extends ICWP_WPSF_Foundation {
 			if ( !in_array( (int)$sIpVersion, array( 4, 6 ) ) ) {
 				$sIpVersion = 4;
 			}
-			$sSourceUrl = $this->loadFS()->getUrlContent( sprintf( $sSourceUrl, $sIpVersion ) );
+			$sSourceUrl = Services::HttpRequest()->getContent( sprintf( $sSourceUrl, $sIpVersion ) );
 		}
-		$sRaw = $this->loadFS()->getUrlContent( $sSourceUrl );
+		$sRaw = Services::HttpRequest()->getContent( $sSourceUrl );
 		$aIps = empty( $sRaw ) ? array() : explode( "\n", $sRaw );
 		return array_filter( array_map( 'trim', $aIps ) );
 	}

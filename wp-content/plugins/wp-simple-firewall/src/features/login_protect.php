@@ -1,37 +1,8 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_FeatureHandler_LoginProtect', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_BaseWpsf {
-
-	/**
-	 * A action added to WordPress 'init' hook
-	 */
-	public function onWpInit() {
-		parent::onWpInit();
-
-		$oDp = $this->loadDP();
-		// User has clicked a link in their email to verify they can send email.
-		if ( $oDp->query( 'shield_action' ) == 'emailsendverify' ) {
-			if ( $oDp->query( 'authkey' ) == $this->getCanEmailVerifyCode() ) {
-				$this->setIfCanSendEmail( true )
-					 ->savePluginOptions();
-
-				if ( $this->getIfCanSendEmailVerified() ) {
-					$this->setFlashAdminNotice( _wpsf__( 'Email verification completed successfully.' ) );
-				}
-				else {
-					$this->setFlashAdminNotice( _wpsf__( 'Email verification could not be completed.' ), true );
-				}
-
-				$this->loadWp()->doRedirect( $this->getUrl_AdminPage() );
-			}
-		}
-	}
 
 	/**
 	 * @return bool
@@ -57,18 +28,57 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 			$this->getOptionsVo()->resetOptToDefault( 'login_limit_interval' );
 		}
 
+		$aIds = $this->getAntiBotFormSelectors();
+		foreach ( $aIds as $nKey => $sId ) {
+			$sId = trim( strip_tags( $sId ) );
+			if ( empty( $sId ) ) {
+				unset( $aIds[ $nKey ] );
+			}
+			else {
+				$aIds[ $nKey ] = $sId;
+			}
+		}
+		$this->setOpt( 'antibot_form_ids', array_values( array_unique( $aIds ) ) );
+
 		$this->cleanLoginUrlPath();
+	}
+
+	/**
+	 */
+	public function handleModRequest() {
+		switch ( Services::Request()->query( 'exec' ) ) {
+			case 'email_send_verify':
+				$this->processEmailSendVerify();
+				break;
+			default:
+				break;
+		}
 	}
 
 	/**
 	 * @return string
 	 */
-	protected function generateCanSendEmailVerifyLink() {
-		$aQueryArgs = array(
-			'authkey'       => $this->getCanEmailVerifyCode(),
-			'shield_action' => 'emailsendverify'
-		);
-		return add_query_arg( $aQueryArgs, $this->loadWp()->getHomeUrl() );
+	private function generateCanSendEmailVerifyLink() {
+		return add_query_arg( $this->getNonceActionData( 'email_send_verify' ), $this->getUrl_AdminPage() );
+	}
+
+	/**
+	 * @uses wp_redirect()
+	 */
+	private function processEmailSendVerify() {
+		$this->setIfCanSendEmail( true )
+			 ->savePluginOptions();
+
+		if ( $this->getIfCanSendEmailVerified() ) {
+			$bSuccess = true;
+			$sMessage = _wpsf__( 'Email verification completed successfully.' );
+		}
+		else {
+			$bSuccess = false;
+			$sMessage = _wpsf__( 'Email verification could not be completed.' );
+		}
+		$this->setFlashAdminNotice( $sMessage, !$bSuccess );
+		Services::Response()->redirect( $this->getUrl_AdminPage() );
 	}
 
 	/**
@@ -78,7 +88,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	 */
 	public function sendEmailVerifyCanSend( $sEmail = null, $bSendAsLink = true ) {
 
-		if ( !$this->loadDP()->validEmail( $sEmail ) ) {
+		if ( !Services::Data()->validEmail( $sEmail ) ) {
 			$sEmail = get_bloginfo( 'admin_email' );
 		}
 
@@ -148,7 +158,10 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 			$aRoles = $this->getOptEmailTwoFactorRolesDefaults();
 			$this->setOpt( 'two_factor_auth_user_roles', $aRoles );
 		}
-		return $aRoles;
+		if ( $this->isPremium() ) {
+			$aRoles = apply_filters( 'odp-shield-2fa_email_user_roles', $aRoles );
+		}
+		return is_array( $aRoles ) ? $aRoles : $this->getOptEmailTwoFactorRolesDefaults();
 	}
 
 	/**
@@ -196,7 +209,21 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 			$sKey = uniqid();
 			$this->setOpt( 'gasp_key', $sKey );
 		}
-		return $sKey;
+		return $this->prefix( $sKey );
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getTextImAHuman() {
+		return stripslashes( $this->getTextOpt( 'text_imahuman' ) );
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getTextPleaseCheckBox() {
+		return stripslashes( $this->getTextOpt( 'text_pleasecheckbox' ) );
 	}
 
 	/**
@@ -207,44 +234,48 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	}
 
 	/**
-	 * @return string
-	 */
-	public function getCanMfaSkip() {
-		return;
-	}
-
-	/**
 	 * @param WP_User $oUser
 	 * @return bool
 	 */
 	public function canUserMfaSkip( $oUser ) {
-		$bCanSkip = false;
-
+		$oReq = Services::Request();
 		if ( $this->getMfaSkipEnabled() ) {
 			$aHashes = $this->getMfaLoginHashes( $oUser );
 			$nSkipTime = $this->getMfaSkip()*DAY_IN_SECONDS;
 
-			$sHash = md5( $this->loadDP()->getUserAgent() );
+			$sHash = md5( $oReq->getUserAgent() );
 			$bCanSkip = isset( $aHashes[ $sHash ] )
-						&& ( (int)$aHashes[ $sHash ] + $nSkipTime ) > $this->loadDP()->time();
+						&& ( (int)$aHashes[ $sHash ] + $nSkipTime ) > $oReq->ts();
 		}
 		else if ( $this->getIfSupport3rdParty() && class_exists( 'WC_Social_Login' ) ) {
 			// custom support for WooCommerce Social login
-			$oMeta = $this->getController()->getUserMeta( $oUser );
+			$oMeta = $this->getCon()->getUserMeta( $oUser );
 			$bCanSkip = isset( $oMeta->wc_social_login_valid ) ? $oMeta->wc_social_login_valid : false;
+		}
+		else {
+			/**
+			 * TODO: remove the HTTP_REFERER bit once iCWP plugin is updated.
+			 * We want logins from iCWP to skip 2FA. To achieve this, iCWP plugin needs
+			 * to add a TRUE filter on 'odp-shield-2fa_skip' at the point of login.
+			 * Until then, we'll use the HTTP referrer as an indicator
+			 */
+			$bCanSkip = apply_filters(
+				'odp-shield-2fa_skip',
+				strpos( $oReq->server( 'HTTP_REFERER' ), 'https://app.icontrolwp.com/' ) === 0
+			);
 		}
 		return $bCanSkip;
 	}
 
 	/**
-	 * @param WP_User $oUser
+	 * @param \WP_User $oUser
 	 * @return $this
 	 */
 	public function addMfaLoginHash( $oUser ) {
-		$oDp = $this->loadDP();
+		$oReq = Services::Request();
 		$aHashes = $this->getMfaLoginHashes( $oUser );
-		$aHashes[ md5( $oDp->getUserAgent() ) ] = $oDp->time();
-		$this->getController()->getCurrentUserMeta()->hash_loginmfa = $aHashes;
+		$aHashes[ md5( $oReq->getUserAgent() ) ] = $oReq->ts();
+		$this->getCon()->getCurrentUserMeta()->hash_loginmfa = $aHashes;
 		return $this;
 	}
 
@@ -253,7 +284,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	 * @return array
 	 */
 	public function getMfaLoginHashes( $oUser ) {
-		$oMeta = $this->getController()->getUserMeta( $oUser );
+		$oMeta = $this->getCon()->getUserMeta( $oUser );
 		$aHashes = $oMeta->hash_loginmfa;
 		if ( !is_array( $aHashes ) ) {
 			$aHashes = array();
@@ -386,13 +417,12 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	public function setIfCanSendEmail( $bCan ) {
 		$nCurrentDateAt = $this->getCanSendEmailVerifiedAt();
 		if ( $bCan ) {
-			$nDateAt = ( $nCurrentDateAt <= 0 ) ? $this->loadDP()->time() : $nCurrentDateAt;
+			$nDateAt = ( $nCurrentDateAt <= 0 ) ? Services::Request()->ts() : $nCurrentDateAt;
 		}
 		else {
 			$nDateAt = 0;
 		}
-		$this->setOpt( 'email_can_send_verified_at', $nDateAt );
-		return $this;
+		return $this->setOpt( 'email_can_send_verified_at', $nDateAt );
 	}
 
 	/**
@@ -444,7 +474,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	 * @return bool
 	 */
 	public function isEnabledGaspCheck() {
-		return $this->isOpt( 'enable_login_gasp_check', 'Y' );
+		return $this->isModOptEnabled() && $this->isOpt( 'enable_login_gasp_check', 'Y' );
 	}
 
 	/**
@@ -473,7 +503,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 			$aWarnings[] =
 				_wpsf__( '2FA by email demands that your WP site is properly configured to send email.' )
 				.'<br/>'._wpsf__( 'This is a common problem and you may get locked out in the future if you ignore this.' )
-				.' '.sprintf( '<a href="%s" target="_blank" style="font-weight: bolder">%s</a>', 'https://icwp.io/dd', _wpsf__( 'Learn More.' ) );
+				.' '.sprintf( '<a href="%s" target="_blank" class="alert-link">%s</a>', 'https://icwp.io/dd', _wpsf__( 'Learn More.' ) );
 		}
 
 		return $aWarnings;
@@ -509,7 +539,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	/**
 	 * @return bool
 	 */
-	protected function isYubikeyConfigReady() {
+	private function isYubikeyConfigReady() {
 		$sAppId = $this->getOpt( 'yubikey_app_id' );
 		$sApiKey = $this->getOpt( 'yubikey_api_key' );
 		return !empty( $sAppId ) && !empty( $sApiKey );
@@ -522,7 +552,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	public function handleAuthAjax( $aAjaxResponse ) {
 
 		if ( empty( $aAjaxResponse ) ) {
-			switch ( $this->loadDP()->request( 'exec' ) ) {
+			switch ( Services::Request()->request( 'exec' ) ) {
 
 				case 'gen_backup_codes':
 					$aAjaxResponse = $this->ajaxExec_GenBackupCodes();
@@ -530,6 +560,14 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 
 				case 'del_backup_codes':
 					$aAjaxResponse = $this->ajaxExec_DeleteBackupCodes();
+					break;
+
+				case 'resend_verification_email':
+					$aAjaxResponse = $this->ajaxExec_ResendEmailVerification();
+					break;
+
+				case 'disable_2fa_email':
+					$aAjaxResponse = $this->ajaxExec_Disable2faEmail();
 					break;
 
 				default:
@@ -543,12 +581,11 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	 * @return array
 	 */
 	protected function ajaxExec_GenBackupCodes() {
-
 		/** @var ICWP_WPSF_Processor_LoginProtect $oPro */
 		$oPro = $this->loadProcessor();
 		$sPass = $oPro->getProcessorLoginIntent()
 					  ->getProcessorBackupCodes()
-					  ->resetSecret( $this->loadWpUsers()->getCurrentWpUser() );
+					  ->resetSecret( Services::WpUsers()->getCurrentWpUser() );
 
 		foreach ( array( 20, 15, 10, 5 ) as $nPos ) {
 			$sPass = substr_replace( $sPass, '-', $nPos, 0 );
@@ -561,23 +598,120 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function isEnabledBotJs() {
+		return $this->isPremium() && $this->isOpt( 'enable_antibot_js', 'Y' )
+			   && count( $this->getAntiBotFormSelectors() ) > 0
+			   && ( $this->isEnabledGaspCheck() || $this->isGoogleRecaptchaEnabled() );
+	}
+
+	/**
 	 * @return array
 	 */
-	protected function ajaxExec_DeleteBackupCodes() {
+	public function getAntiBotFormSelectors() {
+		$aIds = $this->getOpt( 'antibot_form_ids', array() );
+		return is_array( $aIds ) ? $aIds : array();
+	}
+
+	public function onWpEnqueueJs() {
+		parent::onWpEnqueueJs();
+
+		if ( $this->isEnabledBotJs() ) {
+			$oConn = $this->getCon();
+
+			$sAsset = 'shield-antibot';
+			$sUnique = $this->prefix( $sAsset );
+			wp_register_script(
+				$sUnique,
+				$oConn->getPluginUrl_Js( $sAsset.'.js' ),
+				array( 'jquery' ),
+				$oConn->getVersion(),
+				true
+			);
+			wp_enqueue_script( $sUnique );
+
+			wp_localize_script(
+				$sUnique,
+				'icwp_wpsf_vars_lpantibot',
+				array(
+					'form_selectors' => implode( ',', $this->getAntiBotFormSelectors() ),
+					'uniq'           => preg_replace( '#[^a-zA-Z0-9]#', '', apply_filters( 'icwp_shield_lp_gasp_uniqid', uniqid() ) ),
+					'cbname'         => $this->getGaspKey(),
+					'strings'        => array(
+						'label' => $this->getTextImAHuman(),
+						'alert' => $this->getTextPleaseCheckBox(),
+					),
+					'flags'          => array(
+						'gasp'  => $this->isEnabledGaspCheck(),
+						'recap' => $this->isGoogleRecaptchaEnabled(),
+					)
+				)
+			);
+
+			if ( $this->isGoogleRecaptchaEnabled() ) {
+				/** @var ICWP_WPSF_Processor_LoginProtect $oPro */
+				$oPro = $this->getProcessor();
+				$oPro->setRecaptchaToEnqueue();
+			}
+		}
+	}
+
+	/**
+	 * @return array
+	 */
+	private function ajaxExec_DeleteBackupCodes() {
 
 		/** @var ICWP_WPSF_Processor_LoginProtect $oPro */
 		$oPro = $this->loadProcessor();
 		$oPro->getProcessorLoginIntent()
 			 ->getProcessorBackupCodes()
-			 ->deleteSecret( $this->loadWpUsers()->getCurrentWpUser() );
+			 ->deleteSecret( Services::WpUsers()->getCurrentWpUser() );
 		$this->setFlashAdminNotice( _wpsf__( 'Multi-factor login backup code has been removed from your profile' ) );
 		return array(
 			'success' => true
 		);
 	}
 
-	public function insertCustomJsVars() {
-		parent::insertCustomJsVars();
+	/**
+	 * @return array
+	 */
+	private function ajaxExec_Disable2faEmail() {
+		$this->setEnabled2FaEmail( false );
+		return array(
+			'success'     => true,
+			'message'     => _wpsf__( '2FA by email has been disabled' ),
+			'page_reload' => true
+		);
+	}
+
+	/**
+	 * @return array
+	 */
+	private function ajaxExec_ResendEmailVerification() {
+		$bSuccess = true;
+
+		if ( !$this->isEmailAuthenticationOptionOn() ) {
+			$sMessage = _wpsf__( 'Email 2FA option is not currently enabled.' );
+			$bSuccess = false;
+		}
+		else if ( $this->getIfCanSendEmailVerified() ) {
+			$sMessage = _wpsf__( 'Email sending has already been verified.' );
+		}
+		else {
+			$sMessage = _wpsf__( 'Verification email resent.' );
+			$this->setIfCanSendEmail( false )
+				 ->sendEmailVerifyCanSend();
+		}
+
+		return array(
+			'success' => $bSuccess,
+			'message' => $sMessage
+		);
+	}
+
+	public function insertCustomJsVars_Admin() {
+		parent::insertCustomJsVars_Admin();
 
 		wp_localize_script(
 			$this->prefix( 'global-plugin' ),
@@ -592,9 +726,77 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	}
 
 	/**
+	 * @param array $aAllData
+	 * @return array
+	 */
+	public function addInsightsConfigData( $aAllData ) {
+		$aThis = array(
+			'strings'      => array(
+				'title' => _wpsf__( 'Login Guard' ),
+				'sub'   => _wpsf__( 'Brute Force Protection & Identity Verification' ),
+			),
+			'key_opts'     => array(),
+			'href_options' => $this->getUrl_AdminPage()
+		);
+
+		if ( !$this->isModOptEnabled() ) {
+			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
+		}
+		else {
+			$bHasBotCheck = $this->isEnabledGaspCheck() || $this->isGoogleRecaptchaEnabled();
+
+			$bBotLogin = $bHasBotCheck && $this->isProtectLogin();
+			$bBotRegister = $bHasBotCheck && $this->isProtectRegister();
+			$bBotPassword = $bHasBotCheck && $this->isProtectLostPassword();
+			$aThis[ 'key_opts' ][ 'bot_login' ] = array(
+				'name'    => _wpsf__( 'Brute Force Login' ),
+				'enabled' => $bBotLogin,
+				'summary' => $bBotLogin ?
+					_wpsf__( 'Login forms are protected against bot attacks' )
+					: _wpsf__( 'Login forms are not protected against brute force bot attacks' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToOption( 'bot_protection_locations' ),
+			);
+			$aThis[ 'key_opts' ][ 'bot_register' ] = array(
+				'name'    => _wpsf__( 'Bot User Register' ),
+				'enabled' => $bBotRegister,
+				'summary' => $bBotRegister ?
+					_wpsf__( 'Registration forms are protected against bot attacks' )
+					: _wpsf__( 'Registration forms are not protected against automated bots' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToOption( 'bot_protection_locations' ),
+			);
+			$aThis[ 'key_opts' ][ 'bot_password' ] = array(
+				'name'    => _wpsf__( 'Brute Force Lost Password' ),
+				'enabled' => $bBotPassword,
+				'summary' => $bBotPassword ?
+					_wpsf__( 'Lost Password forms are protected against bot attacks' )
+					: _wpsf__( 'Lost Password forms are not protected against automated bots' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToOption( 'bot_protection_locations' ),
+			);
+
+			$bHas2Fa = $this->isEmailAuthenticationActive()
+					   || $this->isEnabledGoogleAuthenticator() || $this->isYubikeyActive();
+			$aThis[ 'key_opts' ][ '2fa' ] = array(
+				'name'    => _wpsf__( 'Identity Verification' ),
+				'enabled' => $bHas2Fa,
+				'summary' => $bHas2Fa ?
+					_wpsf__( 'At least 1 2FA option is enabled' )
+					: _wpsf__( 'No 2FA options, such as Google Authenticator, are active' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToSection( 'section_2fa_email' ),
+			);
+		}
+
+		$aAllData[ $this->getSlug() ] = $aThis;
+		return $aAllData;
+	}
+
+	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_SectionTitles( $aOptionsParams ) {
 
@@ -621,7 +823,6 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 
 			case 'section_rename_wplogin' :
 				$sTitle = _wpsf__( 'Hide WordPress Login Page' );
-				$sTitleShort = sprintf( _wpsf__( 'Rename "%s"' ), 'wp-login.php' );
 				$sTitleShort = _wpsf__( 'Hide Login Page' );
 				$aSummary = array(
 					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'To hide your wp-login.php page from brute force attacks and hacking attempts - if your login page cannot be found, no-one can login.' ) ),
@@ -688,7 +889,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_Options( $aOptionsParams ) {
 		$sKey = $aOptionsParams[ 'key' ];
@@ -776,6 +977,21 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 								.'<br />'.sprintf( '%s: %s', _wpsf__( 'Recommendation' ), _wpsf__( 'ON' ) );
 				break;
 
+			case 'enable_antibot_js' :
+				$sName = _wpsf__( 'AntiBot JS' );
+				$sSummary = _wpsf__( 'Use AntiBot JS Includes For Custom 3rd Party Form' );
+				$sDescription = _wpsf__( 'Important: This is experimental. Please contact support for further assistance.' );
+				break;
+
+			case 'antibot_form_ids' :
+				$sName = _wpsf__( 'AntiBot Forms' );
+				$sSummary = _wpsf__( 'Enter The Selectors Of The 3rd Party Login Forms For Use With AntiBot JS' );
+				$sDescription = _wpsf__( 'For use with the AntiBot JS option.' )
+								.' '._wpsf__( 'IDs are prefixed with "#".' )
+								.' '._wpsf__( 'Classes are prefixed with ".".' )
+								.'<br />'._wpsf__( 'IDs are preferred over classes.' );
+				break;
+
 			case 'login_limit_interval' :
 				$sName = _wpsf__( 'Cooldown Period' );
 				$sSummary = _wpsf__( 'Limit account access requests to every X seconds' );
@@ -835,7 +1051,7 @@ class ICWP_WPSF_FeatureHandler_LoginProtect extends ICWP_WPSF_FeatureHandler_Bas
 				break;
 
 			default:
-				throw new Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
+				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
 		}
 
 		$aOptionsParams[ 'name' ] = $sName;

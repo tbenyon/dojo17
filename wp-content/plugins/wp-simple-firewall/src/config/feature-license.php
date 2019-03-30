@@ -3,16 +3,18 @@
   "properties":  {
     "slug":                  "license",
     "name":                  "Pro Security",
-    "tagline":               "The Best In WordPress Security, Only Better.",
-    "auto_enabled":          true,
+    "menu_title":            "Go Pro!",
     "show_module_menu_item": true,
     "highlight_menu_item":   true,
+    "tagline":               "The Best In WordPress Security, Only Better.",
+    "auto_enabled":          true,
     "storage_key":           "license",
     "show_central":          false,
     "premium":               false,
     "access_restricted":     true,
     "run_if_whitelisted":    true,
-    "run_if_verified_bot":   true
+    "run_if_verified_bot":   true,
+    "run_if_wpcli":          true
   },
   "sections":    [
     {
@@ -28,115 +30,92 @@
   "options":     [
     {
       "key":          "license_key",
+      "section":      "section_non_ui",
       "sensitive":    true,
       "transferable": false,
-      "default":      "",
-      "section":      "section_non_ui"
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "license_activated_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "license_deactivated_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "license_last_checked_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
-    },
-    {
-      "key":          "license_last_request_at",
-      "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
-    },
-    {
-      "key":          "license_verified_at",
-      "sensitive":    true,
-      "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
-    },
-    {
-      "key":          "license_expires_at",
-      "sensitive":    true,
-      "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
-    },
-    {
-      "key":          "license_official_status",
-      "sensitive":    true,
-      "transferable": false,
-      "default":      "",
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "license_deactivated_reason",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      "",
-      "section":      "section_non_ui"
-    },
-    {
-      "key":          "license_registered_email",
-      "sensitive":    true,
-      "transferable": false,
-      "default":      "",
-      "section":      "section_non_ui"
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "last_warning_email_sent_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
-      "key":          "is_shield_central",
-      "sensitive":    true,
+      "key":          "last_deactivated_email_sent_at",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      false,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "last_errors",
+      "section":      "section_non_ui",
       "transferable": false,
-      "default":      "",
-      "section":      "section_non_ui"
+      "type":         "array",
+      "default":      ""
     },
     {
       "key":          "last_error_at",
+      "section":      "section_non_ui",
       "sensitive":    true,
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "keyless_request_hash",
+      "section":      "section_non_ui",
       "sensitive":    true,
       "transferable": false,
-      "default":      "",
-      "section":      "section_non_ui"
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "keyless_request_at",
+      "section":      "section_non_ui",
       "sensitive":    true,
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "license_data",
+      "section":      "section_non_ui",
       "sensitive":    true,
       "transferable": false,
-      "default":      0,
-      "section":      "section_non_ui"
+      "type":         "array",
+      "default":      []
     }
   ],
   "definitions": {

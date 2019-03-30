@@ -1,10 +1,7 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_TrafficLogger', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/basedb.php' );
+use FernleafSystems\Wordpress\Plugin\Shield\Databases\Traffic;
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 
@@ -12,17 +9,14 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 	 * @param ICWP_WPSF_Processor_Traffic $oModCon
 	 */
 	public function __construct( ICWP_WPSF_FeatureHandler_Traffic $oModCon ) {
-		parent::__construct( $oModCon, $oModCon->getTrafficTableName() );
+		parent::__construct( $oModCon, $oModCon->getDef( 'traffic_table_name' ) );
 	}
 
-	public function run() {
-		add_action( $this->prefix( 'plugin_shutdown' ), array( $this, 'onWpShutdown' ) );
-	}
-
-	public function onWpShutdown() {
+	public function onModuleShutdown() {
 		if ( $this->getIfLogRequest() ) {
 			$this->logTraffic();
 		}
+		parent::onModuleShutdown();
 	}
 
 	public function cleanupDatabase() {
@@ -34,10 +28,11 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 		/** @var ICWP_WPSF_FeatureHandler_Traffic $oFO */
 		$oFO = $this->getMod();
 		try {
-			$this->getQueryDeleter()
+			$this->getDbHandler()
+				 ->getQueryDeleter()
 				 ->deleteExcess( $oFO->getMaxEntries() );
 		}
-		catch ( Exception $oE ) {
+		catch ( \Exception $oE ) {
 		}
 	}
 
@@ -48,11 +43,12 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 		/** @var ICWP_WPSF_FeatureHandler_Traffic $oFO */
 		$oFO = $this->getMod();
 		$oWp = $this->loadWp();
-		$bLoggedIn = $this->loadWpUsers()->isUserLoggedIn();
+		$bLoggedIn = Services::WpUsers()->isUserLoggedIn();
 		return parent::getIfLogRequest()
+			   && !$this->getCon()->isPluginDeleting()
 			   && ( $oFO->getMaxEntries() > 0 )
 			   && ( !$this->isCustomExcluded() )
-			   && ( $oFO->isIncluded_Simple() || count( $this->loadDP()->getRequestParams( false ) ) > 0 )
+			   && ( $oFO->isIncluded_Simple() || count( $this->loadRequest()->getParams( false ) ) > 0 )
 			   && ( $oFO->isIncluded_LoggedInUser() || !$bLoggedIn )
 			   && ( $oFO->isIncluded_Ajax() || !$oWp->isAjax() )
 			   && ( $oFO->isIncluded_Cron() || !$oWp->isCron() )
@@ -71,13 +67,13 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 	protected function isCustomExcluded() {
 		/** @var ICWP_WPSF_FeatureHandler_Traffic $oFO */
 		$oFO = $this->getMod();
-		$oDP = $this->loadDP();
-		$aExcls = $oFO->getCustomExclusions();
-		$sAgent = (string)$this->loadDP()->server( 'HTTP_USER_AGENT' );
-		$sPath = $oDP->getRequestPath().( empty( $_GET ) ? '' : '?'.http_build_query( $_GET ) );
+		$oReq = Services::Request();
+
+		$sAgent = $oReq->getUserAgent();
+		$sPath = $oReq->getPath().( empty( $_GET ) ? '' : '?'.http_build_query( $_GET ) );
 
 		$bExcluded = false;
-		foreach ( $aExcls as $sExcl ) {
+		foreach ( $oFO->getCustomExclusions() as $sExcl ) {
 			if ( stripos( $sAgent, $sExcl ) !== false || stripos( $sPath, $sExcl ) !== false ) {
 				$bExcluded = true;
 			}
@@ -100,7 +96,7 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 		$oSP = $this->loadServiceProviders();
 
 		$sIp = $this->ip();
-		$sAgent = (string)$this->loadDP()->server( 'HTTP_USER_AGENT' );
+		$sAgent = (string)$this->loadRequest()->server( 'HTTP_USER_AGENT' );
 		return $oSP->isIp_GoogleBot( $sIp, $sAgent )
 			   || $oSP->isIp_BingBot( $sIp, $sAgent )
 			   || $oSP->isIp_DuckDuckGoBot( $sIp, $sAgent )
@@ -117,52 +113,40 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 		$oSP = $this->loadServiceProviders();
 
 		$sIp = $this->ip();
-		$sAgent = (string)$this->loadDP()->server( 'HTTP_USER_AGENT' );
+		$sAgent = (string)$this->loadRequest()->server( 'HTTP_USER_AGENT' );
 		return $oSP->isIp_Statuscake( $sIp, $sAgent )
 			   || $oSP->isIp_UptimeRobot( $sIp, $sAgent )
 			   || $oSP->isIp_Pingdom( $sIp, $sAgent );
 	}
 
 	protected function logTraffic() {
-		$oDP = $this->loadDP();
-		/** @var ICWP_WPSF_TrafficEntryVO $oEntry */
-		$oEntry = $this->getQuerySelector()->getVo();
-		$oEntry->rid = $this->getController()->getShortRequestId();
+		$oReq = $this->loadRequest();
+
+		// For multisites that are separated by sub-domains we also show the host.
+		$sLeadingPath = $this->loadWp()->isMultisite_SubdomainInstall() ? $oReq->getHost() : '';
+
+		/** @var Traffic\EntryVO $oEntry */
+		$oEntry = $this->getDbHandler()->getVo();
+
+		$oEntry->rid = $this->getCon()->getShortRequestId();
 		$oEntry->uid = $this->loadWpUsers()->getCurrentWpUserId();
 		$oEntry->ip = inet_pton( $this->ip() );
-		$oEntry->verb = $oDP->getRequestMethod();
-		$oEntry->path = $oDP->getRequestPath().( empty( $_GET ) ? '' : '?'.http_build_query( $_GET ) );
+		$oEntry->verb = $oReq->getMethod();
+		$oEntry->path = $sLeadingPath.$oReq->getPath().( empty( $_GET ) ? '' : '?'.http_build_query( $_GET ) );
 		$oEntry->code = http_response_code();
-		$oEntry->ua = (string)$oDP->server( 'HTTP_USER_AGENT' );
+		$oEntry->ua = $oReq->getUserAgent();
 		$oEntry->trans = $this->getIfIpTransgressed() ? 1 : 0;
 
-		$this->getQueryInserter()->insert( $oEntry );
+		$this->getDbHandler()
+			 ->getQueryInserter()
+			 ->insert( $oEntry );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Query_TrafficEntry_Delete
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\Databases\Traffic\Handler
 	 */
-	public function getQueryDeleter() {
-		$this->queryRequireLib( 'delete.php' );
-		return ( new ICWP_WPSF_Query_TrafficEntry_Delete() )->setTable( $this->getTableName() );
-	}
-
-	/**
-	 * @return ICWP_WPSF_Query_TrafficEntry_Insert
-	 */
-	public function getQueryInserter() {
-		$this->queryRequireLib( 'insert.php' );
-		return ( new ICWP_WPSF_Query_TrafficEntry_Insert() )->setTable( $this->getTableName() );
-	}
-
-	/**
-	 * @return ICWP_WPSF_Query_TrafficEntry_Select
-	 */
-	public function getQuerySelector() {
-		$this->queryRequireLib( 'select.php' );
-		return ( new ICWP_WPSF_Query_TrafficEntry_Select() )
-			->setTable( $this->getTableName() )
-			->setResultsAsVo( true );
+	protected function createDbHandler() {
+		return new \FernleafSystems\Wordpress\Plugin\Shield\Databases\Traffic\Handler();
 	}
 
 	/**
@@ -178,21 +162,20 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 	 * @return string
 	 */
 	protected function getCreateTableSql() {
-		$sSqlTables = "CREATE TABLE %s (
+		return "CREATE TABLE %s (
 			id int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-			rid varchar(10) NOT NULL DEFAULT '',
-			uid int(11) UNSIGNED NOT NULL DEFAULT 0,
-			ip varbinary(16) DEFAULT NULL,
-			path text NOT NULL DEFAULT '',
-			code int(5) NOT NULL DEFAULT '200',
-			verb varchar(10) NOT NULL DEFAULT 'get',
-			ua text,
-			trans tinyint(1) UNSIGNED NOT NULL DEFAULT 0,
+			rid varchar(10) NOT NULL DEFAULT '' COMMENT 'Request ID',
+			uid int(11) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'User ID',
+			ip varbinary(16) DEFAULT NULL COMMENT 'Visitor IP Address',
+			path text NOT NULL DEFAULT '' COMMENT 'Request Path or URI',
+			code int(5) NOT NULL DEFAULT '200' COMMENT 'HTTP Response Code',
+			verb varchar(10) NOT NULL DEFAULT 'get' COMMENT 'HTTP Method',
+			ua text COMMENT 'Browser User Agent String',
+			trans tinyint(1) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Trangression',
 			created_at int(15) UNSIGNED NOT NULL DEFAULT 0,
 			deleted_at int(15) UNSIGNED NOT NULL DEFAULT 0,
  			PRIMARY KEY  (id)
 		) %s;";
-		return sprintf( $sSqlTables, $this->getTableName(), $this->loadDbProcessor()->getCharCollate() );
 	}
 
 	/**
@@ -201,12 +184,5 @@ class ICWP_WPSF_Processor_TrafficLogger extends ICWP_WPSF_BaseDbProcessor {
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'traffic_table_columns' );
 		return is_array( $aDef ) ? $aDef : array();
-	}
-
-	/**
-	 * @return string
-	 */
-	protected function queryGetDir() {
-		return parent::queryGetDir().'traffic/';
 	}
 }

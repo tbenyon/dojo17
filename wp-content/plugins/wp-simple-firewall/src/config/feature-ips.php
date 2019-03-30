@@ -3,15 +3,16 @@
   "properties":    {
     "slug":                  "ips",
     "name":                  "IP Manager",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "ips",
     "tagline":               "Manage Visitor IP Address",
     "show_central":          true,
     "access_restricted":     true,
     "premium":               false,
-    "has_custom_actions":    true,
     "run_if_whitelisted":    true,
     "run_if_verified_bot":   true,
+    "run_if_wpcli":          false,
     "order":                 100
   },
   "admin_notices": {
@@ -86,8 +87,8 @@
       "section":     "section_enable_plugin_feature_ips",
       "default":     "Y",
       "type":        "checkbox",
-      "link_info":   "https://icwp.io/wpsf26",
-      "link_blog":   "",
+      "link_info":   "https://icwp.io/ea",
+      "link_blog":   "https://icwp.io/wpsf26",
       "name":        "Enable IP Manager",
       "summary":     "Enable (or Disable) The IP Manager module",
       "description": "Un-Checking this option will completely disable the IP Manager module"
@@ -133,13 +134,35 @@
       "description":   "Permanent and lengthy IP Black Lists are harmful to performance. You should allow IP addresses on the black list to be eventually removed over time. Shorter IP black lists are more efficient and a more intelligent use of an IP-based blocking system."
     },
     {
+      "key":           "user_auto_recover",
+      "section":       "section_auto_black_list",
+      "premium":       true,
+      "default":       "disabled",
+      "type":          "select",
+      "value_options": [
+        {
+          "value_key": "disabled",
+          "text":      "Disabled"
+        },
+        {
+          "value_key": "gasp",
+          "text":      "With Shield Bot Protection"
+        }
+      ],
+      "link_info":     "",
+      "link_blog":     "",
+      "name":          "User Auto Unblock",
+      "summary":       "Allow Visitors To Unblock Their IP",
+      "description":   "Allow visitors blocked by the plugin to automatically unblock themselves."
+    },
+    {
       "key":         "text_loginfailed",
       "section":     "section_user_messages",
       "sensitive":   true,
       "premium":     true,
       "default":     "default",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/e8",
       "link_blog":   "",
       "name":        "Login Failed",
       "summary":     "Visitor Triggers The IP Transgression System Through A Failed Login",
@@ -166,7 +189,7 @@
           "text":      "Increment Transgression"
         }
       ],
-      "link_info":     "",
+      "link_info":     "https://icwp.io/e7",
       "link_blog":     "",
       "name":          "Track 404s",
       "summary":       "Use 404s As An Transgression",
@@ -179,7 +202,7 @@
       "premium":     true,
       "default":     "default",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/e9",
       "link_blog":   "",
       "name":        "Remaining Transgressions",
       "summary":     "Visitor Triggers The IP Transgression System Through A Firewall Block",
@@ -187,28 +210,39 @@
     },
     {
       "key":          "this_server_ip",
+      "section":      "section_non_ui",
       "transferable": false,
       "sensitive":    true,
-      "section":      "section_non_ui",
-      "value":        ""
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "this_server_ip_last_check_at",
-      "transferable": false,
       "section":      "section_non_ui",
-      "value":        0
+      "transferable": false,
+      "type":         "integer",
+      "default":      0
     },
     {
       "key":          "insights_last_transgression_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     },
     {
       "key":          "insights_last_ip_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
+    },
+    {
+      "key":          "autounblock_ips",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "array",
+      "default":      []
     }
   ],
   "definitions":   {

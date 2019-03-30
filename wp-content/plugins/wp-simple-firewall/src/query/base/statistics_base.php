@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Query_Statistics_Base', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base.php' );
+require_once( dirname( dirname( __DIR__ ) ).'/lib/vendor/autoload.php' );
 
 class ICWP_WPSF_Query_Statistics_Base extends ICWP_WPSF_Query_Base {
 
@@ -48,7 +44,7 @@ class ICWP_WPSF_Query_Statistics_Base extends ICWP_WPSF_Query_Base {
 
 		// TODO: NOT PHP 5.2!
 		if ( is_array( $mResult ) ) {
-			include_once( dirname( __FILE__ ).'/StatisticsReportingVO.php' );
+			include_once( __DIR__.'/StatisticsReportingVO.php' );
 			$mResult = array_map(
 				function ( $oData ) {
 					return new StatisticsReportingVO( $oData );
@@ -80,7 +76,7 @@ class ICWP_WPSF_Query_Statistics_Base extends ICWP_WPSF_Query_Base {
 		$sStatPart = $this->buildStatKeyQuery();
 		return sprintf( $sQuery,
 			$bIsCount ? 'COUNT(*) AS total' : '*',
-			$this->getFeature()->getFullReportingTableName(),
+			$this->getMod()->getFullReportingTableName(),
 			$this->getDateFrom(),
 			$this->getDateTo(),
 			$this->isSelectDeleted() ? '>' : '=',
@@ -106,7 +102,7 @@ class ICWP_WPSF_Query_Statistics_Base extends ICWP_WPSF_Query_Base {
 
 		$sStatPart = $this->buildStatKeyQuery();
 		return sprintf( $sQuery,
-			$this->getFeature()->getFullReportingTableName(),
+			$this->getMod()->getFullReportingTableName(),
 			$this->getDateFrom(),
 			$this->getDateTo(),
 			empty( $sStatPart ) ? $sStatPart : 'AND '.$sStatPart
@@ -143,7 +139,7 @@ class ICWP_WPSF_Query_Statistics_Base extends ICWP_WPSF_Query_Base {
 	 * @return int
 	 */
 	public function getDateTo() {
-		return isset( $this->nDateTo ) ? (int)$this->nDateTo : $this->loadDP()->time();
+		return isset( $this->nDateTo ) ? (int)$this->nDateTo : $this->loadRequest()->ts();
 	}
 
 	/**
@@ -241,7 +237,7 @@ class ICWP_WPSF_Query_Statistics_Base extends ICWP_WPSF_Query_Base {
 	/**
 	 * @return ICWP_WPSF_FeatureHandler_Statistics
 	 */
-	protected function getFeature() {
+	protected function getMod() {
 		return $this->oFO;
 	}
 

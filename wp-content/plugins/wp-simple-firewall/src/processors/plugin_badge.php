@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_Plugin_Badge', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_Plugin_Badge extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -34,9 +30,9 @@ class ICWP_WPSF_Processor_Plugin_Badge extends ICWP_WPSF_Processor_BaseWpsf {
 	public function gatherPluginWidgetContent( $aContent ) {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
-		$oCon = $this->getController();
+		$oCon = $this->getCon();
 
-		$aLabels = $oCon->getPluginLabels();
+		$aLabels = $oCon->getLabels();
 		$sFooter = sprintf( _wpsf__( '%s is provided by %s' ), $oCon->getHumanName(),
 			sprintf( '<a href="%s">%s</a>', $aLabels[ 'AuthorURI' ], $aLabels[ 'Author' ] )
 		);
@@ -54,11 +50,16 @@ class ICWP_WPSF_Processor_Plugin_Badge extends ICWP_WPSF_Processor_BaseWpsf {
 		return $aContent;
 	}
 
+	/**
+	 * https://wordpress.org/support/topic/fatal-errors-after-update-to-7-0-2/#post-11169820
+	 */
 	public function addPluginBadgeWidget() {
-		$this->loadWpWidgets();
-		require_once( dirname( __FILE__ ).'/plugin_badgewidget.php' );
-		ICWP_WPSF_Processor_Plugin_BadgeWidget::SetFeatureOptions( $this->getMod() );
-		register_widget( 'ICWP_WPSF_Processor_Plugin_BadgeWidget' );
+		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
+		$oFO = $this->getMod();
+		if ( !empty( $oFO ) && Services::WpGeneral()->getWordpressIsAtLeastVersion( '4.6.0' )
+			 && !class_exists( 'Tribe_WP_Widget_Factory' ) ) {
+			register_widget( new ICWP_WPSF_Processor_Plugin_BadgeWidget( $oFO ) );
+		}
 	}
 
 	/**
@@ -70,7 +71,7 @@ class ICWP_WPSF_Processor_Plugin_Badge extends ICWP_WPSF_Processor_BaseWpsf {
 		try {
 			echo $oFO->renderPluginBadge();
 		}
-		catch ( Exception $oE ) {
+		catch ( \Exception $oE ) {
 		}
 	}
 }

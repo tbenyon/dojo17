@@ -1,80 +1,133 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_FeatureHandler_UserManagement', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Plugin\Shield;
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
 	/**
+	 * @param array $aAjaxResponse
 	 * @return array
 	 */
-	protected function getContentCustomActionsData() {
-		return $this->getUserSessionsData();
+	public function handleAuthAjax( $aAjaxResponse ) {
+
+		if ( empty( $aAjaxResponse ) ) {
+			switch ( Services::Request()->request( 'exec' ) ) {
+
+				case 'render_table_sessions':
+					$aAjaxResponse = $this->ajaxExec_BuildTableTraffic();
+					break;
+
+				case 'session_delete':
+					$aAjaxResponse = $this->ajaxExec_SessionDelete();
+					break;
+
+				case 'bulk_action':
+					$aAjaxResponse = $this->ajaxExec_BulkItemAction();
+					break;
+
+				default:
+					break;
+			}
+		}
+		return parent::handleAuthAjax( $aAjaxResponse );
 	}
 
 	/**
 	 * @return array
 	 */
-	protected function getUserSessionsData() {
-		$aActiveSessions = $this->getActiveSessionsData();
+	private function ajaxExec_BulkItemAction() {
+		$oReq = Services::Request();
+		$oProcessor = $this->getSessionsProcessor();
 
-		$aFormatted = array();
+		$bSuccess = false;
 
-		$oWp = $this->loadWp();
-		$sTimeFormat = $oWp->getTimeFormat();
-		$sDateFormat = $oWp->getDateFormat();
-		foreach ( $aActiveSessions as $oSession ) {
-			$aSession = (array)$oSession->getRawData();
-			$aSession[ 'logged_in_at' ] = $oWp->getTimeStringForDisplay( $oSession->getLoggedInAt() );
-			$aSession[ 'last_activity_at' ] = $oWp->getTimeStringForDisplay( $oSession->getLastActivityAt() );
-			$aSession[ 'is_secadmin' ] = ( $oSession->getSecAdminAt() > 0 ) ? __( 'Yes' ) : __( 'No' );
-			$aFormatted[] = $aSession;
+		$aIds = $oReq->post( 'ids' );
+		if ( empty( $aIds ) || !is_array( $aIds ) ) {
+			$bSuccess = false;
+			$sMessage = _wpsf__( 'No items selected.' );
+		}
+		else if ( !in_array( $oReq->post( 'bulk_action' ), [ 'delete' ] ) ) {
+			$sMessage = _wpsf__( 'Not a supported action.' );
+		}
+		else {
+			$nYourId = $oProcessor->getCurrentSession()->id;
+			$bIncludesYourSession = in_array( $nYourId, $aIds );
+
+			if ( $bIncludesYourSession && ( count( $aIds ) == 1 ) ) {
+				$sMessage = _wpsf__( 'Please logout if you want to delete your own session.' );
+			}
+			else {
+				$bSuccess = true;
+
+				/** @var Shield\Databases\Session\Delete $oDel */
+				$oDel = $oProcessor->getDbHandler()->getQueryDeleter();
+				foreach ( $aIds as $nId ) {
+					if ( is_numeric( $nId ) && ( $nId != $nYourId ) ) {
+						$oDel->deleteById( $nId );
+					}
+				}
+				$sMessage = _wpsf__( 'Selected items were deleted.' );
+				if ( $bIncludesYourSession ) {
+					$sMessage .= ' *'._wpsf__( 'Your session was retained' );
+				}
+			}
 		}
 
-		$oTable = $this->getTableRendererForSessions()
-					   ->setItemEntries( $aFormatted )
-					   ->setPerPage( 5 )
-					   ->prepare_items();
-		ob_start();
-		$oTable->display();
-		$sUserSessionsTable = ob_get_clean();
-
 		return array(
-			'strings'            => $this->getDisplayStrings(),
-			'time_now'           => sprintf( _wpsf__( 'now: %s' ), date_i18n( $sTimeFormat.' '.$sDateFormat, $this->loadDP()
-																												  ->time() ) ),
-			'sUserSessionsTable' => $sUserSessionsTable
+			'success' => $bSuccess,
+			'message' => $sMessage,
 		);
 	}
 
 	/**
-	 * @return SessionsTable
+	 * @return array
 	 */
-	protected function getTableRendererForSessions() {
-		$this->requireCommonLib( 'Components/Tables/SessionsTable.php' );
-		/** @var ICWP_WPSF_Processor_UserManagement $oProc */
-		$oProc = $this->loadProcessor();
-//		$nCount = $oProc->countAuditEntriesForContext( $sContext );
+	private function ajaxExec_SessionDelete() {
+		$oReq = Services::Request();
+		$oProcessor = $this->getSessionsProcessor();
 
-		$oTable = new SessionsTable();
-		return $oTable->setTotalRecords( 10 );
+		$bSuccess = false;
+		$nId = $oReq->post( 'rid', -1 );
+		if ( !is_numeric( $nId ) || $nId < 0 ) {
+			$sMessage = _wpsf__( 'Invalid session selected' );
+		}
+		else if ( $this->getSession()->id === $nId ) {
+			$sMessage = _wpsf__( 'Please logout if you want to delete your own session.' );
+		}
+		else if ( $oProcessor->getDbHandler()->getQueryDeleter()->deleteById( $nId ) ) {
+			$sMessage = _wpsf__( 'User session deleted' );
+			$bSuccess = true;
+		}
+		else {
+			$sMessage = _wpsf__( "User session wasn't deleted" );
+		}
+
+		return array(
+			'success' => $bSuccess,
+			'message' => $sMessage,
+		);
 	}
 
-	/**
-	 * @param bool $bCleanFirst
-	 * @return ICWP_WPSF_SessionVO[]
-	 */
-	public function getActiveSessionsData( $bCleanFirst = true ) {
+	private function ajaxExec_BuildTableTraffic() {
 		/** @var ICWP_WPSF_Processor_UserManagement $oPro */
 		$oPro = $this->getProcessor();
-		$oSessions = $oPro->getProcessorSessions();
-		if ( $bCleanFirst ) {
-			$oSessions->cleanExpiredSessions();
-		}
-		return $oSessions->getActiveSessions();
+
+		// first clean out the expired sessions before display
+		$oPro->getProcessorSessions()->cleanExpiredSessions();
+
+		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oSecAdminMod */
+		$oSecAdminMod = $this->getCon()->getModule( 'admin_access_restriction' );
+
+		$oTableBuilder = ( new Shield\Tables\Build\Sessions() )
+			->setMod( $this )
+			->setDbHandler( $this->getSessionsProcessor()->getDbHandler() )
+			->setSecAdminUsers( $oSecAdminMod->getSecurityAdminUsers() );
+
+		return array(
+			'success' => true,
+			'html'    => $oTableBuilder->buildTable()
+		);
 	}
 
 	/**
@@ -88,14 +141,14 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	/**
 	 * @return int
 	 */
-	public function getSessionIdleTimeoutInterval() {
+	public function getIdleTimeoutInterval() {
 		return $this->getOpt( 'session_idle_timeout_interval' )*HOUR_IN_SECONDS;
 	}
 
 	/**
 	 * @return int
 	 */
-	public function getSessionTimeoutInterval() {
+	public function getMaxSessionTime() {
 		return $this->getOpt( 'session_timeout_interval' )*DAY_IN_SECONDS;
 	}
 
@@ -103,25 +156,19 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return bool
 	 */
 	public function hasSessionIdleTimeout() {
-		return $this->isModuleEnabled() && ( $this->getSessionIdleTimeoutInterval() > 0 );
+		return $this->isModuleEnabled() && ( $this->getIdleTimeoutInterval() > 0 );
 	}
 
 	/**
 	 * @return bool
 	 */
-	public function hasSessionTimeoutInterval() {
-		return $this->isModuleEnabled() && ( $this->getSessionTimeoutInterval() > 0 );
-	}
-
-	protected function doPrePluginOptionsSave() {
-		if ( $this->getSessionIdleTimeoutInterval() > $this->getSessionTimeoutInterval() ) {
-			$this->setOpt( 'session_idle_timeout_interval', $this->getOpt( 'session_timeout_interval' )*24 );
-		}
+	public function hasMaxSessionTimeout() {
+		return $this->isModuleEnabled() && ( $this->getMaxSessionTime() > 0 );
 	}
 
 	protected function doExtraSubmitProcessing() {
 		$sAdminEmail = $this->getOpt( 'enable_admin_login_email_notification' );
-		if ( !$this->loadDP()->validEmail( $sAdminEmail ) ) {
+		if ( !Services::Data()->validEmail( $sAdminEmail ) ) {
 			$this->getOptionsVo()->resetOptToDefault( 'enable_admin_login_email_notification' );
 		}
 
@@ -132,6 +179,10 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		if ( $this->getOpt( 'session_timeout_interval' ) < 1 ) {
 			$this->getOptionsVo()->resetOptToDefault( 'session_timeout_interval' );
 		}
+
+		if ( $this->getIdleTimeoutInterval() > $this->getMaxSessionTime() ) {
+			$this->setOpt( 'session_idle_timeout_interval', $this->getOpt( 'session_timeout_interval' )*24 );
+		}
 	}
 
 	/**
@@ -139,8 +190,13 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return bool
 	 */
 	public function isUserSessionsManagementEnabled() {
-		return $this->isOpt( 'enable_user_management', 'Y' )
-			   && $this->getSessionsProcessor()->getTableExists();
+		try {
+			return $this->isOpt( 'enable_user_management', 'Y' )
+				   && $this->getSessionsProcessor()->getDbHandler()->isReady();
+		}
+		catch ( \Exception $oE ) {
+			return false;
+		}
 	}
 
 	/**
@@ -150,9 +206,6 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		return $this->loadDP()->mergeArraysRecursive(
 			parent::getDisplayStrings(),
 			array(
-				'btn_actions'         => _wpsf__( 'User Sessions' ),
-				'btn_actions_summary' => _wpsf__( 'Review user sessions' ),
-
 				'um_current_user_settings'          => _wpsf__( 'Current User Sessions' ),
 				'um_username'                       => _wpsf__( 'Username' ),
 				'um_logged_in_at'                   => _wpsf__( 'Logged In At' ),
@@ -170,17 +223,24 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	public function isAutoAddSessions() {
 		$nStartedAt = $this->getOpt( 'autoadd_sessions_started_at', 0 );
 		if ( $nStartedAt < 1 ) {
-			$nStartedAt = $this->loadDP()->time();
+			$nStartedAt = Services::Request()->ts();
 			$this->setOpt( 'autoadd_sessions_started_at', $nStartedAt );
 		}
-		return ( $this->loadDP()->time() - $nStartedAt ) < 20;
+		return ( Services::Request()->ts() - $nStartedAt ) < 20;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isLockToIp() {
+		return $this->isOpt( 'session_lock_location', 'Y' );
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isSendAdminEmailLoginNotification() {
-		return $this->loadDP()->validEmail( $this->getAdminLoginNotificationEmail() );
+		return Services::Data()->validEmail( $this->getAdminLoginNotificationEmail() );
 	}
 
 	/**
@@ -194,14 +254,14 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return int days
 	 */
 	public function getPassExpireDays() {
-		return max( 0, (int)$this->getOpt( 'pass_expire' ) );
+		return ( $this->isPasswordPoliciesEnabled() && $this->isPremium() ) ? (int)$this->getOpt( 'pass_expire' ) : 0;
 	}
 
 	/**
 	 * @return int seconds
 	 */
 	public function getPassExpireTimeout() {
-		return $this->isPremium() ? $this->getPassExpireDays()*DAY_IN_SECONDS : 0;
+		return $this->getPassExpireDays()*DAY_IN_SECONDS;
 	}
 
 	/**
@@ -251,8 +311,75 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	/**
 	 * @return bool
 	 */
+	public function isPassExpirationEnabled() {
+		return $this->isPasswordPoliciesEnabled() && ( $this->getPassExpireTimeout() > 0 );
+	}
+
+	/**
+	 * @return bool
+	 */
 	public function isPassPreventPwned() {
 		return $this->isOpt( 'pass_prevent_pwned', 'Y' );
+	}
+
+	public function isSuspendEnabled() {
+		return ( $this->isSuspendManualEnabled()
+				 || $this->isSuspendAutoIdleEnabled()
+				 || $this->isSuspendAutoPasswordEnabled()
+			   ) && $this->isPremium();
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isSuspendManualEnabled() {
+		return $this->isOpt( 'manual_suspend', 'Y' );
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getSuspendAutoIdleTime() {
+		return $this->getOpt( 'auto_idle', 0 )*DAY_IN_SECONDS;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isSuspendAutoIdleEnabled() {
+		return $this->getSuspendAutoIdleTime() > 0;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isSuspendAutoPasswordEnabled() {
+		return $this->isOpt( 'auto_password', 'Y' )
+			   && $this->isPasswordPoliciesEnabled() && $this->getPassExpireTimeout();
+	}
+
+	/**
+	 * @param int  $nId
+	 * @param bool $bAdd - set true to add, false to remove
+	 * @return $this
+	 */
+	public function addRemoveHardSuspendUserId( $nId, $bAdd = true ) {
+		$aIds = $this->getOpt( 'hard_suspended_userids', [] );
+		if ( $bAdd ) {
+			$aIds[ $nId ] = Services::Request()->ts();
+		}
+		else if ( isset( $aIds[ $nId ] ) ) {
+			unset( $aIds[ $nId ] );
+		}
+		return $this->setOpt( 'hard_suspended_userids', $aIds );
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getSuspendHardUserIds() {
+		$aIds = $this->getOpt( 'hard_suspended_userids', [] );
+		return is_array( $aIds ) ? array_filter( $aIds, 'is_int' ) : [];
 	}
 
 	/**
@@ -260,7 +387,6 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return array
 	 */
 	public function addInsightsNoticeData( $aAllNotices ) {
-		$oWpUsers = $this->loadWpUsers();
 
 		$aNotices = array(
 			'title'    => _wpsf__( 'Users' ),
@@ -268,7 +394,7 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		);
 
 		{ //admin user
-			$oAdmin = $oWpUsers->getUserByUsername( 'admin' );
+			$oAdmin = Services::WpUsers()->getUserByUsername( 'admin' );
 			if ( !empty( $oAdmin ) && user_can( $oAdmin, 'manage_options' ) ) {
 				$aNotices[ 'messages' ][ 'admin' ] = array(
 					'title'   => 'Admin User',
@@ -284,7 +410,7 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 				$aNotices[ 'messages' ][ 'password' ] = array(
 					'title'   => 'Password Policies',
 					'message' => _wpsf__( "Strong password policies are not enforced." ),
-					'href'    => $this->getUrl_AdminPage(),
+					'href'    => $this->getUrl_DirectLinkToSection( 'section_passwords' ),
 					'action'  => sprintf( 'Go To %s', _wpsf__( 'Options' ) ),
 					'rec'     => _wpsf__( 'Password policies should be turned-on.' )
 				);
@@ -298,9 +424,78 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	}
 
 	/**
+	 * @param array $aAllData
+	 * @return array
+	 */
+	public function addInsightsConfigData( $aAllData ) {
+		$aThis = array(
+			'strings'      => array(
+				'title' => _wpsf__( 'User Management' ),
+				'sub'   => _wpsf__( 'Sessions Control & Password Policies' ),
+			),
+			'key_opts'     => array(),
+			'href_options' => $this->getUrl_AdminPage()
+		);
+
+		if ( !$this->isModOptEnabled() ) {
+			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
+		}
+		else {
+			$bHasIdle = $this->hasSessionIdleTimeout();
+			$aThis[ 'key_opts' ][ 'idle' ] = array(
+				'name'    => _wpsf__( 'Idle Users' ),
+				'enabled' => $bHasIdle,
+				'summary' => $bHasIdle ?
+					sprintf( _wpsf__( 'Idle sessions are terminated after %s hours' ), $this->getOpt( 'session_idle_timeout_interval' ) )
+					: _wpsf__( 'Idle sessions wont be terminated' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToOption( 'session_idle_timeout_interval' ),
+			);
+
+			$bLocked = $this->isLockToIp();
+			$aThis[ 'key_opts' ][ 'lock' ] = array(
+				'name'    => _wpsf__( 'Lock To IP' ),
+				'enabled' => $bLocked,
+				'summary' => $bLocked ?
+					_wpsf__( 'Sessions are locked to IP address' )
+					: _wpsf__( "Sessions aren't locked to IP address" ),
+				'weight'  => 1,
+				'href'    => $this->getUrl_DirectLinkToOption( 'session_lock_location' ),
+			);
+
+			$bPolicies = $this->isPasswordPoliciesEnabled();
+
+			$bPwned = $bPolicies && $this->isPassPreventPwned();
+			$aThis[ 'key_opts' ][ 'pwned' ] = array(
+				'name'    => _wpsf__( 'Pwned Passwords' ),
+				'enabled' => $bPwned,
+				'summary' => $bPwned ?
+					_wpsf__( 'Pwned passwords are blocked on this site' )
+					: _wpsf__( 'Pwned passwords are allowed on this site' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToOption( 'pass_prevent_pwned' ),
+			);
+
+			$bIndepthPolices = $bPolicies && $this->isPremium();
+			$aThis[ 'key_opts' ][ 'policies' ] = array(
+				'name'    => _wpsf__( 'Password Policies' ),
+				'enabled' => $bIndepthPolices,
+				'summary' => $bIndepthPolices ?
+					_wpsf__( 'Several password policies are active' )
+					: _wpsf__( 'Limited or no password polices are active' ),
+				'weight'  => 2,
+				'href'    => $this->getUrl_DirectLinkToSection( 'section_passwords' ),
+			);
+		}
+
+		$aAllData[ $this->getSlug() ] = $aThis;
+		return $aAllData;
+	}
+
+	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_SectionTitles( $aOptionsParams ) {
 
@@ -322,7 +517,7 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 				$aSummary = array(
 					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Have full control over passwords used by users on the site.' ) ),
 					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Requirements' ), sprintf( 'PHP v%s+', '5.4.0' ).' ; '.sprintf( 'WordPress v%s+', '4.4.0' ) ),
+					sprintf( '%s - %s', _wpsf__( 'Requirements' ), sprintf( 'WordPress v%s+', '4.4.0' ) ),
 				);
 				break;
 
@@ -353,8 +548,17 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 				$sTitleShort = _wpsf__( 'Session Options' );
 				break;
 
+			case 'section_suspend' :
+				$sTitleShort = _wpsf__( 'User Suspension' );
+				$sTitle = _wpsf__( 'Automatic And Manual User Suspension' );
+				$aSummary = array(
+					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Automatically suspend accounts to prevent login by certain users.' ) ),
+					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ) )
+				);
+				break;
+
 			default:
-				throw new Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
+				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
 		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
@@ -365,7 +569,7 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	/**
 	 * @param array $aOptionsParams
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function loadStrings_Options( $aOptionsParams ) {
 
@@ -395,9 +599,10 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 				$sName = _wpsf__( 'Session Timeout' );
 				$sSummary = _wpsf__( 'Specify How Many Days After Login To Automatically Force Re-Login' );
 				$sDescription = _wpsf__( 'WordPress default is 2 days, or 14 days if you check the "Remember Me" box.' )
-								.'<br />'.sprintf( _wpsf__( 'This cannot be less than %s.' ), '"<strong>1</strong>"' )
-								.'<br />'.sprintf( '%s: %s', _wpsf__( 'Default' ), '"<strong>'.$this->getOptionsVo()
-																									->getOptDefault( 'session_timeout_interval' ).'</strong>"' );
+								.'<br />'._wpsf__( 'Think of this as an absolute maximum possible session length.' )
+								.'<br />'.sprintf( _wpsf__( 'This cannot be less than %s.' ), '<strong>1</strong>' )
+								.' '.sprintf( '%s: %s', _wpsf__( 'Default' ), '<strong>'.$this->getOptionsVo()
+																							  ->getOptDefault( 'session_timeout_interval' ).'</strong>' );
 				break;
 
 			case 'session_idle_timeout_interval' :
@@ -460,8 +665,33 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
 				break;
 
+			case 'manual_suspend' :
+				$sName = _wpsf__( 'Allow Manual User Suspension' );
+				$sSummary = _wpsf__( 'Manually Suspend User Accounts To Prevent Login' );
+				$sDescription = _wpsf__( 'Users may be forcefully suspended by administrators to prevent future login.' );
+				break;
+
+			case 'auto_password' :
+				$sName = _wpsf__( 'Auto-Suspend Expired Passwords' );
+				$sSummary = _wpsf__( 'Automatically Suspend Users With Expired Passwords' );
+				$sDescription = _wpsf__( 'Automatically suspend login by users and require password reset to unsuspend.' )
+								.'<br/>'.sprintf(
+									'<strong>%s</strong> - %s',
+									_wpsf__( 'Important' ),
+									_wpsf__( 'Requires password expiration policy to be set.' )
+								);
+				break;
+
+			case 'auto_idle' :
+				$sName = _wpsf__( 'Auto-Suspend Idle Users' );
+				$sSummary = _wpsf__( 'Automatically Suspend Idle User Accounts' );
+				$sDescription = _wpsf__( 'Automatically suspend login by idle users and require password reset to unsuspend.' )
+								.'<br/>'._wpsf__( 'Specify the number of days since last login to consider a user as idle.' )
+								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
+				break;
+
 			default:
-				throw new Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
+				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
 		}
 
 		$aOptionsParams[ 'name' ] = $sName;

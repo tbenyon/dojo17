@@ -3,15 +3,16 @@
   "properties":    {
     "slug":                  "admin_access_restriction",
     "name":                  "Security Admin",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "admin_access_restriction",
     "tagline":               "Protect your Security Plugin, not just your WordPress site",
-    "menu_title":            "Security Admin",
     "show_central":          true,
     "access_restricted":     true,
     "premium":               false,
     "run_if_whitelisted":    false,
     "run_if_verified_bot":   true,
+    "run_if_wpcli":          false,
     "order":                 20
   },
   "admin_notices": {
@@ -97,6 +98,19 @@
       "description": "Careful: If you forget this, you could potentially lock yourself out from using this plugin."
     },
     {
+      "key":         "sec_admin_users",
+      "section":     "section_admin_access_restriction_settings",
+      "sensitive":   true,
+      "premium":     true,
+      "default":     "",
+      "type":        "array",
+      "link_info":   "https://icwp.io/dk",
+      "link_blog":   "",
+      "name":        "Security Admins",
+      "summary":     "Persistent Security Admins",
+      "description": "All emails, usernames, or user IDs entered here will always be Security Admins."
+    },
+    {
       "key":         "admin_access_timeout",
       "section":     "section_admin_access_restriction_settings",
       "default":     30,
@@ -134,7 +148,7 @@
       "key":           "admin_access_restrict_plugins",
       "section":       "section_admin_access_restriction_areas",
       "type":          "multiple_select",
-      "default":       null,
+      "default":       [],
       "value_options": [
         {
           "value_key": "activate_plugins",
@@ -162,7 +176,7 @@
       "key":           "admin_access_restrict_themes",
       "section":       "section_admin_access_restriction_areas",
       "type":          "multiple_select",
-      "default":       null,
+      "default":       [],
       "value_options": [
         {
           "value_key": "switch_themes",
@@ -194,7 +208,7 @@
       "key":           "admin_access_restrict_posts",
       "section":       "section_admin_access_restriction_areas",
       "type":          "multiple_select",
-      "default":       null,
+      "default":       [],
       "value_options": [
         {
           "value_key": "edit",
@@ -220,8 +234,8 @@
       "premium":     true,
       "default":     "N",
       "type":        "checkbox",
-      "link_info":   "",
-      "link_blog":   "",
+      "link_info":   "https://icwp.io/dr",
+      "link_blog":   "https://icwp.io/ds",
       "name":        "Enable White Label",
       "summary":     "Activate Your White Label Settings",
       "description": "Use this option to turn on/off the whole White Label feature."
@@ -243,7 +257,7 @@
       "sensitive":   true,
       "default":     "Shield",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/dt",
       "link_blog":   "",
       "name":        "Plugin Name",
       "summary":     "The Name Of The Plugin",
@@ -267,7 +281,7 @@
       "sensitive":   true,
       "default":     "One Dollar Plugin",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/dt",
       "link_blog":   "",
       "name":        "Company Name",
       "summary":     "The Name Of Your Company",
@@ -303,7 +317,7 @@
       "sensitive":   true,
       "default":     "pluginlogo_16x16.png",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/dt",
       "link_blog":   "",
       "name":        "Menu Icon",
       "summary":     "Menu Icon URL",
@@ -327,7 +341,7 @@
       "sensitive":   true,
       "default":     "pluginlogo_banner-772x250.png",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/dt",
       "link_blog":   "",
       "name":        "Dashboard Logo",
       "summary":     "Dashboard Logo URL",

@@ -1,15 +1,11 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_LoginProtect_Cooldown', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/loginprotect_base.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_LoginProtect_Cooldown extends ICWP_WPSF_Processor_LoginProtect_Base {
 
 	/**
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function performCheckWithException() {
 
@@ -29,7 +25,7 @@ class ICWP_WPSF_Processor_LoginProtect_Cooldown extends ICWP_WPSF_Processor_Logi
 
 				$this->setLoginAsFailed( 'login.cooldown.fail' )
 					 ->addToAuditEntry( _wpsf__( 'Cooldown triggered and request (login/register/lost-password) was blocked.' ) );
-				throw new Exception( $sErrorString );
+				throw new \Exception( $sErrorString );
 			}
 			else {
 				$this->updateLastLoginTime()
@@ -51,22 +47,22 @@ class ICWP_WPSF_Processor_LoginProtect_Cooldown extends ICWP_WPSF_Processor_Logi
 	 */
 	protected function getLastLoginTime() {
 		$sFile = $this->getLastLoginTimeFilePath();
-		return $this->loadFS()->exists( $sFile ) ? filemtime( $sFile ) : 0;
+		return Services::WpFs()->exists( $sFile ) ? filemtime( $sFile ) : 0;
 	}
 
 	/**
 	 * @return string
 	 */
 	protected function getLastLoginTimeFilePath() {
-		return self::getController()->getRootDir().'mode.login_throttled';
+		return path_join( $this->getCon()->getRootDir(), 'mode.login_throttled' );
 	}
 
 	/**
 	 * @return $this
 	 */
 	protected function updateLastLoginTime() {
-		$this->loadFS()->deleteFile( $this->getLastLoginTimeFilePath() );
-		$this->loadFS()->touch( $this->getLastLoginTimeFilePath(), $this->time() );
+		Services::WpFs()->deleteFile( $this->getLastLoginTimeFilePath() );
+		Services::WpFs()->touch( $this->getLastLoginTimeFilePath(), $this->time() );
 		return $this;
 	}
 

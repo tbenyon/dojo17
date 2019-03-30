@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_AdminAccessRestriction', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_BaseWpsf {
 
@@ -17,73 +13,80 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
 
-		add_filter( $oFO->prefix( 'has_permission_to_manage' ), array( $oFO, 'doCheckHasPermissionToSubmit' ) );
-		add_filter( $oFO->prefix( 'has_permission_to_view' ), array( $oFO, 'doCheckHasPermissionToSubmit' ) );
-
-		if ( !$oFO->isUpgrading() && !$this->loadWp()->isRequestUserLogin() ) {
-			add_filter( 'pre_update_option', array( $this, 'blockOptionsSaves' ), 1, 3 );
-		}
+		add_filter( $oFO->prefix( 'is_plugin_admin' ), array( $this, 'adjustUserAdminPermissions' ) );
 
 		if ( $oFO->isWlEnabled() ) {
-			$this->runWhiteLabel();
+			$this->getSubProWhitelabel()->run();
 		}
+	}
+
+	/**
+	 * @param bool $bHasPermission
+	 * @return bool
+	 */
+	public function adjustUserAdminPermissions( $bHasPermission = true ) {
+		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
+		$oFO = $this->getMod();
+		return $bHasPermission &&
+			   ( $oFO->isRegisteredSecAdminUser() || $oFO->isSecAdminSessionValid()
+				 || $oFO->checkAdminAccessKeySubmission() );
 	}
 
 	public function onWpInit() {
 		parent::onWpInit();
-		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
-		$oFO = $this->getMod();
-		if ( !$this->loadWpUsers()->isUserLoggedIn() || $this->isSecurityAdmin() ) {
-			return;
-		}
 
-		if ( $oFO->isAdminAccessAdminUsersEnabled() ) {
-			add_filter( 'editable_roles', array( $this, 'restrictEditableRoles' ), 100, 1 );
-			add_filter( 'user_has_cap', array( $this, 'restrictAdminUserChanges' ), 100, 3 );
-			add_action( 'delete_user', array( $this, 'restrictAdminUserDelete' ), 100, 1 );
-			add_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100, 2 );
-			add_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100, 2 );
-			add_action( 'set_user_role', array( $this, 'restrictSetUserRole' ), 100, 3 );
-		}
+		if ( !$this->getCon()->isPluginAdmin() ) {
+			/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
+			$oFO = $this->getMod();
 
-		$aPluginRestrictions = $oFO->getAdminAccessArea_Plugins();
-		if ( !empty( $aPluginRestrictions ) ) {
-			add_filter( 'user_has_cap', array( $this, 'disablePluginManipulation' ), 0, 3 );
-		}
+			if ( !$oFO->isUpgrading() && !$this->loadWp()->isRequestUserLogin() ) {
+				add_filter( 'pre_update_option', array( $this, 'blockOptionsSaves' ), 1, 3 );
+			}
 
-		$aThemeRestrictions = $oFO->getAdminAccessArea_Themes();
-		if ( !empty( $aThemeRestrictions ) ) {
-			add_filter( 'user_has_cap', array( $this, 'disableThemeManipulation' ), 0, 3 );
-		}
+			if ( $oFO->isAdminAccessAdminUsersEnabled() ) {
+				add_filter( 'editable_roles', array( $this, 'restrictEditableRoles' ), 100, 1 );
+				add_filter( 'user_has_cap', array( $this, 'restrictAdminUserChanges' ), 100, 3 );
+				add_action( 'delete_user', array( $this, 'restrictAdminUserDelete' ), 100, 1 );
+				add_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100, 2 );
+				add_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100, 2 );
+				add_action( 'set_user_role', array( $this, 'restrictSetUserRole' ), 100, 3 );
+			}
 
-		$aPostRestrictions = $oFO->getAdminAccessArea_Posts();
-		if ( !empty( $aPostRestrictions ) ) {
-			add_filter( 'user_has_cap', array( $this, 'disablePostsManipulation' ), 0, 3 );
-		}
+			$aPluginRestrictions = $oFO->getAdminAccessArea_Plugins();
+			if ( !empty( $aPluginRestrictions ) ) {
+				add_filter( 'user_has_cap', array( $this, 'disablePluginManipulation' ), 0, 3 );
+			}
 
-		if ( !$this->getController()->isThisPluginModuleRequest() ) {
-			add_action( 'admin_footer', array( $this, 'printAdminAccessAjaxForm' ) );
+			$aThemeRestrictions = $oFO->getAdminAccessArea_Themes();
+			if ( !empty( $aThemeRestrictions ) ) {
+				add_filter( 'user_has_cap', array( $this, 'disableThemeManipulation' ), 0, 3 );
+			}
+
+			$aPostRestrictions = $oFO->getAdminAccessArea_Posts();
+			if ( !empty( $aPostRestrictions ) ) {
+				add_filter( 'user_has_cap', array( $this, 'disablePostsManipulation' ), 0, 3 );
+			}
+
+			if ( !$this->getCon()->isThisPluginModuleRequest() ) {
+				add_action( 'admin_footer', array( $this, 'printAdminAccessAjaxForm' ) );
+			}
 		}
 	}
 
 	/**
+	 * @return ICWP_WPSF_Processor_AdminAccess_Whitelabel|mixed
 	 */
-	protected function runWhiteLabel() {
-		$this->getSubProcessorWhitelabel()
-			 ->run();
+	protected function getSubProWhitelabel() {
+		return $this->getSubPro( 'wl' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_AdminAccess_Whitelabel
+	 * @return array
 	 */
-	protected function getSubProcessorWhitelabel() {
-		$oProc = $this->getSubProcessor( 'wl' );
-		if ( is_null( $oProc ) ) {
-			require_once( dirname( __FILE__ ).'/adminaccess_whitelabel.php' );
-			$oProc = new ICWP_WPSF_Processor_AdminAccess_Whitelabel( $this->getMod() );
-			$this->aSubProcessors[ 'wl' ] = $oProc;
-		}
-		return $oProc;
+	protected function getSubProMap() {
+		return [
+			'wl' => 'ICWP_WPSF_Processor_AdminAccess_Whitelabel',
+		];
 	}
 
 	/**
@@ -105,13 +108,6 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 				= empty( $aData[ $sSlug ][ 'options' ][ $sKeyToBoolean ] ) ? 0 : 1;
 		}
 		return $aData;
-	}
-
-	/**
-	 * @return bool
-	 */
-	protected function isSecurityAdmin() {
-		return self::getController()->getHasPermissionToManage();
 	}
 
 	/**
@@ -228,14 +224,14 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		if ( in_array( $sUserCap, $aReleventCaps ) ) {
 			$bBlockCapability = false;
 
-			$oDp = $this->loadDP();
+			$oReq = $this->loadRequest();
 			$oWpUsers = $this->loadWpUsers();
 
 			// Find the WP_User for the POST
 			$oPostUser = false;
-			$sPostUserlogin = $oDp->post( 'user_login' );
+			$sPostUserlogin = $oReq->post( 'user_login' );
 			if ( empty( $sPostUserlogin ) ) {
-				$nPostUserId = $oDp->post( 'user_id' );
+				$nPostUserId = $oReq->post( 'user_id' );
 				if ( !empty( $nPostUserId ) ) {
 					$oPostUser = $oWpUsers->getUserById( $nPostUserId );
 				}
@@ -244,7 +240,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 				$oPostUser = $oWpUsers->getUserByUsername( $sPostUserlogin );
 			}
 
-			$sRequestRole = strtolower( $oDp->post( 'role', '' ) );
+			$sRequestRole = strtolower( $oReq->post( 'role', '' ) );
 
 			if ( $oPostUser instanceof WP_User ) {
 				// editing an existing user other than yourself?
@@ -271,22 +267,22 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 
 	/**
 	 * @param array $aNoticeAttributes
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function addNotice_certain_options_restricted( $aNoticeAttributes ) {
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
-		if ( $oFO->doCheckHasPermissionToSubmit() ) {
+		if ( $this->getCon()->isPluginAdmin() ) {
 			return;
 		}
 
 		$sCurrentPage = $this->loadWp()->getCurrentPage();
-		$sCurrentGetPage = $this->loadDP()->query( 'page' );
+		$sCurrentGetPage = $this->loadRequest()->query( 'page' );
 		if ( !in_array( $sCurrentPage, $oFO->getOptionsPagesToRestrict() ) || !empty( $sCurrentGetPage ) ) {
 			return;
 		}
 
-		$sName = $this->getController()->getHumanName();
+		$sName = $this->getCon()->getHumanName();
 		$aRenderData = array(
 			'notice_attributes' => $aNoticeAttributes,
 			'strings'           => array(
@@ -309,10 +305,11 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 
 	/**
 	 * @param array $aNoticeAttributes
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function addNotice_admin_users_restricted( $aNoticeAttributes ) {
-		if ( $this->isSecurityAdmin() ) {
+		$oCon = $this->getCon();
+		if ( $oCon->isPluginAdmin() ) {
 			return;
 		}
 
@@ -324,7 +321,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 			return;
 		}
 
-		$sName = $this->getController()->getHumanName();
+		$sName = $oCon->getHumanName();
 		$aRenderData = array(
 			'notice_attributes' => $aNoticeAttributes,
 			'strings'           => array(
@@ -357,8 +354,11 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	}
 
 	/**
-	 * Right before a plugin option is due to update it will check that we have permissions to do so and if not, will
-	 * revert the option to save to the previous one.
+	 * Need to always re-test isPluginAdmin() because there's a dynamic filter in there to
+	 * permit saving by the plugin itself.
+	 *
+	 * Right before a plugin option is due to update it will check that we have permissions to do so
+	 * and if not, will * revert the option to save to the previous one.
 	 * @param mixed  $mNewOptionValue
 	 * @param string $sOptionKey
 	 * @param mixed  $mOldValue
@@ -366,17 +366,13 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 */
 	public function blockOptionsSaves( $mNewOptionValue, $sOptionKey, $mOldValue ) {
 
-		$bSavingIsPermitted = true;
-
-		if ( $this->isOptionForThisPlugin( $sOptionKey ) || $this->isOptionRestricted( $sOptionKey ) ) {
-			$bSavingIsPermitted = $this->isSecurityAdmin();
-
-			if ( !$bSavingIsPermitted ) {
-				$this->doStatIncrement( 'option.save.blocked' );
-			}
+		if ( !$this->getCon()->isPluginAdmin()
+			 && ( $this->isOptionForThisPlugin( $sOptionKey ) || $this->isOptionRestricted( $sOptionKey ) ) ) {
+			$this->doStatIncrement( 'option.save.blocked' );
+			$mNewOptionValue = $mOldValue;
 		}
 
-		return $bSavingIsPermitted ? $mNewOptionValue : $mOldValue;
+		return $mNewOptionValue;
 	}
 
 	/**
@@ -411,10 +407,9 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @return array
 	 */
 	public function disablePluginManipulation( $aAllCaps, $cap, $aArgs ) {
-
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
-		$oDp = $this->loadDP();
+		$oReq = $this->loadRequest();
 
 		/** @var string $sRequestedCapability */
 		$sRequestedCapability = $aArgs[ 0 ];
@@ -422,8 +417,8 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		// special case for plugin info thickbox for changelog
 		$bIsChangelog = defined( 'IFRAME_REQUEST' )
 						&& ( $sRequestedCapability === 'install_plugins' )
-						&& ( $oDp->query( 'section' ) == 'changelog' )
-						&& $oDp->query( 'plugin' );
+						&& ( $oReq->query( 'section' ) == 'changelog' )
+						&& $oReq->query( 'plugin' );
 		if ( $bIsChangelog ) {
 			return $aAllCaps;
 		}
@@ -448,8 +443,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 */
 	public function disableThemeManipulation( $aAllCaps, $cap, $aArgs ) {
 		// If we're registered with Admin Access we don't modify anything
-		$bHasAdminAccess = self::getController()->getHasPermissionToManage();
-		if ( $bHasAdminAccess ) {
+		if ( $this->getCon()->isPluginAdmin() ) {
 			return $aAllCaps;
 		}
 
@@ -483,9 +477,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @return array
 	 */
 	public function disablePostsManipulation( $aAllCaps, $cap, $aArgs ) {
-		// If we're registered with Admin Access we don't modify anything
-		$bHasAdminAccess = self::getController()->getHasPermissionToManage();
-		if ( $bHasAdminAccess ) {
+		if ( $this->getCon()->isPluginAdmin() ) {
 			return $aAllCaps;
 		}
 
@@ -540,6 +532,9 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		$oFO = $this->getMod();
 
 		$aRenderData = array(
+			'flags'       => array(
+				'restrict_options' => $oFO->getAdminAccessArea_Options()
+			),
 			'strings'     => array(
 				'editing_restricted' => _wpsf__( 'Editing this option is currently restricted.' ),
 				'unlock_link'        => $this->getUnlockLinkHtml(),

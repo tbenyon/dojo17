@@ -1,10 +1,6 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Wizard_Plugin', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
+use FernleafSystems\Wordpress\Services\Services;
 
 /**
  * Class ICWP_WPSF_Processor_LoginProtect_Wizard
@@ -215,9 +211,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 					break;
 
 				case 'optin':
-					$oUser = $this->loadWpUsers()->getCurrentWpUser();
+					$oUser = Services::WpUsers()->getCurrentWpUser();
 					$aAdditional = array(
-						'data'    => array(
+						'vars'    => array(
 							'name'       => $oUser->first_name,
 							'user_email' => $oUser->user_email
 						),
@@ -337,8 +333,8 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 * @return \FernleafSystems\Utilities\Response
 	 */
 	private function wizardIpDetect() {
-		$oIps = $this->loadIpService();
-		$sIp = $this->loadDP()->post( 'ip' );
+		$oIps = \FernleafSystems\Wordpress\Services\Services::IP();
+		$sIp = Services::Request()->post( 'ip' );
 
 		$oResponse = new \FernleafSystems\Utilities\Response();
 		$oResponse->setSuccessful( false );
@@ -393,9 +389,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$sMessage = _wpsf__( $oE->getMessage() );
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -404,15 +400,15 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	private function wizardImportOptions() {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getModCon();
-		$oDP = $this->loadDP();
+		$oREq = Services::Request();
 
-		$sMasterSiteUrl = $oDP->post( 'MasterSiteUrl' );
-		$sSecretKey = $oDP->post( 'MasterSiteSecretKey' );
-		$bEnabledNetwork = $oDP->post( 'ShieldNetworkCheck' ) === 'Y';
+		$sMasterSiteUrl = $oREq->post( 'MasterSiteUrl' );
+		$sSecretKey = $oREq->post( 'MasterSiteSecretKey' );
+		$bEnabledNetwork = $oREq->post( 'ShieldNetworkCheck' ) === 'Y';
 
 		/** @var ICWP_WPSF_Processor_Plugin $oProc */
 		$oProc = $oFO->getProcessor();
-		$nCode = $oProc->getSubProcessorImportExport()
+		$nCode = $oProc->getSubProImportExport()
 					   ->runImport( $sMasterSiteUrl, $sSecretKey, $bEnabledNetwork, $sSiteResponse );
 
 		$aErrors = array(
@@ -430,20 +426,18 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		$sMessage = isset( $aErrors[ $nCode ] ) ? $aErrors[ $nCode ] : 'Unknown Error';
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $nCode === 0 )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $nCode === 0 )
+			->setMessageText( $sMessage );
 	}
 
 	/**
 	 * @return \FernleafSystems\Utilities\Response
 	 */
 	private function wizardSecurityAdmin() {
-		$oDP = $this->loadDP();
-		$sKey = $oDP->post( 'AccessKey' );
-		$sConfirm = $oDP->post( 'AccessKeyConfirm' );
-
-		$oResponse = new \FernleafSystems\Utilities\Response();
+		$oReq = Services::Request();
+		$sKey = $oReq->post( 'AccessKey' );
+		$sConfirm = $oReq->post( 'AccessKeyConfirm' );
 
 		$bSuccess = false;
 		if ( empty( $sKey ) ) {
@@ -466,8 +460,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -475,7 +470,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 */
 	private function wizardAuditTrail() {
 
-		$sInput = $this->loadDP()->post( 'AuditTrailOption' );
+		$sInput = Services::Request()->post( 'AuditTrailOption' );
 		$bSuccess = false;
 		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
 
@@ -498,9 +493,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -508,7 +503,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 */
 	private function wizardIps() {
 
-		$sInput = $this->loadDP()->post( 'IpManagerOption' );
+		$sInput = Services::Request()->post( 'IpManagerOption' );
 		$bSuccess = false;
 		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
 
@@ -531,9 +526,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -541,7 +536,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 */
 	private function wizardLoginProtect() {
 
-		$sInput = $this->loadDP()->post( 'LoginProtectOption' );
+		$sInput = Services::Request()->post( 'LoginProtectOption' );
 		$bSuccess = false;
 		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
 
@@ -567,25 +562,25 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
 	 * @return \FernleafSystems\Utilities\Response
 	 */
 	private function wizardOptin() {
-		$oDP = $this->loadDP();
+		$oReq = Services::Request();
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oModule */
 		$oModule = $this->getPluginCon()->getModule( 'plugin' );
 
 		$bSuccess = false;
 		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
 
-		$sForm = $oDP->post( 'wizard-step' );
+		$sForm = $oReq->post( 'wizard-step' );
 		if ( $sForm == 'optin_badge' ) {
-			$sInput = $oDP->post( 'BadgeOption' );
+			$sInput = $oReq->post( 'BadgeOption' );
 
 			if ( !empty( $sInput ) ) {
 				$bEnabled = $sInput === 'Y';
@@ -595,7 +590,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 		else if ( $sForm == 'optin_usage' ) {
-			$sInput = $oDP->post( 'AnonymousOption' );
+			$sInput = $oReq->post( 'AnonymousOption' );
 
 			if ( !empty( $sInput ) ) {
 				$bEnabled = $sInput === 'Y';
@@ -605,17 +600,16 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
 	 * @return \FernleafSystems\Utilities\Response
 	 */
 	private function wizardAddSearchItem() {
-		$oDP = $this->loadDP();
-		$sInput = esc_js( esc_html( trim( $oDP->post( 'SearchItem' ) ) ) );
+		$sInput = esc_js( esc_html( Services::Request()->post( 'SearchItem' ) ) );
 
 		$aItems = $this->getGdprSearchItems();
 
@@ -625,7 +619,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 			else {
 				$aItems[] = $sInput;
-				if ( $oDP->validEmail( $sInput ) ) {
+				if ( $this->loadDP()->validEmail( $sInput ) ) {
 					$oUser = $this->loadWpUsers()->getUserByEmail( $sInput );
 					if ( !is_null( $oUser ) ) {
 						$aItems[] = $oUser->user_login;
@@ -651,18 +645,20 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$sSearchList = sprintf( '<ul><li>%s</li></ul>', $sItems );
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( true )
-						 ->setData( [ 'sSearchList' => $sSearchList ] )
-						 ->setMessageText( _wpsf__( 'Search item added.' ) );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( true )
+			->setData( [ 'sSearchList' => $sSearchList ] )
+			->setMessageText( _wpsf__( 'Search item added.' ) );
 	}
 
 	private function wizardConfirmDelete() {
-		$bDelete = $this->loadDP()->post( 'ConfirmDelete' ) === 'Y';
+		$bDelete = Services::Request()->post( 'ConfirmDelete' ) === 'Y';
 		if ( $bDelete ) {
 			/** @var ICWP_WPSF_Processor_AuditTrail $oProc */
 			$oProc = $this->getPluginCon()->getModule( 'audit_trail' )->getProcessor();
-			$oDeleter = $oProc->getQueryDeleter();
+			$oDeleter = $oProc->getSubProAuditor()
+							  ->getDbHandler()
+							  ->getQueryDeleter();
 			foreach ( $this->getGdprSearchItems() as $sItem ) {
 				$oDeleter->reset()
 						 ->addWhereSearch( 'wp_username', $sItem )
@@ -677,9 +673,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$sMessage = _wpsf__( 'Please check the box to confirm deletion.' );
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bDelete )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bDelete )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -687,7 +683,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 */
 	private function wizardCommentsFilter() {
 
-		$sInput = $this->loadDP()->post( 'CommentsFilterOption' );
+		$sInput = Services::Request()->post( 'CommentsFilterOption' );
 		$bSuccess = false;
 		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
 
@@ -713,9 +709,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			}
 		}
 
-		$oResponse = new \FernleafSystems\Utilities\Response();
-		return $oResponse->setSuccessful( $bSuccess )
-						 ->setMessageText( $sMessage );
+		return ( new \FernleafSystems\Utilities\Response() )
+			->setSuccessful( $bSuccess )
+			->setMessageText( $sMessage );
 	}
 
 	/**
@@ -754,7 +750,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	private function runGdprSearch() {
 		/** @var ICWP_WPSF_Processor_AuditTrail $oProc */
 		$oProc = $this->getPluginCon()->getModule( 'audit_trail' )->getProcessor();
-		$oFinder = $oProc->getQuerySelector()
+		$oFinder = $oProc->getSubProAuditor()
+						 ->getDbHandler()
+						 ->getQuerySelector()
 						 ->setResultsAsVo( false );
 
 		$aItems = array();
@@ -768,7 +766,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 									->addWhereSearch( 'message', $sItem )
 									->query();
 			}
-			catch ( Exception $oE ) {
+			catch ( \Exception $oE ) {
 				$aResults = array();
 			}
 //			$aResults = array_intersect_key( $aResults, array_flip( [ 'wp_username', 'message' ] ) );

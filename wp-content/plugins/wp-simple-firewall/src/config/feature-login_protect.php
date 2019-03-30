@@ -1,22 +1,25 @@
 {
   "slug":          "login_protect",
   "properties":    {
-    "slug":                   "login_protect",
-    "name":                   "Login Guard",
-    "show_module_menu_item":  true,
-    "storage_key":            "loginprotect",
-    "tagline":                "Block brute force attacks and secure user identities with Two-Factor Authentication",
-    "show_central":           true,
-    "access_restricted":      true,
-    "premium":                false,
-    "run_if_whitelisted":     false,
-    "run_if_verified_bot":    false,
-    "order":                  40
+    "slug":                  "login_protect",
+    "name":                  "Login Guard",
+    "show_module_menu_item": false,
+    "show_module_options":   true,
+    "storage_key":           "loginprotect",
+    "tagline":               "Block brute force attacks and secure user identities with Two-Factor Authentication",
+    "show_central":          true,
+    "access_restricted":     true,
+    "premium":               false,
+    "run_if_whitelisted":    false,
+    "run_if_verified_bot":   false,
+    "run_if_wpcli":          false,
+    "order":                 40
   },
   "admin_notices": {
     "email-verification-sent": {
       "once":        false,
       "valid_admin": true,
+      "twig":        true,
       "type":        "warning"
     }
   },
@@ -167,8 +170,8 @@
       "premium":     true,
       "default":     "N",
       "type":        "checkbox",
-      "link_info":   "",
-      "link_blog":   "",
+      "link_info":   "https://icwp.io/dx",
+      "link_blog":   "https://icwp.io/dy",
       "name":        "Allow Backup Codes",
       "summary":     "Allow Users To Generate A Backup Code",
       "description": "Allow users to generate a backup code that can be used to login if MFA factors are unavailable."
@@ -257,7 +260,9 @@
       "key":           "bot_protection_locations",
       "section":       "section_brute_force_login_protection",
       "type":          "multiple_select",
-      "default":       [ "login" ],
+      "default":       [
+        "login"
+      ],
       "value_options": [
         {
           "value_key": "login",
@@ -276,7 +281,7 @@
           "text":      "Checkout (WooCommerce)"
         }
       ],
-      "link_info":     "",
+      "link_info":     "https://icwp.io/dv",
       "link_blog":     "",
       "name":          "Protection Locations",
       "summary":       "How Google reCAPTCHA Will Be Displayed",
@@ -305,8 +310,8 @@
       "description": "Adds a dynamically (Javascript) generated checkbox to the login form that prevents bots using automated login techniques. Recommended: ON."
     },
     {
-      "key":         "enable_google_recaptcha_login",
-      "section":     "section_brute_force_login_protection",
+      "key":           "enable_google_recaptcha_login",
+      "section":       "section_brute_force_login_protection",
       "default":       "disabled",
       "type":          "select",
       "value_options": [
@@ -331,11 +336,37 @@
           "text":      "Invisible reCAPTCHA"
         }
       ],
-      "link_info":   "https://icwp.io/9m",
-      "link_blog":   "https://icwp.io/shld5",
-      "name":        "Google reCAPTCHA",
-      "summary":     "Enable Google reCAPTCHA",
-      "description": "Use Google reCAPTCHA on the login screen."
+      "link_info":     "https://icwp.io/9m",
+      "link_blog":     "https://icwp.io/shld5",
+      "name":          "Google reCAPTCHA",
+      "summary":       "Enable Google reCAPTCHA",
+      "description":   "Use Google reCAPTCHA on the login screen."
+    },
+    {
+      "key":         "enable_antibot_js",
+      "section":     "section_brute_force_login_protection",
+      "premium":     true,
+      "default":     "N",
+      "type":        "checkbox",
+      "link_info":   "https://icwp.io/dw",
+      "link_blog":   "",
+      "name":        "AntiBot JS",
+      "summary":     "Load Anti-Bot JS For 3rd Party Login Forms",
+      "description": "Important: This is experimental. Please contact support for further assistance."
+    },
+    {
+      "key":         "antibot_form_ids",
+      "section":     "section_brute_force_login_protection",
+      "type":        "array",
+      "default":     [
+        "form#ihc_login_form",
+        "form#createuser"
+      ],
+      "link_info":   "",
+      "link_blog":   "",
+      "name":        "AntiBot Forms",
+      "summary":     "Enter The IDs Of The 3rd Party Login Forms For Use With AntiBot JS",
+      "description": "For Use With AnitBot JS (above)."
     },
     {
       "key":         "enable_yubikey",
@@ -379,7 +410,7 @@
       "premium":     true,
       "default":     "default",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/dz",
       "link_blog":   "",
       "name":        "GASP Checkbox Text",
       "summary":     "The Message Displayed Next To The GASP Checkbox",
@@ -392,7 +423,7 @@
       "premium":     true,
       "default":     "default",
       "type":        "text",
-      "link_info":   "",
+      "link_info":   "https://icwp.io/dz",
       "link_blog":   "",
       "name":        "GASP Alert Text",
       "summary":     "The Message Displayed If The User Doesn't Check The Box",
@@ -400,69 +431,74 @@
     },
     {
       "key":          "email_can_send_verified_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      -1
     },
     {
       "key":          "gasp_key",
+      "section":      "section_non_ui",
       "transferable": false,
       "sensitive":    true,
-      "section":      "section_non_ui"
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "two_factor_secret_key",
+      "section":      "section_non_ui",
       "transferable": false,
       "sensitive":    true,
-      "section":      "section_non_ui"
-    },
-    {
-      "key":          "two_factor_auth_table_created",
-      "transferable": false,
-      "section":      "section_non_ui"
+      "type":         "text",
+      "default":      ""
     },
     {
       "key":          "use_login_intent_page",
+      "section":      "section_non_ui",
       "transferable": false,
-      "value":        true,
-      "section":      "section_non_ui"
+      "type":         "boolean",
+      "value":        true
     },
     {
       "key":          "insights_last_2fa_login_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     },
     {
       "key":          "insights_last_login_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     },
     {
       "key":          "insights_last_register_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     },
     {
       "key":          "insights_last_reset-password_block_at",
       "transferable": false,
       "section":      "section_non_ui",
+      "type":         "integer",
       "default":      0
     }
   ],
   "definitions":   {
-    "login_intent_timeout":          5,
-    "wizards":                       {
+    "login_intent_timeout": 5,
+    "wizards":              {
       "mfa": {
-        "title": "Configure Multi-Factor Login Authentication",
-        "desc": "Easily setup multi-factor login authentication, using Email and Google Authenticator.",
+        "title":                "Configure Multi-Factor Login Authentication",
+        "desc":                 "Easily setup multi-factor login authentication, using Email and Google Authenticator.",
         "min_user_permissions": "manage_options",
         "steps":                {
           "start":       {
             "security_admin": false,
-            "title":             "Start: Multi-Factor Authentication"
+            "title":          "Start: Multi-Factor Authentication"
           },
           "authemail":   {
             "title": "Email Authentication"
@@ -475,7 +511,7 @@
           },
           "finished":    {
             "security_admin": false,
-            "title":             "Finished: Multi-Factor Authentication"
+            "title":          "Finished: Multi-Factor Authentication"
           }
         }
       }

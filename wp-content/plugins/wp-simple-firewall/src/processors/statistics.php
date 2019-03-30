@@ -1,18 +1,15 @@
 <?php
 
-if ( class_exists( 'ICWP_WPSF_Processor_Statistics', false ) ) {
-	return;
-}
-
-require_once( dirname( __FILE__ ).'/base_wpsf.php' );
-
 class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 
 	public function run() {
 		/** @var ICWP_WPSF_FeatureHandler_Statistics $oFO */
 		$oFO = $this->getMod();
 		if ( $this->isReadyToRun() ) {
-			add_filter( $oFO->prefix( 'dashboard_widget_content' ), array( $this, 'gatherStatsSummaryWidgetContent' ), 10 );
+			add_filter( $oFO->prefix( 'dashboard_widget_content' ), array(
+				$this,
+				'gatherStatsSummaryWidgetContent'
+			), 10 );
 		}
 		$this->getTallyProcessor()
 			 ->run();
@@ -206,7 +203,7 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 		);
 
 		$aDisplayData = array(
-			'sHeading'  => sprintf( _wpsf__( '%s Statistics' ), $this->getController()->getHumanName() ),
+			'sHeading'  => sprintf( _wpsf__( '%s Statistics' ), $this->getCon()->getHumanName() ),
 			'aAllStats' => $aAllStats,
 			'aKeyStats' => $aKeyStats,
 		);
@@ -219,11 +216,12 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 	}
 
 	/**
-	 * @return ICWP_WPSF_TallyVO[]
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\Databases\Tally\EntryVO[]
 	 */
 	protected function getAllTallys() {
-		/** @var ICWP_WPSF_TallyVO[] $aRes */
+		/** @var \FernleafSystems\Wordpress\Plugin\Shield\Databases\Tally\EntryVO[] $aRes */
 		$aRes = $this->getTallyProcessor()
+					 ->getDbHandler()
 					 ->getQuerySelector()
 					 ->setColumnsToSelect( array( 'stat_key', 'tally' ) )
 					 ->query();
@@ -232,32 +230,26 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 
 	/**
 	 * TODO: Not properly implemented
-	 * @return ICWP_WPSF_Processor_Statistics_Reporting
+	 * @return ICWP_WPSF_Processor_Statistics_Reporting|mixed
 	 */
 	protected function getReportingProcessor() {
-		$oProc = $this->getSubProcessor( 'reporting' );
-		if ( is_null( $oProc ) ) {
-			require_once( __DIR__.'/statistics_reporting.php' );
-			/** @var ICWP_WPSF_FeatureHandler_Statistics $oMod */
-			$oMod = $this->getMod();
-			$oProc = new ICWP_WPSF_Processor_Statistics_Reporting( $oMod );
-			$this->aSubProcessors[ 'reporting' ] = $oProc;
-		}
-		return $oProc;
+		return $this->getSubPro( 'reporting' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_Statistics_Tally
+	 * @return ICWP_WPSF_Processor_Statistics_Tally|mixed
 	 */
 	protected function getTallyProcessor() {
-		$oProc = $this->getSubProcessor( 'tally' );
-		if ( is_null( $oProc ) ) {
-			require_once( __DIR__.'/statistics_tally.php' );
-			/** @var ICWP_WPSF_FeatureHandler_Statistics $oMod */
-			$oMod = $this->getMod();
-			$oProc = new ICWP_WPSF_Processor_Statistics_Tally( $oMod );
-			$this->aSubProcessors[ 'tally' ] = $oProc;
-		}
-		return $oProc;
+		return $this->getSubPro( 'tally' );
+	}
+
+	/**
+	 * @return array
+	 */
+	protected function getSubProMap() {
+		return [
+			'tally'     => 'ICWP_WPSF_Processor_Statistics_Tally',
+			'reporting' => 'ICWP_WPSF_Processor_Statistics_Reporting',
+		];
 	}
 }

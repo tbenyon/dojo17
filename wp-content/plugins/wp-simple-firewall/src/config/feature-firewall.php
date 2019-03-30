@@ -3,7 +3,8 @@
   "properties":  {
     "slug":                  "firewall",
     "name":                  "Firewall",
-    "show_module_menu_item": true,
+    "show_module_menu_item": false,
+    "show_module_options":   true,
     "storage_key":           "firewall",
     "tagline":               "Automatically block malicious URLs and data sent to your site",
     "show_central":          true,
@@ -11,6 +12,7 @@
     "premium":               false,
     "run_if_whitelisted":    false,
     "run_if_verified_bot":   false,
+    "run_if_wpcli":          false,
     "order":                 30
   },
   "sections":    [
@@ -240,19 +242,9 @@
       "description": "Authenticated administrator users will not be processed by the firewall rules."
     },
     {
-      "key":         "ignore_search_engines",
-      "section":     "section_whitelist",
-      "default":     "N",
-      "type":        "checkbox",
-      "link_info":   "",
-      "link_blog":   "",
-      "name":        "Ignore Search Engines",
-      "summary":     "Ignore Search Engine Bot Traffic",
-      "description": "The firewall will try to recognise search engine spiders/bots and not apply firewall rules to them."
-    },
-    {
       "key":         "text_firewalldie",
       "section":     "section_user_messages",
+      "sensitive":   true,
       "premium":     true,
       "default":     "default",
       "type":        "text",
@@ -264,8 +256,9 @@
     },
     {
       "key":          "insights_last_firewall_block_at",
-      "transferable": false,
       "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
       "default":      0
     }
   ],
@@ -280,6 +273,9 @@
       "/wp-admin/page-new.php":        [],
       "/wp-admin/link-add.php":        [],
       "/wp-admin/media-upload.php":    [],
+      "/wp-admin/admin.php":           [
+        "page"
+      ],
       "/wp-admin/post.php":            [
         "content"
       ],
@@ -293,19 +289,25 @@
         "comment"
       ],
       "*":                             [
+        "ajaxurl",
         "g-recaptcha-response",
         "verify_sign",
         "txn_id",
         "wp_http_referer",
         "_wp_http_referer",
         "_wp_original_http_referer",
+        "pass1",
+        "pass1-text",
         "pwd",
         "url",
         "referredby",
         "redirect_to",
         "jetpack_sso_original_request",
         "jetpack_sso_redirect_to",
-        "/^wordpress_logged_in_[0-9a-f]+$/"
+        "/^wordpress_logged_in_[0-9a-f]+$/",
+        "edd_action",
+        "edd_redirect",
+        "wpcf7-form"
       ]
     },
     "firewall_patterns": {
@@ -329,8 +331,7 @@
         "regex":  [
           "^wp_",
           "^user_login",
-          "^user_pass",
-          "[^0-9]0x[0-9a-f][0-9a-f]"
+          "^user_pass"
         ]
       },
       "fieldtruncation": {

@@ -1,9 +1,9 @@
 <?php
-if ( class_exists( 'ICWP_WPSF_Edd', false ) ) {
-	return;
-}
 
-class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
+use \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO;
+use \FernleafSystems\Wordpress\Services\Services;
+
+class ICWP_WPSF_Edd {
 
 	/**
 	 * @var ICWP_WPSF_Edd
@@ -31,33 +31,23 @@ class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
 	 * @return string
 	 */
 	public function ping( $sStoreUrl ) {
-		$oLicense = null;
-
-		$sStoreUrl = add_query_arg(
-			array( 'license_ping' => 'Y' ),
-			$sStoreUrl
-		);
-
+		$sStoreUrl = add_query_arg( [ 'license_ping' => 'Y' ], $sStoreUrl );
 		$aParams = array(
-			'method' => 'POST',
-			'body'   => array(
+			'body' => array(
 				'ping'    => 'pong',
 				'license' => 'abcdefghi',
 				'item_id' => '123',
-				'url'     => $this->loadWp()->getWpUrl()
+				'url'     => Services::WpGeneral()->getWpUrl()
 			)
 		);
 
-		$mResponse = $this->loadFS()
-						  ->requestUrl( $sStoreUrl, $aParams, true );
-
-		$sResult = 'Unknown error communicating with license server';
-		if ( is_array( $mResponse ) && !empty( $mResponse[ 'body' ] ) ) {
-			$aResult = @json_decode( $mResponse[ 'body' ], true );
+		$oHttpReq = Services::HttpRequest();
+		if ( $oHttpReq->post( $sStoreUrl, $aParams ) ) {
+			$aResult = @json_decode( $oHttpReq->lastResponse->body, true );
 			$sResult = ( isset( $aResult[ 'success' ] ) && $aResult[ 'success' ] ) ? 'success' : 'unknown failure';
 		}
-		else if ( is_wp_error( $mResponse ) ) {
-			$sResult = $mResponse->get_error_message();
+		else {
+			$sResult = $oHttpReq->lastError->get_error_message();
 		}
 		return $sResult;
 	}
@@ -66,7 +56,7 @@ class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
 	 * @param string $sStoreUrl
 	 * @param string $sKey
 	 * @param string $sItemId
-	 * @return ICWP_EDD_LicenseVO
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO
 	 */
 	public function activateLicense( $sStoreUrl, $sKey, $sItemId ) {
 		return $this->commonLicenseAction( 'activate_license', $sStoreUrl, $sKey, $sItemId );
@@ -75,7 +65,7 @@ class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
 	/**
 	 * @param string $sStoreUrl
 	 * @param string $sItemId
-	 * @return ICWP_EDD_LicenseVO
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO
 	 */
 	public function activateLicenseKeyless( $sStoreUrl, $sItemId ) {
 		return $this->activateLicense( $sStoreUrl, '', $sItemId );
@@ -85,7 +75,7 @@ class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
 	 * @param string $sStoreUrl
 	 * @param string $sKey
 	 * @param string $sItemId
-	 * @return ICWP_EDD_LicenseVO|null
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO|null
 	 */
 	public function checkLicense( $sStoreUrl, $sKey, $sItemId ) {
 		return $this->commonLicenseAction( 'check_license', $sStoreUrl, $sKey, $sItemId );
@@ -95,7 +85,7 @@ class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
 	 * @param string $sStoreUrl
 	 * @param string $sKey
 	 * @param string $sItemId
-	 * @return ICWP_EDD_LicenseVO|null
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO
 	 */
 	public function deactivateLicense( $sStoreUrl, $sKey, $sItemId ) {
 		return $this->commonLicenseAction( 'deactivate_license', $sStoreUrl, $sKey, $sItemId );
@@ -106,42 +96,62 @@ class ICWP_WPSF_Edd extends ICWP_WPSF_Foundation {
 	 * @param string $sStoreUrl
 	 * @param string $sKey
 	 * @param string $sItemId
-	 * @return ICWP_EDD_LicenseVO
+	 * @return EddLicenseVO
 	 */
 	private function commonLicenseAction( $sAction, $sStoreUrl, $sKey, $sItemId ) {
-		$oLicense = null;
-
+		$oWp = Services::WpGeneral();
 		$aLicenseLookupParams = array(
-			'timeout' => 30,
+			'timeout' => 60,
 			'body'    => array_merge(
 				array(
 					'edd_action' => $sAction,
 					'license'    => $sKey,
 					'item_id'    => $sItemId,
-					'url'        => $this->loadWp()->getHomeUrl(),
-					'alt_url'    => $this->loadWp()->getWpUrl()
+					'url'        => $oWp->getHomeUrl(),
+					'alt_url'    => $oWp->getWpUrl()
 				),
 				$this->getRequestParams()
 			)
 		);
 
-		$aContent = $this->loadFS()
-						 ->getUrl( $sStoreUrl, $aLicenseLookupParams );
-		$oDec = !empty( $aContent ) ? @json_decode( $aContent[ 'body' ] ) : new stdClass();
-		return $this->getLicenseVoFromData( $oDec )
-					->setLastRequestAt( $this->loadDP()->time() );
+		return ( new EddLicenseVO() )
+			->applyFromArray( $this->sendReq( $sStoreUrl, $aLicenseLookupParams, false ) )
+			->setLastRequestAt( Services::Request()->ts() );
 	}
 
 	/**
-	 * @param stdClass|array $mData
-	 * @return ICWP_EDD_LicenseVO
+	 * first attempts GET, then POST if the GET is successful but the data is not right
+	 * @param string $sUrl
+	 * @param array  $aArgs
+	 * @param bool   $bAsPost
+	 * @return array
 	 */
-	public function getLicenseVoFromData( $mData ) {
-		require_once( dirname( __FILE__ ).'/easydigitaldownloads/ICWP_EDD_LicenseVO.php' );
-		if ( is_array( $mData ) ) {
-			$mData = $this->loadDP()->convertArrayToStdClass( $mData );
+	private function sendReq( $sUrl, $aArgs, $bAsPost = false ) {
+		$aResponse = array();
+		$oHttpReq = Services::HttpRequest();
+
+		if ( $bAsPost ) {
+			if ( $oHttpReq->post( $sUrl, $aArgs ) ) {
+				$aResponse = empty( $oHttpReq->lastResponse->body ) ? [] : @json_decode( $oHttpReq->lastResponse->body, true );
+			}
+			return $aResponse;
 		}
-		return new ICWP_EDD_LicenseVO( $mData );
+		else if ( $oHttpReq->get( $sUrl, $aArgs ) ) {
+			$aResponse = empty( $oHttpReq->lastResponse->body ) ? [] : @json_decode( $oHttpReq->lastResponse->body, true );
+			if ( empty( $aResponse ) ) {
+				$aResponse = $this->sendReq( $sUrl, $aArgs, true );
+			}
+		}
+
+		return $aResponse;
+	}
+
+	/**
+	 * @param array $aData
+	 * @return \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO
+	 */
+	public function getLicenseVoFromData( $aData ) {
+		return ( new \FernleafSystems\Wordpress\Plugin\Shield\License\EddLicenseVO() )->applyFromArray( $aData );
 	}
 
 	/**
