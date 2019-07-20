@@ -103,8 +103,8 @@ class OpenSslEncrypt {
 			$oVo->json_encoded = false;
 		}
 
-		$aPasswordKeys = array();
-		$nResult = openssl_seal( $mDataToEncrypt, $sEncryptedData, $aPasswordKeys, array( $sPublicKey ) );
+		$aPasswordKeys = [];
+		$nResult = openssl_seal( $mDataToEncrypt, $sEncryptedData, $aPasswordKeys, [ $sPublicKey ] );
 
 		$oVo->result = $nResult;
 		$oVo->success = is_int( $nResult ) && $nResult > 0 && !is_null( $sEncryptedData );

@@ -33,12 +33,12 @@ class Base extends \WP_List_Table {
 	 * wp-admin/includes/class-wp-screen.php on line 209
 	 * @param array $aArgs
 	 */
-	public function __construct( $aArgs = array() ) {
+	public function __construct( $aArgs = [] ) {
 		parent::__construct( array_merge( [ 'screen' => 'odp-ajax' ], $aArgs ) );
 	}
 
 	protected function extra_tablenav( $which ) {
-		echo sprintf( '<a href="#" data-tableaction="refresh" class="btn btn-sm tableActionRefresh">%s</a>', _wpsf__( 'Refresh' ) );
+		echo sprintf( '<a href="#" data-tableaction="refresh" class="btn btn-sm tableActionRefresh">%s</a>', __( 'Refresh', 'wp-simple-firewall' ) );
 	}
 
 	/**
@@ -62,7 +62,7 @@ class Base extends \WP_List_Table {
 	 * @return array
 	 */
 	public function get_sortable_columns() {
-		return array();
+		return [];
 //		$aCols = $this->get_columns();
 //		foreach ( $aCols as $sCol => $sName ) {
 //			$aCols[ $sCol ] = array( $sCol, false );
@@ -82,7 +82,7 @@ class Base extends \WP_List_Table {
 	 */
 	public function prepare_items() {
 		$aCols = $this->get_columns();
-		$aHidden = array();
+		$aHidden = [];
 		$this->_column_headers = array( $aCols, $aHidden, $this->get_sortable_columns() );
 		$this->items = $this->getItemEntries();
 
@@ -178,7 +178,7 @@ class Base extends \WP_List_Table {
 			$aClasses[] = 'text-dark';
 		}
 
-		$aDataAttrs = array();
+		$aDataAttrs = [];
 		foreach ( $aData as $sKey => $sValue ) {
 			$aDataAttrs[] = sprintf( 'data-%s="%s"', $sKey, $sValue );
 		}
@@ -200,7 +200,7 @@ class Base extends \WP_List_Table {
 	 */
 	protected function getActionButton_Delete( $nId, $sText = null ) {
 		return $this->buildActionButton_Custom(
-			empty( $sText ) ? _wpsf__( 'Delete' ) : $sText,
+			empty( $sText ) ? __( 'Delete', 'wp-simple-firewall' ) : $sText,
 			[ 'delete', 'text-danger' ],
 			[ 'rid' => $nId, ]
 		);
@@ -212,7 +212,7 @@ class Base extends \WP_List_Table {
 	 */
 	protected function getActionButton_Repair( $nId ) {
 		return $this->buildActionButton_Custom(
-			_wpsf__( 'Repair' ),
+			__( 'Repair', 'wp-simple-firewall' ),
 			[ 'repair', 'text-success' ],
 			[ 'rid' => $nId, ]
 		);
@@ -224,7 +224,7 @@ class Base extends \WP_List_Table {
 	 */
 	protected function getActionButton_Ignore( $nId ) {
 		return $this->buildActionButton_Custom(
-			_wpsf__( 'Ignore' ),
+			__( 'Ignore', 'wp-simple-firewall' ),
 			[ 'ignore' ],
 			[ 'rid' => $nId, ]
 		);

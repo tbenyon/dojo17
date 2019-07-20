@@ -6,10 +6,7 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_Statistics $oFO */
 		$oFO = $this->getMod();
 		if ( $this->isReadyToRun() ) {
-			add_filter( $oFO->prefix( 'dashboard_widget_content' ), array(
-				$this,
-				'gatherStatsSummaryWidgetContent'
-			), 10 );
+			add_filter( $oFO->prefix( 'dashboard_widget_content' ), [ $this, 'gatherStatsWidgetContent' ], 10 );
 		}
 		$this->getTallyProcessor()
 			 ->run();
@@ -27,7 +24,7 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 	public function tracking_DataCollect( $aData ) {
 		$aData = parent::tracking_DataCollect( $aData );
 		$aTallys = $this->getAllTallys();
-		$aTallyTracking = array();
+		$aTallyTracking = [];
 		foreach ( $aTallys as $oTally ) {
 			$sKey = preg_replace( '#[^_a-z]#', '', str_replace( '.', '_', $oTally->stat_key ) );
 			if ( strpos( $sKey, '_' ) ) {
@@ -43,9 +40,9 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 	 */
 	public function getInsightsStats() {
 		$aAllTallys = $this->getAllTallys();
-		$aAllStats = array();
+		$aAllStats = [];
 
-		$aSpamCommentKeys = array(
+		$aSpamCommentKeys = [
 			'spam.gasp.checkbox',
 			'spam.gasp.token',
 			'spam.gasp.honeypot',
@@ -57,20 +54,20 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 			'spam.human.author_email',
 			'spam.human.ip_address',
 			'spam.human.user_agent'
-		);
-		$aLoginFailKeys = array(
+		];
+		$aLoginFailKeys = [
 			'login.cooldown.fail',
 			'login.recaptcha.fail',
 			'login.gasp.checkbox.fail',
 			'login.gasp.honeypot.fail',
 			'login.googleauthenticator.fail',
 			'login.rename.fail',
-		);
-		$aLoginVerifiedKeys = array(
+		];
+		$aLoginVerifiedKeys = [
 			'login.googleauthenticator.verified',
 			'login.recaptcha.verified',
 			'login.twofactor.verified'
-		);
+		];
 
 		$aAllStats[ 'ip.transgression.incremented' ] = 0;
 		$aAllStats[ 'ip.connection.killed' ] = 0;
@@ -110,19 +107,19 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 		}
 
 		return array_merge(
-			array(
+			[
 				'ip.transgression.incremented' => 0,
 				'ip.connection.killed'         => 0,
 				'firewall.blocked.all'         => 0,
 				'comments.blocked.all'         => 0,
 				'login.blocked.all'            => 0,
 				'login.verified.all'           => 0,
-			),
+			],
 			$aAllStats
 		);
 	}
 
-	public function gatherStatsSummaryWidgetContent( $aContent ) {
+	public function gatherStatsWidgetContent( $aContent ) {
 		/** @var ICWP_WPSF_FeatureHandler_Statistics $oFO */
 		$oFO = $this->getMod();
 
@@ -136,7 +133,7 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 		$nTotalUserSessionsStarted = 0;
 //			$nTotalFilesReplaced = 0;
 
-		$aSpamCommentKeys = array(
+		$aSpamCommentKeys = [
 			'spam.gasp.checkbox',
 			'spam.gasp.token',
 			'spam.gasp.honeypot',
@@ -148,20 +145,20 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 			'spam.human.author_email',
 			'spam.human.ip_address',
 			'spam.human.user_agent'
-		);
-		$aLoginFailKeys = array(
+		];
+		$aLoginFailKeys = [
 			'login.cooldown.fail',
 			'login.recaptcha.fail',
 			'login.gasp.checkbox.fail',
 			'login.gasp.honeypot.fail',
 			'login.googleauthenticator.fail',
 			'login.rename.fail',
-		);
-		$aLoginVerifiedKeys = array(
+		];
+		$aLoginVerifiedKeys = [
 			'login.googleauthenticator.verified',
 			'login.recaptcha.verified',
 			'login.twofactor.verified'
-		);
+		];
 		foreach ( $aAllStats as $oStat ) {
 			$sStatKey = $oStat->stat_key;
 			$nTally = $oStat->tally;
@@ -192,24 +189,24 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 			}
 		}
 
-		$aKeyStats = array(
-			'comments'          => array( _wpsf__( 'Comment Blocks' ), $nTotalCommentSpamBlocked ),
-			'firewall'          => array( _wpsf__( 'Firewall Blocks' ), $nTotalFirewallBlocked ),
-			'login_fail'        => array( _wpsf__( 'Login Blocks' ), $nTotalLoginBlocked ),
-			'login_verified'    => array( _wpsf__( 'Login Verified' ), $nTotalLoginVerified ),
-			'session_start'     => array( _wpsf__( 'User Sessions' ), $nTotalUserSessionsStarted ),
-			'ip_killed'         => array( _wpsf__( 'IP Auto Black-Listed' ), $nTotalConnectionKilled ),
-			'ip_transgressions' => array( _wpsf__( 'Total Transgressions' ), $nTotalTransgressions ),
-		);
+		$aKeyStats = [
+			'comments'          => [ __( 'Comment Blocks', 'wp-simple-firewall' ), $nTotalCommentSpamBlocked ],
+			'firewall'          => [ __( 'Firewall Blocks', 'wp-simple-firewall' ), $nTotalFirewallBlocked ],
+			'login_fail'        => [ __( 'Login Blocks', 'wp-simple-firewall' ), $nTotalLoginBlocked ],
+			'login_verified'    => [ __( 'Login Verified', 'wp-simple-firewall' ), $nTotalLoginVerified ],
+			'session_start'     => [ __( 'User Sessions', 'wp-simple-firewall' ), $nTotalUserSessionsStarted ],
+			'ip_killed'         => [ __( 'IP Auto Black-Listed', 'wp-simple-firewall' ), $nTotalConnectionKilled ],
+			'ip_transgressions' => [ __( 'Total Transgressions', 'wp-simple-firewall' ), $nTotalTransgressions ],
+		];
 
-		$aDisplayData = array(
-			'sHeading'  => sprintf( _wpsf__( '%s Statistics' ), $this->getCon()->getHumanName() ),
+		$aDisplayData = [
+			'sHeading'  => sprintf( __( '%s Statistics', 'wp-simple-firewall' ), $this->getCon()->getHumanName() ),
 			'aAllStats' => $aAllStats,
 			'aKeyStats' => $aKeyStats,
-		);
+		];
 
 		if ( !is_array( $aContent ) ) {
-			$aContent = array();
+			$aContent = [];
 		}
 		$aContent[] = $oFO->renderTemplate( 'snippets/widget_dashboard_statistics.php', $aDisplayData );
 		return $aContent;
@@ -223,7 +220,7 @@ class ICWP_WPSF_Processor_Statistics extends ICWP_WPSF_Processor_BaseWpsf {
 		$aRes = $this->getTallyProcessor()
 					 ->getDbHandler()
 					 ->getQuerySelector()
-					 ->setColumnsToSelect( array( 'stat_key', 'tally' ) )
+					 ->setColumnsToSelect( [ 'stat_key', 'tally' ] )
 					 ->query();
 		return $aRes;
 	}

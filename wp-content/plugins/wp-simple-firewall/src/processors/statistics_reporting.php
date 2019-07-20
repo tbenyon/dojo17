@@ -28,9 +28,9 @@ class ICWP_WPSF_Processor_Statistics_Reporting extends ICWP_WPSF_BaseDbProcessor
 			 ->setRecurrence( 'daily' )
 			 ->createCronJob(
 				 $this->getCronName(),
-				 array( $this, 'cron_dailyReportingConsolidation' )
+				 [ $this, 'cron_dailyReportingConsolidation' ]
 			 );
-		add_action( $this->getMod()->prefix( 'deactivate_plugin' ), array( $this, 'deleteCron' ) );
+		add_action( $this->getMod()->prefix( 'deactivate_plugin' ), [ $this, 'deleteCron' ] );
 	}
 
 	/**
@@ -55,12 +55,12 @@ class ICWP_WPSF_Processor_Statistics_Reporting extends ICWP_WPSF_BaseDbProcessor
 
 		// Now add new entry
 		$mResult = $this->insertData(
-			array(
+			[
 				'stat_key'   => $sStatKey,
 				'tally'      => 1,
 				'created_at' => $this->time(),
 				'deleted_at' => 0,
-			)
+			]
 		);
 		return (bool)$mResult;
 	}
@@ -99,7 +99,7 @@ class ICWP_WPSF_Processor_Statistics_Reporting extends ICWP_WPSF_BaseDbProcessor
 	 */
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'reporting_table_columns' );
-		return ( is_array( $aDef ) ? $aDef : array() );
+		return ( is_array( $aDef ) ? $aDef : [] );
 	}
 
 	/**
@@ -119,7 +119,7 @@ class ICWP_WPSF_Processor_Statistics_Reporting extends ICWP_WPSF_BaseDbProcessor
 	/**
 	 */
 	protected function commit() {
-		$aEntries = apply_filters( $this->getMod()->prefix( 'collect_stats' ), array() );
+		$aEntries = apply_filters( $this->getMod()->prefix( 'collect_stats' ), [] );
 		if ( !empty( $aEntries ) && is_array( $aEntries ) ) {
 			foreach ( $aEntries as $aCollection ) {
 				foreach ( $aCollection as $sStatKey => $nTally ) {

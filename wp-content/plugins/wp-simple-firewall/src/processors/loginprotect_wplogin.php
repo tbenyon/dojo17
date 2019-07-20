@@ -15,22 +15,22 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 		}
 
 		// Loads the wp-login.php if the correct URL is loaded
-		add_action( 'init', array( $this, 'doBlockPossibleWpLoginLoad' ) );
+		add_action( 'init', [ $this, 'doBlockPossibleWpLoginLoad' ] );
 
 		// Loads the wp-login.php is the correct URL is loaded
-		add_filter( 'wp_loaded', array( $this, 'aLoadWpLogin' ) );
+		add_filter( 'wp_loaded', [ $this, 'aLoadWpLogin' ] );
 
 		// Shouldn't be necessary, but in-case something else includes the wp-login.php, we block that too.
-		add_action( 'login_init', array( $this, 'aLoginFormAction' ), 0 );
+		add_action( 'login_init', [ $this, 'aLoginFormAction' ], 0 );
 
 		// ensure that wp-login.php is never used in site urls or redirects
-		add_filter( 'site_url', array( $this, 'fCheckForLoginPhp' ), 20, 2 );
-		add_filter( 'network_site_url', array( $this, 'fCheckForLoginPhp' ), 20, 2 );
-		add_filter( 'wp_redirect', array( $this, 'fCheckForLoginPhp' ), 20, 2 );
-		add_filter( 'wp_redirect', array( $this, 'fProtectUnauthorizedLoginRedirect' ), 50, 2 );
-		add_filter( 'register_url', array( $this, 'blockRegisterUrlRedirect' ), 20, 1 );
+		add_filter( 'site_url', [ $this, 'fCheckForLoginPhp' ], 20, 2 );
+		add_filter( 'network_site_url', [ $this, 'fCheckForLoginPhp' ], 20, 2 );
+		add_filter( 'wp_redirect', [ $this, 'fCheckForLoginPhp' ], 20, 2 );
+		add_filter( 'wp_redirect', [ $this, 'fProtectUnauthorizedLoginRedirect' ], 50, 2 );
+		add_filter( 'register_url', [ $this, 'blockRegisterUrlRedirect' ], 20, 1 );
 
-		add_filter( 'et_anticipate_exceptions', array( $this, 'fAddToEtMaintenanceExceptions' ) );
+		add_filter( 'et_anticipate_exceptions', [ $this, 'fAddToEtMaintenanceExceptions' ] );
 	}
 
 	/**
@@ -45,29 +45,29 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 
 		$oWp = Services::WpGeneral();
 		if ( $oWp->isMultisite() ) {
-			$sMessage = _wpsf__( 'Your login URL is unchanged because the Rename WP Login feature is not currently supported on WPMS.' );
+			$sMessage = __( 'Your login URL is unchanged because the Rename WP Login feature is not currently supported on WPMS.', 'wp-simple-firewall' );
 			$bConflicted = true;
 		}
 		else if ( class_exists( 'Rename_WP_Login' ) ) {
-			$sMessage = sprintf( _wpsf__( 'Can not use the Rename WP Login feature because you have the "%s" plugin installed and it is active.' ), 'Rename WP Login' );
+			$sMessage = sprintf( __( 'Can not use the Rename WP Login feature because you have the "%s" plugin installed and it is active.', 'wp-simple-firewall' ), 'Rename WP Login' );
 			$bConflicted = true;
 		}
 		else if ( class_exists( 'Theme_My_Login' ) ) {
-			$sMessage = sprintf( _wpsf__( 'Can not use the Rename WP Login feature because you have the "%s" plugin installed and it is active.' ), 'Theme My Login' );
+			$sMessage = sprintf( __( 'Can not use the Rename WP Login feature because you have the "%s" plugin installed and it is active.', 'wp-simple-firewall' ), 'Theme My Login' );
 			$bConflicted = true;
 		}
 		else if ( !$oWp->isPermalinksEnabled() ) {
-			$sMessage = sprintf( _wpsf__( 'Can not use the Rename WP Login feature because you have not enabled %s.' ), __( 'Permalinks' ) );
+			$sMessage = sprintf( __( 'Can not use the Rename WP Login feature because you have not enabled %s.', 'wp-simple-firewall' ), __( 'Permalinks' ) );
 			$bConflicted = true;
 		}
 		else if ( $oWp->isPermalinksEnabled() && ( $oWp->getDoesWpSlugExist( $sCustomLoginPath ) || in_array( $sCustomLoginPath, $oWp->getAutoRedirectLocations() ) ) ) {
-			$sMessage = sprintf( _wpsf__( 'Can not use the Rename WP Login feature because you have chosen a path ("%s") that is reserved on your WordPress site.' ), $sCustomLoginPath );
+			$sMessage = sprintf( __( 'Can not use the Rename WP Login feature because you have chosen a path ("%s") that is reserved on your WordPress site.', 'wp-simple-firewall' ), $sCustomLoginPath );
 			$bConflicted = true;
 		}
 
 		if ( $bConflicted ) {
 			$sNoticeMessage = sprintf( '<strong>%s</strong>: %s',
-				_wpsf__( 'Warning' ),
+				__( 'Warning', 'wp-simple-firewall' ),
 				$sMessage
 			);
 			$this->loadWpNotices()->addRawAdminNotice( $sNoticeMessage, 'error' );
@@ -85,8 +85,8 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 
 			$sNoticeMessage = sprintf(
 				'<strong>%s</strong>: %s',
-				_wpsf__( 'Warning' ),
-				_wpsf__( 'Your login URL is unchanged because your current hosting/PHP configuration cannot parse the necessary information.' )
+				__( 'Warning', 'wp-simple-firewall' ),
+				__( 'Your login URL is unchanged because your current hosting/PHP configuration cannot parse the necessary information.', 'wp-simple-firewall' )
 			);
 			$this->loadWpNotices()->addRawAdminNotice( $sNoticeMessage, 'error' );
 			return true;
@@ -104,7 +104,7 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 		// Next block option is where it's a direct attempt to access the old login URL
 		if ( !$bDoBlock ) {
 			$sPath = trim( Services::Request()->getPath(), '/' );
-			$aPossiblePaths = array(
+			$aPossiblePaths = [
 				trim( home_url( 'wp-login.php', 'relative' ), '/' ),
 				trim( home_url( 'wp-signup.php', 'relative' ), '/' ),
 				trim( site_url( 'wp-signup.php', 'relative' ), '/' ),
@@ -112,14 +112,12 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 				trim( rtrim( site_url( '', 'relative' ), '/' ).'/wp-login.php', '/' ),
 				trim( home_url( 'login', 'relative' ), '/' ),
 				trim( site_url( 'login', 'relative' ), '/' )
-			);
+			];
 			$bDoBlock = !empty( $sPath )
 						&& ( in_array( $sPath, $aPossiblePaths ) || preg_match( '/wp-login\.php/i', $sPath ) );
 		}
 
 		if ( $bDoBlock ) {
-			// We now black mark this IP
-//			add_filter( $this->getMod()->prefix( 'ip_black_mark' ), '__return_true' );
 			$this->doWpLoginFailedRedirect404();
 		}
 	}
@@ -196,8 +194,6 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 
 	public function aLoginFormAction() {
 		if ( !$this->loadWp()->isRequestLoginUrl() ) {
-			// We now black mark this IP
-//			add_filter( $this->getMod()->prefix( 'ip_black_mark' ), '__return_true' );
 			$this->doWpLoginFailedRedirect404();
 			die();
 		}
@@ -224,7 +220,7 @@ class ICWP_WPSF_Processor_LoginProtect_WpLogin extends ICWP_WPSF_Processor_BaseW
 		if ( !empty( $sRedirectUrl ) ) {
 			$sRedirectUrl = esc_url( $sRedirectUrl );
 			if ( @parse_url( $sRedirectUrl ) !== false ) {
-				Services::WpGeneral()->doRedirect( $sRedirectUrl, array(), false );
+				Services::WpGeneral()->doRedirect( $sRedirectUrl, [], false );
 			}
 		}
 

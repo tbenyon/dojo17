@@ -5,8 +5,8 @@ class ICWP_WPSF_Processor_AuditTrail_Themes extends ICWP_WPSF_AuditTrail_Auditor
 	/**
 	 */
 	public function run() {
-		add_action( 'switch_theme', array( $this, 'auditSwitchTheme' ) );
-		add_action( 'check_admin_referer', array( $this, 'auditEditedThemeFile' ), 10, 2 );
+		add_action( 'switch_theme', [ $this, 'auditSwitchTheme' ] );
+		add_action( 'check_admin_referer', [ $this, 'auditEditedThemeFile' ], 10, 2 );
 //		add_action( 'upgrader_process_complete', array( $this, 'auditInstalledTheme' ) );
 	}
 
@@ -16,7 +16,7 @@ class ICWP_WPSF_Processor_AuditTrail_Themes extends ICWP_WPSF_AuditTrail_Auditor
 	public function auditSwitchTheme( $sThemeName ) {
 		if ( !empty( $sThemeName ) ) {
 			$this->add( 'themes', 'theme_activated', 1,
-				sprintf( _wpsf__( 'Theme "%s" was activated.' ), $sThemeName )
+				sprintf( __( 'Theme "%s" was activated.', 'wp-simple-firewall' ), $sThemeName )
 			);
 		}
 	}
@@ -32,7 +32,7 @@ class ICWP_WPSF_Processor_AuditTrail_Themes extends ICWP_WPSF_AuditTrail_Auditor
 
 			$sFileName = str_replace( $sStub, '', $sAction );
 			$this->add( 'themes', 'file_edited', 2,
-				sprintf( _wpsf__( 'An attempt was made to edit the theme file "%s" directly through the WordPress editor.' ), $sFileName )
+				sprintf( __( 'An attempt was made to edit the theme file "%s" directly through the WordPress editor.', 'wp-simple-firewall' ), $sFileName )
 			);
 		}
 	}

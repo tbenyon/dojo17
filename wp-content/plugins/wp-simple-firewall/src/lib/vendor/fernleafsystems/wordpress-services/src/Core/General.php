@@ -63,9 +63,24 @@ class General {
 	}
 
 	/**
+	 * @param \stdClass|string $mItem
+	 * @param string           $sContext from plugin|theme
+	 * @return string
+	 */
+	public function getFileFromAutomaticUpdateItem( $mItem, $sContext = 'plugin' ) {
+		if ( is_object( $mItem ) && isset( $mItem->{$sContext} ) ) { // WP 3.8.2+
+			$mItem = $mItem->{$sContext};
+		}
+		else if ( !is_string( $mItem ) ) { // WP pre-3.8.2
+			$mItem = '';
+		}
+		return $mItem;
+	}
+
+	/**
 	 * @return bool
 	 */
-	public function getIsRunningAutomaticUpdates() {
+	public function isRunningAutomaticUpdates() {
 		return ( get_option( 'auto_updater.lock' ) ? true : false );
 	}
 
@@ -88,11 +103,11 @@ class General {
 	}
 
 	/**
-	 * @see wp_redirect_admin_locations()
 	 * @return array
+	 * @see wp_redirect_admin_locations()
 	 */
 	public function getAutoRedirectLocations() {
-		return array( 'wp-admin', 'dashboard', 'admin', 'login', 'wp-login.php' );
+		return [ 'wp-admin', 'dashboard', 'admin', 'login', 'wp-login.php' ];
 	}
 
 	/**
@@ -118,17 +133,17 @@ class General {
 	 * @return string[]
 	 */
 	private function getCoreChecksums_WP() {
-		$aChecksumData = array();
+		$aChecksumData = [];
 
 		include_once( ABSPATH.'/wp-admin/includes/update.php' );
 		if ( function_exists( 'get_core_checksums' ) ) { // if it's loaded, we use it.
 			$aChecksumData = get_core_checksums( $this->getVersion(), $this->getLocaleForChecksums() );
 		}
 		else {
-			$aQueryArgs = array(
+			$aQueryArgs = [
 				'version' => $this->getVersion(),
 				'locale'  => $this->getLocaleForChecksums()
-			);
+			];
 			$sQueryUrl = add_query_arg( $aQueryArgs, 'https://api.wordpress.org/core/checksums/1.0/' );
 			$sResponse = Services::HttpRequest()->getContent( $sQueryUrl );
 			if ( !empty( $sResponse ) ) {
@@ -259,7 +274,7 @@ class General {
 	 */
 	public function getWordpressUpdates( $sType = 'plugins' ) {
 		$oCurrent = $this->getTransient( 'update_'.$sType );
-		return ( isset( $oCurrent->response ) && is_array( $oCurrent->response ) ) ? $oCurrent->response : array();
+		return ( isset( $oCurrent->response ) && is_array( $oCurrent->response ) ) ? $oCurrent->response : [];
 	}
 
 	/**
@@ -359,6 +374,16 @@ class General {
 	}
 
 	/**
+	 * @return string
+	 */
+	public function getDirUploads() {
+		$aDirParts = wp_get_upload_dir();
+		$bHasUploads = is_array( $aDirParts ) && !empty( $aDirParts[ 'basedir' ] )
+					   && Services::WpFs()->exists( $aDirParts[ 'basedir' ] );
+		return $bHasUploads ? $aDirParts[ 'basedir' ] : '';
+	}
+
+	/**
 	 * TODO: Create ClassicPress override class for this stuff
 	 * @param bool $bIgnoreClassicpress if true returns the $wp_version regardless of ClassicPress or not
 	 * @return string
@@ -391,23 +416,10 @@ class General {
 	/**
 	 * @param string $sPluginBaseFilename
 	 * @return boolean
+	 * @deprecated
 	 */
 	public function getIsPluginAutomaticallyUpdated( $sPluginBaseFilename ) {
-		$oUpdater = $this->getWpAutomaticUpdater();
-		if ( !$oUpdater ) {
-			return false;
-		}
-
-		// This is due to a change in the filter introduced in version 3.8.2
-		if ( $this->getWordpressIsAtLeastVersion( '3.8.2' ) ) {
-			$mPluginItem = new \stdClass();
-			$mPluginItem->plugin = $sPluginBaseFilename;
-		}
-		else {
-			$mPluginItem = $sPluginBaseFilename;
-		}
-
-		return $oUpdater->should_update( 'plugin', $mPluginItem, WP_PLUGIN_DIR );
+		return Services::WpPlugins()->isPluginAutomaticallyUpdated( $sPluginBaseFilename );
 	}
 
 	/**
@@ -422,9 +434,9 @@ class General {
 		if ( $sPage == 'admin.php' ) {
 			$sSubPage = Services::Request()->query( 'page' );
 			if ( !empty( $sSubPage ) ) {
-				$aQueryArgs = array(
+				$aQueryArgs = [
 					'page' => $sSubPage,
-				);
+				];
 				$sUrl = add_query_arg( $aQueryArgs, $sUrl );
 			}
 		}
@@ -455,9 +467,9 @@ class General {
 	}
 
 	/**
-	 * @deprecated
 	 * @param $sTermSlug
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getDoesWpPostSlugExist( $sTermSlug ) {
 		return Services::WpPost()->getDoesWpPostSlugExist( $sTermSlug );
@@ -703,6 +715,38 @@ class General {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function canCoreUpdateAutomatically() {
+		global $required_php_version, $required_mysql_version;
+		$future_minor_update = (object)[
+			'current'       => $this->getVersion().'.1.next.minor',
+			'version'       => $this->getVersion().'.1.next.minor',
+			'php_version'   => $required_php_version,
+			'mysql_version' => $required_mysql_version,
+		];
+		return $this->getWpAutomaticUpdater()
+					->should_update( 'core', $future_minor_update, ABSPATH );
+	}
+
+	/**
+	 * @return array|false
+	 */
+	public function getCoreUpdates() {
+		include_once( ABSPATH.'wp-admin/includes/update.php' );
+		return get_core_updates();
+	}
+
+	/**
+	 * See: /wp-admin/update-core.php core_upgrade_preamble()
+	 * @return bool
+	 */
+	public function hasCoreUpdate() {
+		$aUpdates = $this->getCoreUpdates();
+		return ( isset( $aUpdates[ 0 ]->response ) && 'latest' != $aUpdates[ 0 ]->response );
+	}
+
+	/**
 	 * Flushes the Rewrite rules and forces a re-commit to the .htaccess where applicable
 	 */
 	public function resavePermalinks() {
@@ -736,327 +780,327 @@ class General {
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return array
+	 * @deprecated
 	 */
 	public function doPluginUpgrade( $sPluginFile ) {
 		return Services::WpPlugins()->update( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @return array
+	 * @deprecated
 	 */
 	public function getWordpressUpdates_Plugins() {
 		return Services::WpPlugins()->getUpdates();
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sCompareString
 	 * @param string $sKey
 	 * @return bool|string
+	 * @deprecated
 	 */
 	public function getIsPluginInstalled( $sCompareString, $sKey = 'Name' ) {
 		return Services::WpPlugins()->isInstalled( Services::WpPlugins()->findPluginBy( $sCompareString, $sKey ) );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginBaseFile
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsPluginInstalledByFile( $sPluginBaseFile ) {
 		return Services::WpPlugins()->isInstalled( $sPluginBaseFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @return array
+	 * @deprecated
 	 */
 	public function getThemes() {
 		return Services::WpThemes()->getThemes();
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return string
+	 * @deprecated
 	 */
 	public function getPluginActivateLink( $sPluginFile ) {
 		return Services::WpPlugins()->getLinkPluginActivate( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return string
+	 * @deprecated
 	 */
 	public function getPluginDeactivateLink( $sPluginFile ) {
 		return Services::WpPlugins()->getLinkPluginDeactivate( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return string
+	 * @deprecated
 	 */
 	public function getPluginUpgradeLink( $sPluginFile ) {
 		return Services::WpPlugins()->getLinkPluginUpgrade( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return int
+	 * @deprecated
 	 */
 	public function getActivePluginLoadPosition( $sPluginFile ) {
 		return Services::WpPlugins()->getActivePluginLoadPosition( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @return array
+	 * @deprecated
 	 */
 	public function getActivePlugins() {
 		return Services::WpPlugins()->getActivePlugins();
 	}
 
 	/**
-	 * @deprecated
 	 * @return array
+	 * @deprecated
 	 */
 	public function getPlugins() {
 		return Services::WpPlugins()->getPlugins();
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sRootPluginFile - the full path to the root plugin file
 	 * @return array
+	 * @deprecated
 	 */
 	public function getPluginData( $sRootPluginFile ) {
 		return Services::WpPlugins()->getExtendedData( $sRootPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return \stdClass|null
+	 * @deprecated
 	 */
 	public function getPluginUpdateInfo( $sPluginFile ) {
 		return Services::WpPlugins()->getUpdateInfo( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return string
+	 * @deprecated
 	 */
 	public function getPluginUpdateNewVersion( $sPluginFile ) {
 		return Services::WpPlugins()->getUpdateNewVersion( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @return boolean|\stdClass
+	 * @deprecated
 	 */
 	public function getIsPluginUpdateAvailable( $sPluginFile ) {
 		return Services::WpPlugins()->isUpdateAvailable( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sCompareString
 	 * @param string $sKey
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsPluginActive( $sCompareString, $sKey = 'Name' ) {
 		return Services::WpPlugins()->isActive( Services::WpPlugins()->findPluginBy( $sCompareString, $sKey ) );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
 	 * @param int    $nDesiredPosition
+	 * @deprecated
 	 */
 	public function setActivePluginLoadPosition( $sPluginFile, $nDesiredPosition = 0 ) {
 		Services::WpPlugins()->setActivePluginLoadPosition( $sPluginFile, $nDesiredPosition );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginBaseFilename
 	 * @return null|\stdClass
+	 * @deprecated
 	 */
 	public function getPluginDataAsObject( $sPluginBaseFilename ) {
 		return Services::WpPlugins()->getPluginDataAsObject( $sPluginBaseFilename );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
+	 * @deprecated
 	 */
 	public function setActivePluginLoadFirst( $sPluginFile ) {
 		Services::WpPlugins()->setActivePluginLoadFirst( $sPluginFile );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sPluginFile
+	 * @deprecated
 	 */
 	public function setActivePluginLoadLast( $sPluginFile ) {
 		Services::WpPlugins()->setActivePluginLoadPosition( $sPluginFile, 1000 );
 	}
 
 	/**
-	 * @deprecated
 	 * @return array
+	 * @deprecated
 	 */
 	public function getWordpressUpdates_Themes() {
 		return Services::WpThemes()->getUpdates();
 	}
 
 	/**
-	 * @deprecated
 	 * @return string
+	 * @deprecated
 	 */
 	public function getWordpressVersion() {
 		return $this->getVersion();
 	}
 
 	/**
-	 * @deprecated getAdminUrl()
 	 * @return string
+	 * @deprecated getAdminUrl()
 	 */
 	public function getUrl_WpAdmin() {
 		return get_admin_url();
 	}
 
 	/**
-	 * @deprecated
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsLoginRequest() {
 		return $this->isLoginRequest();
 	}
 
 	/**
-	 * @deprecated
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsRegisterRequest() {
 		return $this->isRegisterRequest();
 	}
 
 	/**
-	 * @deprecated
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsLoginUrl() {
 		return $this->isLoginUrl();
 	}
 
 	/**
-	 * @deprecated
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsPermalinksEnabled() {
 		return $this->isPermalinksEnabled();
 	}
 
 	/**
-	 * @deprecated
 	 * @return string
+	 * @deprecated
 	 */
 	public function getCurrentPage() {
 		return Services::WpPost()->getCurrentPage();
 	}
 
 	/**
-	 * @deprecated
 	 * @return \WP_Post
+	 * @deprecated
 	 */
 	public function getCurrentPost() {
 		return Services::WpPost()->getCurrentPost();
 	}
 
 	/**
-	 * @deprecated
 	 * @return int
+	 * @deprecated
 	 */
 	public function getCurrentPostId() {
 		return Services::WpPost()->getCurrentPostId();
 	}
 
 	/**
-	 * @deprecated
 	 * @param $nPostId
 	 * @return false|\WP_Post
+	 * @deprecated
 	 */
 	public function getPostById( $nPostId ) {
 		return Services::WpPost()->getById( $nPostId );
 	}
 
 	/**
-	 * @deprecated
 	 * @return boolean
+	 * @deprecated
 	 */
 	public function getIsAjax() {
 		return $this->isAjax();
 	}
 
 	/**
-	 * @deprecated
 	 * @return boolean
+	 * @deprecated
 	 */
 	public function getIsCron() {
 		return $this->isCron();
 	}
 
 	/**
-	 * @deprecated
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsXmlrpc() {
 		return $this->isXmlrpc();
 	}
 
 	/**
-	 * @deprecated
 	 * @return bool
+	 * @deprecated
 	 */
 	public function getIsMobile() {
 		return $this->isMobile();
 	}
 
 	/**
-	 * @deprecated
 	 * @return array
+	 * @deprecated
 	 */
 	public function getAllUserLoginUsernames() {
 		return Services::WpUsers()->getAllUserLoginUsernames();
 	}
 
 	/**
-	 * @deprecated
 	 * @param string
 	 * @return string
+	 * @deprecated
 	 */
 	public function getIsCurrentPage( $sPage ) {
 		return Services::WpPost()->isCurrentPage( $sPage );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sUrl
 	 * @param array  $aQueryParams
 	 * @param bool   $bSafe
 	 * @param bool   $bProtectAgainstInfiniteLoops - if false, ignores the redirect loop protection
+	 * @deprecated
 	 */
-	public function doRedirect( $sUrl, $aQueryParams = array(), $bSafe = true, $bProtectAgainstInfiniteLoops = true ) {
+	public function doRedirect( $sUrl, $aQueryParams = [], $bSafe = true, $bProtectAgainstInfiniteLoops = true ) {
 		Services::Response()->redirect( $sUrl, $aQueryParams, $bSafe, $bProtectAgainstInfiniteLoops );
 	}
 
@@ -1068,26 +1112,34 @@ class General {
 	}
 
 	/**
-	 * @deprecated
 	 * @param array $aQueryParams
+	 * @deprecated
 	 */
-	public function redirectToLogin( $aQueryParams = array() ) {
+	public function redirectToLogin( $aQueryParams = [] ) {
 		Services::Response()->redirectToLogin( $aQueryParams );
 	}
 
 	/**
-	 * @deprecated
 	 * @param array $aQueryParams
+	 * @deprecated
 	 */
-	public function redirectToAdmin( $aQueryParams = array() ) {
+	public function redirectToAdmin( $aQueryParams = [] ) {
 		Services::Response()->redirectToAdmin( $aQueryParams );
 	}
 
 	/**
-	 * @deprecated
 	 * @param array $aQueryParams
+	 * @deprecated
 	 */
-	public function redirectToHome( $aQueryParams = array() ) {
+	public function redirectToHome( $aQueryParams = [] ) {
 		Services::Response()->redirectToHome( $aQueryParams );
+	}
+
+	/**
+	 * @return bool
+	 * @deprecated
+	 */
+	public function getIsRunningAutomaticUpdates() {
+		return $this->isRunningAutomaticUpdates();
 	}
 }

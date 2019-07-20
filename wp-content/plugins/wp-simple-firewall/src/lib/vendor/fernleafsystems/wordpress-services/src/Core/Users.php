@@ -41,7 +41,7 @@ class Users {
 	/**
 	 * @param array $aLoginUrlParams
 	 */
-	public function forceUserRelogin( $aLoginUrlParams = array() ) {
+	public function forceUserRelogin( $aLoginUrlParams = [] ) {
 		$this->logoutUser();
 		Services::Response()->redirectToLogin( $aLoginUrlParams );
 	}
@@ -64,10 +64,10 @@ class Users {
 	 * @param array $aArgs
 	 * @return \WP_User[]
 	 */
-	public function getAllUsers( $aArgs = array() ) {
+	public function getAllUsers( $aArgs = [] ) {
 		$aArgs = wp_parse_args(
 			$aArgs,
-			array(
+			[
 				'blog_id' => 0,
 				//					'fields' => array(
 				//						'ID',
@@ -75,9 +75,9 @@ class Users {
 				//						'user_email',
 				//						'user_pass',
 				//					)
-			)
+			]
 		);
-		return function_exists( 'get_users' ) ? get_users( $aArgs ) : array();
+		return function_exists( 'get_users' ) ? get_users( $aArgs ) : [];
 	}
 
 	/**
@@ -104,13 +104,13 @@ class Users {
 	 * @return array
 	 */
 	public function getLevelToRoleMap() {
-		return array(
+		return [
 			0 => 'subscriber',
 			1 => 'contributor',
 			2 => 'author',
 			3 => 'editor',
 			8 => 'administrator'
-		);
+		];
 	}
 
 	/**
@@ -220,9 +220,9 @@ class Users {
 	}
 
 	/**
-	 * @see wp-login.php
 	 * @param \WP_User $oUser
 	 * @return string|null
+	 * @see wp-login.php
 	 */
 	public function getPasswordResetUrl( $oUser ) {
 		$sUrl = null;
@@ -230,11 +230,11 @@ class Users {
 		$sResetKey = get_password_reset_key( $oUser );
 		if ( !is_wp_error( $sResetKey ) ) {
 			$sUrl = add_query_arg(
-				array(
+				[
 					'action' => 'rp',
 					'key'    => $sResetKey,
 					'login'  => $oUser->user_login,
-				),
+				],
 				wp_login_url()
 			);
 		}

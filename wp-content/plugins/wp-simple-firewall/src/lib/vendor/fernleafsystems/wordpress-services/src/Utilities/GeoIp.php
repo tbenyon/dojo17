@@ -10,6 +10,7 @@ use GeoIp2\Database\Reader;
  * @package FernleafSystems\Wordpress\Services\Utilities
  */
 class GeoIp {
+
 	/**
 	 * @var Reader
 	 */

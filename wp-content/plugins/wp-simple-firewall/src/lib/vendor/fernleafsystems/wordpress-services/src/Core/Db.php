@@ -17,13 +17,13 @@ class Db {
 	 * @return array
 	 */
 	public function dbDelta( $sSQL ) {
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		require_once( ABSPATH.'wp-admin/includes/upgrade.php' );
 		return dbDelta( $sSQL );
 	}
 
 	/**
 	 * @param string $sTable
-	 * @param array $aWhere - delete where (associative array)
+	 * @param array  $aWhere - delete where (associative array)
 	 * @return false|int
 	 */
 	public function deleteRowsFromTableWhere( $sTable, $aWhere ) {
@@ -37,7 +37,7 @@ class Db {
 	 * @return bool|int
 	 */
 	public function doDropTable( $sTable ) {
-		$sQuery = sprintf( 'DROP TABLE IF EXISTS `%s`', $sTable ) ;
+		$sQuery = sprintf( 'DROP TABLE IF EXISTS `%s`', $sTable );
 		return $this->doSql( $sQuery );
 	}
 
@@ -94,7 +94,7 @@ class Db {
 	 * @return array
 	 */
 	public function getColumnsForTable( $sTableName, $sArrayMapCallBack = '' ) {
-		$aColumns = $this->loadWpdb()->get_col( "DESCRIBE " . $sTableName, 0 );
+		$aColumns = $this->loadWpdb()->get_col( "DESCRIBE ".$sTableName, 0 );
 
 		if ( !empty( $sArrayMapCallBack ) && function_exists( $sArrayMapCallBack ) ) {
 			return array_map( $sArrayMapCallBack, $aColumns );
@@ -133,6 +133,13 @@ class Db {
 	}
 
 	/**
+	 * @return string
+	 */
+	public function getTable_Users() {
+		return $this->loadWpdb()->users;
+	}
+
+	/**
 	 * @param $sSql
 	 *
 	 * @return null|mixed
@@ -143,7 +150,7 @@ class Db {
 
 	/**
 	 * @param string $sTable
-	 * @param array $aData
+	 * @param array  $aData
 	 *
 	 * @return int|boolean
 	 */
@@ -164,7 +171,7 @@ class Db {
 
 	/**
 	 * @param string $sQuery
-	 * @param $nFormat
+	 * @param        $nFormat
 	 * @return array|boolean
 	 */
 	public function selectCustom( $sQuery, $nFormat = ARRAY_A ) {
@@ -172,7 +179,7 @@ class Db {
 	}
 
 	/**
-	 * @param $sQuery
+	 * @param        $sQuery
 	 * @param string $nFormat
 	 *
 	 * @return null|object|array
@@ -183,8 +190,8 @@ class Db {
 
 	/**
 	 * @param string $sTable
-	 * @param array $aData - new insert data (associative array, column=>data)
-	 * @param array $aWhere - insert where (associative array)
+	 * @param array  $aData  - new insert data (associative array, column=>data)
+	 * @param array  $aWhere - insert where (associative array)
 	 *
 	 * @return integer|boolean (number of rows affected)
 	 */

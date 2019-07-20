@@ -45,7 +45,7 @@ class Data {
 	 */
 	protected function findViableVisitorIp() {
 
-		$aAddressSourceOptions = array(
+		$aAddressSourceOptions = [
 			'HTTP_CF_CONNECTING_IP',
 			'HTTP_X_FORWARDED_FOR',
 			'HTTP_X_FORWARDED',
@@ -55,7 +55,7 @@ class Data {
 			'HTTP_FORWARDED',
 			'HTTP_CLIENT_IP',
 			'REMOTE_ADDR'
-		);
+		];
 
 		$sIpToReturn = false;
 		$oReq = Services::Request();
@@ -156,7 +156,7 @@ class Data {
 
 		$sUrl = trim( $this->urlStripQueryPart( $sUrl ) );
 		if ( filter_var( $sUrl, FILTER_VALIDATE_URL ) ) { // we have a scheme+host
-			if ( in_array( parse_url( $sUrl, PHP_URL_SCHEME ), array( 'http', 'https' ) ) ) {
+			if ( in_array( parse_url( $sUrl, PHP_URL_SCHEME ), [ 'http', 'https' ] ) ) {
 				$sValidatedUrl = rtrim( $sUrl, '/' );
 			}
 		}
@@ -178,13 +178,13 @@ class Data {
 	 */
 	public function extractCommaSeparatedList( $sRawList = '' ) {
 
-		$aRawList = array();
+		$aRawList = [];
 		if ( empty( $sRawList ) ) {
 			return $aRawList;
 		}
 
 		$aRawList = array_map( 'trim', preg_split( '/\r\n|\r|\n/', $sRawList ) );
-		$aNewList = array();
+		$aNewList = [];
 		$bHadStar = false;
 		foreach ( $aRawList as $sKey => $sRawLine ) {
 
@@ -208,7 +208,7 @@ class Data {
 				}
 			}
 
-			$aParams = empty( $aParts[ 1 ] ) ? array() : explode( ',', $aParts[ 1 ] );
+			$aParams = empty( $aParts[ 1 ] ) ? [] : explode( ',', $aParts[ 1 ] );
 			$aNewList[ $aParts[ 0 ] ] = $aParams;
 		}
 		return $aNewList;
@@ -264,7 +264,7 @@ class Data {
 				continue;
 			}
 			$aParts[ 1 ] = substr( $aParts[ 1 ], 0, 12 );
-			$aKeys[ $nIndex ] = array( $aParts[ 0 ] => $aParts[ 1 ] );
+			$aKeys[ $nIndex ] = [ $aParts[ 0 ] => $aParts[ 1 ] ];
 		}
 		return $aKeys;
 	}
@@ -279,7 +279,7 @@ class Data {
 	 * @return string
 	 */
 	static public function GenerateRandomString( $nLength = 10, $nStrength = 7, $bIgnoreAmb = true ) {
-		$aChars = array( 'abcdefghijkmnopqrstuvwxyz' );
+		$aChars = [ 'abcdefghijkmnopqrstuvwxyz' ];
 
 		if ( $nStrength & 2 ) {
 			$aChars[] = '023456789';
@@ -333,49 +333,6 @@ class Data {
 			return $mDefault;
 		}
 		return $aArray[ $sKey ];
-	}
-
-	/**
-	 * @deprecated
-	 * @param string $sRequestedUrl
-	 * @param string $sBaseUrl
-	 */
-	public function doSendApache404( $sRequestedUrl, $sBaseUrl ) {
-		Services::Response()->sendApache404();
-	}
-
-	/**
-	 * @param      $sKey
-	 * @param      $mValue
-	 * @param int  $nExpireLength
-	 * @param null $sPath
-	 * @param null $sDomain
-	 * @param bool $bSsl
-	 *
-	 * @return bool
-	 */
-	public function setCookie( $sKey, $mValue, $nExpireLength = 3600, $sPath = null, $sDomain = null, $bSsl = null ) {
-		if ( function_exists( 'headers_sent' ) && headers_sent() ) {
-			return false;
-		}
-		$_COOKIE[ $sKey ] = $mValue;
-		return setcookie(
-			$sKey,
-			$mValue,
-			(int)( Services::Request()->ts() + $nExpireLength ),
-			( is_null( $sPath ) && defined( 'COOKIEPATH' ) ) ? COOKIEPATH : $sPath,
-			( is_null( $sDomain ) && defined( 'COOKIE_DOMAIN' ) ) ? COOKIE_DOMAIN : $sDomain,
-			is_null( $bSsl ) ? ( is_ssl() ? true : false ) : $bSsl
-		);
-	}
-
-	/**
-	 * @param string $sKey
-	 * @return bool
-	 */
-	public function setDeleteCookie( $sKey ) {
-		unset( $_COOKIE[ $sKey ] );
-		return $this->setCookie( $sKey, '', -3600 );
 	}
 
 	/**
@@ -502,11 +459,43 @@ class Data {
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sStringContent
 	 * @param string $sFilename
+	 * @deprecated
 	 */
 	public function downloadStringAsFile( $sStringContent, $sFilename ) {
 		Services::Response()->downloadStringAsFile( $sStringContent, $sFilename );
+	}
+
+	/**
+	 * @param string $sRequestedUrl
+	 * @param string $sBaseUrl
+	 * @deprecated
+	 */
+	public function doSendApache404( $sRequestedUrl, $sBaseUrl ) {
+		Services::Response()->sendApache404( $sRequestedUrl, $sBaseUrl );
+	}
+
+	/**
+	 * @param      $sKey
+	 * @param      $mValue
+	 * @param int  $nExpireLength
+	 * @param null $sPath
+	 * @param null $sDomain
+	 * @param bool $bSsl
+	 * @return bool
+	 * @deprecated
+	 */
+	public function setCookie( $sKey, $mValue, $nExpireLength = 3600, $sPath = null, $sDomain = null, $bSsl = null ) {
+		return Services::Response()->cookieSet( $sKey, $mValue, $nExpireLength, $sPath, $sDomain, $bSsl );
+	}
+
+	/**
+	 * @param string $sKey
+	 * @return bool
+	 * @deprecated
+	 */
+	public function setDeleteCookie( $sKey ) {
+		return Services::Response()->cookieDelete( $sKey );
 	}
 }

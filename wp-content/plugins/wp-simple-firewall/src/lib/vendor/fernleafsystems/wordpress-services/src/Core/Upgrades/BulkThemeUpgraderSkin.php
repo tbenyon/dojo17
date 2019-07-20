@@ -21,8 +21,8 @@ class BulkThemeUpgraderSkin extends \Bulk_Theme_Upgrader_Skin {
 	 */
 	public function __construct() {
 		parent::__construct( compact( 'title', 'nonce', 'url', 'theme' ) );
-		$this->aErrors = array();
-		$this->aFeedback = array();
+		$this->aErrors = [];
+		$this->aFeedback = [];
 	}
 
 	/**
@@ -50,7 +50,7 @@ class BulkThemeUpgraderSkin extends \Bulk_Theme_Upgrader_Skin {
 	 * @return array
 	 */
 	public function getErrors() {
-		return is_array( $this->aErrors ) ? $this->aErrors : array();
+		return is_array( $this->aErrors ) ? $this->aErrors : [];
 	}
 
 	/**

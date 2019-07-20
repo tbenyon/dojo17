@@ -33,16 +33,16 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	public function run() {
 		if ( $this->isReadyToRun() ) {
 			// Add GASP checking to the comment form.
-			add_action( 'wp', array( $this, 'setupForm' ) );
-			add_filter( 'preprocess_comment', array( $this, 'doCommentChecking' ), 5 );
-			add_filter( $this->getMod()->prefix( 'cf_status' ), array( $this, 'getCommentStatus' ), 1 );
-			add_filter( $this->getMod()->prefix( 'cf_status_expl' ), array( $this, 'getCommentStatusExplanation' ), 1 );
+			add_action( 'wp', [ $this, 'setupForm' ] );
+			add_filter( 'preprocess_comment', [ $this, 'doCommentChecking' ], 5 );
+			add_filter( $this->getMod()->prefix( 'cf_status' ), [ $this, 'getCommentStatus' ], 1 );
+			add_filter( $this->getMod()->prefix( 'cf_status_expl' ), [ $this, 'getCommentStatusExplanation' ], 1 );
 		}
 	}
 
 	public function setupForm() {
-		if ( !$this->loadRequest()->isMethodPost() && $this->getIfDoGaspCheck() ) {
-			add_action( 'comment_form', array( $this, 'printGaspFormItems' ), 1 );
+		if ( !Services::Request()->isPost() ) {
+			add_action( 'comment_form', [ $this, 'printGaspFormItems' ], 1 );
 		}
 	}
 
@@ -65,24 +65,25 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	}
 
 	/**
-	 * @param array $aCommentData
+	 * @param array $aCommData
 	 * @return array
 	 */
-	public function doCommentChecking( $aCommentData ) {
+	public function doCommentChecking( $aCommData ) {
 		/** @var ICWP_WPSF_FeatureHandler_CommentsFilter $oFO */
 		$oFO = $this->getMod();
 
-		if ( $oFO->getIfDoCommentsCheck() ) {
-			$this->doGaspCommentCheck( $oFO->getCommentItem( 'comment_post_ID' ) );
+		$nPostId = $aCommData[ 'comment_post_ID' ];
+		if ( $oFO->getIfDoCommentsCheck( $nPostId, $aCommData[ 'comment_author_email' ] ) ) {
+
+			$this->doGaspCommentCheck( $nPostId );
 
 			// Now we check whether comment status is to completely reject and then we simply redirect to "home"
 			if ( $this->sCommentStatus == 'reject' ) {
-				$oWp = $this->loadWp();
-				$oWp->doRedirect( $oWp->getHomeUrl(), array(), true, false );
+				Services::Response()->redirectToHome();
 			}
 		}
 
-		return $aCommentData;
+		return $aCommData;
 	}
 
 	/**
@@ -90,9 +91,6 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	 * @param $nPostId
 	 */
 	protected function doGaspCommentCheck( $nPostId ) {
-		if ( !$this->getIfDoGaspCheck() ) {
-			return;
-		}
 
 		/** @var ICWP_WPSF_FeatureHandler_CommentsFilter $oFO */
 		$oFO = $this->getMod();
@@ -113,17 +111,17 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 
 		// we have the cb name, is it set?
 		if ( !$sFieldCheckboxName || !$oReq->post( $sFieldCheckboxName ) ) {
-			$sExplanation = sprintf( _wpsf__( 'Failed GASP Bot Filter Test (%s)' ), _wpsf__( 'checkbox' ) );
+			$sExplanation = sprintf( __( 'Failed GASP Bot Filter Test (%s)', 'wp-simple-firewall' ), __( 'checkbox', 'wp-simple-firewall' ) );
 			$sStatKey = 'checkbox';
 		}
 		// honeypot check
 		else if ( !empty( $sFieldHoney ) ) {
-			$sExplanation = sprintf( _wpsf__( 'Failed GASP Bot Filter Test (%s)' ), _wpsf__( 'honeypot' ) );
+			$sExplanation = sprintf( __( 'Failed GASP Bot Filter Test (%s)', 'wp-simple-firewall' ), __( 'honeypot', 'wp-simple-firewall' ) );
 			$sStatKey = 'honeypot';
 		}
 		// check the unique comment token is present
 		else if ( $oFO->getIfCheckCommentToken() && !$this->checkCommentToken( $sCommentToken, $nPostId ) ) {
-			$sExplanation = sprintf( _wpsf__( 'Failed GASP Bot Filter Test (%s)' ), _wpsf__( 'comment token failure' ) );
+			$sExplanation = sprintf( __( 'Failed GASP Bot Filter Test (%s)', 'wp-simple-firewall' ), __( 'comment token failure', 'wp-simple-firewall' ) );
 			$sStatKey = 'token';
 		}
 		else {
@@ -148,26 +146,12 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	}
 
 	/**
-	 * Tells us whether, for this particular comment post, if we should do GASP comments checking.
-	 * @return boolean
-	 */
-	protected function getIfDoGaspCheck() {
-		$bCheck = true;
-
-		if ( function_exists( 'WPWall_Init' ) && !is_null( $this->loadRequest()->post( 'submit_wall_post' ) ) ) {
-			$bCheck = false; // Compatibility with shoutbox WP Wall Plugin http://wordpress.org/plugins/wp-wall/
-		}
-
-		return $bCheck;
-	}
-
-	/**
 	 * @return Comments\EntryVO|null
 	 */
 	protected function initCommentFormToken() {
 		/** @var Comments\EntryVO $oToken */
 		$oToken = $this->getDbHandler()->getVo();
-		$oToken->post_id = $this->loadWp()->getCurrentPostId();
+		$oToken->post_id = Services::WpPost()->getCurrentPostId();
 		$oToken->unique_token = md5( $this->getCon()->getUniqueRequestId( false ) );
 		return $this->getDbHandler()
 					->getQueryInserter()
@@ -179,12 +163,12 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	 * @return string
 	 */
 	protected function getGaspCommentsHookHtml( $oToken ) {
-		$aHtml = array(
+		$aHtml = [
 			'<p id="'.$this->getUniqueFormId().'"></p>', // we use this unique <p> to hook onto using javascript
 			'<input type="hidden" id="_sugar_sweet_email" name="sugar_sweet_email" value="" />',
 			sprintf( '<input type="hidden" id="_comment_token" name="comment_token" value="%s" />',
 				$oToken->unique_token )
-		);
+		];
 		return implode( '', $aHtml );
 	}
 
@@ -295,7 +279,7 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	 */
 	protected function getUniqueFormId() {
 		if ( !isset( $this->sFormId ) ) {
-			$oDp = $this->loadDP();
+			$oDp = Services::Data();
 			$sId = $oDp->generateRandomLetter().$oDp->generateRandomString( rand( 7, 23 ), 7 );
 			$this->sFormId = preg_replace(
 				'#[^a-zA-Z0-9]#', '',
@@ -364,7 +348,7 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	 */
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'spambot_comments_filter_table_columns' );
-		return is_array( $aDef ) ? $aDef : array();
+		return is_array( $aDef ) ? $aDef : [];
 	}
 
 	/**
@@ -373,7 +357,7 @@ class ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam extends ICWP_WPSF_BaseDbPro
 	protected function setCommentStatusExplanation( $sExplanation ) {
 		$this->sCommentStatusExplanation =
 			'[* '.sprintf(
-				_wpsf__( '%s plugin marked this comment as "%s".' ).' '._wpsf__( 'Reason: %s' ),
+				__( '%s plugin marked this comment as "%s".', 'wp-simple-firewall' ).' '.__( 'Reason: %s', 'wp-simple-firewall' ),
 				$this->getCon()->getHumanName(),
 				$this->sCommentStatus,
 				$sExplanation

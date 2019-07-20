@@ -26,6 +26,25 @@
       ]
     },
     {
+      "slug":        "section_scan_malware",
+      "hidden": true,
+      "title":       "Malware Scan",
+      "title_short": "Malware Scan",
+      "summary":     [
+        "Purpose - Detect malicious changes to your themes and plugins.",
+        "Recommendation - Keep the Plugins/Theme Guard feature turned on."
+      ]
+    },
+    {
+      "slug":        "section_realtime",
+      "title":       "Realtime Protection",
+      "title_short": "Realtime Protection",
+      "summary":     [
+        "Purpose - Provides realtime protection for certain key files.",
+        "Recommendation - Keep realtime protection turned on to protect key files."
+      ]
+    },
+    {
       "slug":        "section_core_file_integrity_scan",
       "title":       "WordPress Core File Scanner",
       "title_short": "WP Core File Scanner",
@@ -111,6 +130,18 @@
       "description": "Un-Checking this option will completely disable the Hack Guard module"
     },
     {
+      "key":         "rt_file_wpconfig",
+      "section":     "section_non_ui",
+      "premium":     true,
+      "default":     "N",
+      "type":        "checkbox",
+      "link_info":   "",
+      "link_blog":   "",
+      "name":        "WP Config",
+      "summary":     "Lock WP Config Against Any Changes",
+      "description": "As soon as changes are detected to the WP config file the file will be reverted."
+    },
+    {
       "key":           "enable_wpvuln_scan",
       "section":       "section_wpvuln_scan",
       "premium":       true,
@@ -152,6 +183,7 @@
       "key":           "wpvuln_scan_display",
       "section":       "section_wpvuln_scan",
       "default":       "enabled_admin",
+      "premium":     true,
       "type":          "select",
       "value_options": [
         {
@@ -374,6 +406,50 @@
       "description": "Detects changes made to critical user account information that were made directly on the database and outside of the WordPress system."
     },
     {
+      "key":           "mal_scan_enable",
+      "section":       "section_scan_malware",
+      "premium":       true,
+      "default":       "disabled",
+      "type":          "select",
+      "value_options": [
+        {
+          "value_key": "disabled",
+          "text":      "Scan Disabled"
+        },
+        {
+          "value_key": "enabled",
+          "text":      "Scan Enabled"
+        }
+      ],
+      "link_info":     "",
+      "link_blog":     "",
+      "name":          "Enable/Disable Malware Scan",
+      "summary":       "Enable Malware File Scanner",
+      "description":   "When enabled the Malware scanner will run automatically."
+    },
+    {
+      "key":           "mal_autorepair_core",
+      "section":       "section_scan_malware",
+      "type":          "checkbox",
+      "default":       "Y",
+      "link_info":     "",
+      "link_blog":     "",
+      "name":          "Auto-Repair WP Core",
+      "summary":       "Automatically Repair WordPress Core Files",
+      "description":   "Automatically reinstall any core files found to have potential malware."
+    },
+    {
+      "key":           "mal_autorepair_plugins",
+      "section":       "section_scan_malware",
+      "type":          "checkbox",
+      "default":       "Y",
+      "link_info":     "",
+      "link_blog":     "",
+      "name":          "Auto-Repair WP Plugins",
+      "summary":       "Automatically Repair WordPress.org Plugins",
+      "description":   "Automatically repair any plugin files found to have potential malware."
+    },
+    {
       "key":           "ptg_enable",
       "section":       "section_pluginthemes_guard",
       "premium":       true,
@@ -398,6 +474,7 @@
     {
       "key":         "ptg_depth",
       "section":     "section_pluginthemes_guard",
+      "premium":     true,
       "type":        "integer",
       "default":     1,
       "min":         0,
@@ -410,6 +487,7 @@
     {
       "key":         "ptg_extensions",
       "section":     "section_pluginthemes_guard",
+      "premium":     true,
       "default":     [
         "php",
         "php5",
@@ -427,6 +505,7 @@
     {
       "key":         "ptg_reinstall_links",
       "section":     "section_pluginthemes_guard",
+      "premium":     true,
       "type":        "checkbox",
       "default":     "Y",
       "link_info":   "https://icwp.io/bp",
@@ -479,6 +558,13 @@
       "default":      0
     },
     {
+      "key":          "notready_insights_last_scan_mal_at",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
+      "default":      0
+    },
+    {
       "key":          "insights_last_scan_wcf_at",
       "section":      "section_non_ui",
       "transferable": false,
@@ -508,6 +594,13 @@
     },
     {
       "key":          "next_scan_ufc_at",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "integer",
+      "default":      0
+    },
+    {
+      "key":          "next_scan_mal_at",
       "section":      "section_non_ui",
       "transferable": false,
       "type":         "integer",
@@ -547,6 +640,27 @@
       "transferable": false,
       "type":         "boolean",
       "default":      false
+    },
+    {
+      "key":          "rt_file_hashes",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "array",
+      "default":      []
+    },
+    {
+      "key":          "rt_file_backup_names",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "array",
+      "default":      []
+    },
+    {
+      "key":          "rt_can_write_files",
+      "section":      "section_non_ui",
+      "transferable": false,
+      "type":         "array",
+      "default":      []
     }
   ],
   "definitions": {
@@ -564,11 +678,8 @@
       "created_at",
       "deleted_at"
     ],
+    "url_mal_sigs":                         "https://raw.githubusercontent.com/scr34m/php-malware-scanner/master/definitions/patterns_raw.txt",
     "cron_all_scans":                       "all-scans",
-    "cron_scan_wpv":                        "wpvulnscan-notification",
-    "cron_scan_wcf":                        "core-checksum-notification",
-    "cron_scan_ufc":                        "unrecognised-scan-notification",
-    "cron_scan_ptg":                        "cron-pluginthemesguard",
     "url_checksum_api":                     "https://api.wordpress.org/core/checksums/1.0/",
     "url_wordress_core_svn":                "https://core.svn.wordpress.org/",
     "url_wordress_core_svn_il8n":           "https://svn.automattic.com/wordpress-i18n/",
@@ -588,77 +699,6 @@
       "wp-content/index.php",
       "wp-content/plugins/index.php",
       "wp-content/themes/index.php"
-    ],
-    "wizards":                              {
-      "ptg": {
-        "title":                "Manually Run Plugin/Theme Guard Scanner",
-        "desc":                 "Walks you through the scanning for any changes to your plugins and themes.",
-        "min_user_permissions": "manage_options",
-        "steps":                {
-          "start":              {
-            "security_admin": false,
-            "title":          "Start: Plugin/Theme Guard"
-          },
-          "scanresult_plugins": {
-            "title": "Scan Results - Plugins"
-          },
-          "scanresult_themes":  {
-            "title": "Scan Results - Themes"
-          },
-          "config":             {
-            "title": "Setup Scan Automation"
-          },
-          "finished":           {
-            "security_admin": false,
-            "title":          "Finished: Plugin/Theme Guard Scanner"
-          }
-        }
-      },
-      "ufc": {
-        "title":                "Manually Run Unrecognised File Scanner",
-        "desc":                 "Walks you through the scanning for unrecognised files present in your WordPress core installation.",
-        "min_user_permissions": "manage_options",
-        "steps":                {
-          "start":      {
-            "security_admin": false,
-            "title":          "Start: Unrecognised File Scanner"
-          },
-          "exclusions": {
-            "title": "Exclude Files"
-          },
-          "scanresult": {
-            "title": "Scan Results"
-          },
-          "config":     {
-            "title": "Setup Scan Automation"
-          },
-          "finished":   {
-            "security_admin": false,
-            "title":          "Finished: Unrecognised File Scanner"
-          }
-        }
-      },
-      "wcf": {
-        "title":                "Manually Run WordPress Core File Scanner",
-        "desc":                 "Walks you through the scanning for unintended changes to your official WordPress core files.",
-        "min_user_permissions": "manage_options",
-        "steps":                {
-          "start":      {
-            "security_admin": false,
-            "title":          "Start: WordPress Core File Scanner"
-          },
-          "scanresult": {
-            "title": "Scan Results"
-          },
-          "config":     {
-            "title": "Setup Scan Automation"
-          },
-          "finished":   {
-            "security_admin": false,
-            "title":          "Finished: WordPress Core File Scanner"
-          }
-        }
-      }
-    }
+    ]
   }
 }

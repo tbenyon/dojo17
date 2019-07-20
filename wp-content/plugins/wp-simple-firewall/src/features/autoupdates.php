@@ -17,11 +17,11 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 	 * @return string[]
 	 */
 	public function getAutoupdatePlugins() {
-		$aSelected = array();
+		$aSelected = [];
 		if ( $this->isAutoupdateIndividualPlugins() ) {
-			$aSelected = $this->getOpt( 'selected_plugins', array() );
+			$aSelected = $this->getOpt( 'selected_plugins', [] );
 			if ( !is_array( $aSelected ) ) {
-				$aSelected = array();
+				$aSelected = [];
 			}
 		}
 		return $aSelected;
@@ -31,16 +31,16 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 	 * @return array
 	 */
 	public function getDelayTracking() {
-		$aTracking = $this->getOpt( 'delay_tracking', array() );
+		$aTracking = $this->getOpt( 'delay_tracking', [] );
 		if ( !is_array( $aTracking ) ) {
-			$aTracking = array();
+			$aTracking = [];
 		}
 		$aTracking = $this->loadDP()->mergeArraysRecursive(
-			array(
-				'core'    => array(),
-				'plugins' => array(),
-				'themes'  => array(),
-			),
+			[
+				'core'    => [],
+				'plugins' => [],
+				'themes'  => [],
+			],
 			$aTracking
 		);
 		$this->setOpt( 'delay_tracking', $aTracking );
@@ -132,31 +132,31 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 	 */
 	public function ajaxExec_TogglePluginAutoupdate() {
 		$bSuccess = false;
-		$sMessage = _wpsf__( 'You do not have permissions to perform this action.' );
+		$sMessage = __( 'You do not have permissions to perform this action.', 'wp-simple-firewall' );
 
 		if ( $this->isAutoupdateIndividualPlugins() && $this->getCon()->isPluginAdmin() ) {
-			$oWpPlugins = $this->loadWpPlugins();
+			$oWpPlugins = Services::WpPlugins();
 			$sFile = Services::Request()->post( 'pluginfile' );
 			if ( $oWpPlugins->isInstalled( $sFile ) ) {
 				$this->setPluginToAutoUpdate( $sFile );
 
-				$aPlugin = $oWpPlugins->getPlugin( $sFile );
-				$sMessage = sprintf( _wpsf__( 'Plugin "%s" will %s.' ),
-					$aPlugin[ 'Name' ],
-					$this->loadWp()
-						 ->isPluginAutomaticallyUpdated( $sFile ) ? _wpsf__( 'update automatically' ) : _wpsf__( 'not update automatically' )
+				$sMessage = sprintf( __( 'Plugin "%s" will %s.', 'wp-simple-firewall' ),
+					$oWpPlugins->getPluginAsVo( $sFile )->Name,
+					Services::WpPlugins()->isPluginAutomaticallyUpdated( $sFile ) ?
+						__( 'update automatically', 'wp-simple-firewall' )
+						: __( 'not update automatically', 'wp-simple-firewall' )
 				);
 				$bSuccess = true;
 			}
 			else {
-				$sMessage = _wpsf__( 'Failed to change the update status of the plugin.' );
+				$sMessage = __( 'Failed to change the update status of the plugin.', 'wp-simple-firewall' );
 			}
 		}
 
-		return array(
+		return [
 			'success' => $bSuccess,
 			'message' => $sMessage,
-		);
+		];
 	}
 
 	/**
@@ -203,22 +203,22 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 	 * @return array
 	 */
 	public function addInsightsNoticeData( $aAllNotices ) {
-		$aNotices = array(
-			'title'    => _wpsf__( 'Automatic Updates' ),
-			'messages' => array()
-		);
+		$aNotices = [
+			'title'    => __( 'Automatic Updates', 'wp-simple-firewall' ),
+			'messages' => []
+		];
 		{ //really disabled?
 			$oWp = Services::WpGeneral();
 			if ( $this->isModOptEnabled() ) {
 				if ( $this->isDisableAllAutoUpdates() && !$oWp->getWpAutomaticUpdater()->is_disabled() ) {
-					$aNotices[ 'messages' ][ 'disabled_auto' ] = array(
+					$aNotices[ 'messages' ][ 'disabled_auto' ] = [
 						'title'   => 'Auto Updates Not Really Disabled',
-						'message' => _wpsf__( 'Automatic Updates Are Not Disabled As Expected.' ),
+						'message' => __( 'Automatic Updates Are Not Disabled As Expected.', 'wp-simple-firewall' ),
 						'href'    => $this->getUrl_DirectLinkToOption( 'enable_autoupdate_disable_all' ),
-						'action'  => sprintf( 'Go To %s', _wpsf__( 'Options' ) ),
-						'rec'     => sprintf( _wpsf__( 'A plugin/theme other than %s is affecting your automatic update settings.' ), $this->getCon()
-																																		   ->getHumanName() )
-					);
+						'action'  => sprintf( 'Go To %s', __( 'Options', 'wp-simple-firewall' ) ),
+						'rec'     => sprintf( __( 'A plugin/theme other than %s is affecting your automatic update settings.', 'wp-simple-firewall' ), $this->getCon()
+																																							->getHumanName() )
+					];
 				}
 			}
 		}
@@ -234,14 +234,14 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 	 * @return array
 	 */
 	public function addInsightsConfigData( $aAllData ) {
-		$aThis = array(
-			'strings'      => array(
-				'title' => _wpsf__( 'Automatic Updates' ),
-				'sub'   => _wpsf__( 'Control WordPress Automatic Updates' ),
-			),
-			'key_opts'     => array(),
+		$aThis = [
+			'strings'      => [
+				'title' => __( 'Automatic Updates', 'wp-simple-firewall' ),
+				'sub'   => __( 'Control WordPress Automatic Updates', 'wp-simple-firewall' ),
+			],
+			'key_opts'     => [],
 			'href_options' => $this->getUrl_AdminPage()
-		);
+		];
 
 		if ( !$this->isModOptEnabled() ) {
 			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
@@ -250,52 +250,51 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 
 			$bAllDisabled = $this->isDisableAllAutoUpdates();
 			if ( $bAllDisabled ) {
-				$aThis[ 'key_opts' ][ 'disabled' ] = array(
-					'name'    => _wpsf__( 'Disabled All' ),
+				$aThis[ 'key_opts' ][ 'disabled' ] = [
+					'name'    => __( 'Disabled All', 'wp-simple-firewall' ),
 					'enabled' => !$bAllDisabled,
 					'summary' => $bAllDisabled ?
-						_wpsf__( 'All automatic updates on this site are disabled' )
-						: _wpsf__( 'The automatic updates system is enabled' ),
+						__( 'All automatic updates on this site are disabled', 'wp-simple-firewall' )
+						: __( 'The automatic updates system is enabled', 'wp-simple-firewall' ),
 					'weight'  => 2,
 					'href'    => $this->getUrl_DirectLinkToOption( 'enable_autoupdate_disable_all' ),
-				);
+				];
 			}
 			else {
-				$oWp = $this->loadWp();
-				$bCanCore = $oWp->canCoreUpdateAutomatically();
-				$aThis[ 'key_opts' ][ 'core_minor' ] = array(
-					'name'    => _wpsf__( 'Core Updates' ),
+				$bCanCore = Services::WpGeneral()->canCoreUpdateAutomatically();
+				$aThis[ 'key_opts' ][ 'core_minor' ] = [
+					'name'    => __( 'Core Updates', 'wp-simple-firewall' ),
 					'enabled' => $bCanCore,
 					'summary' => $bCanCore ?
-						_wpsf__( 'Minor WP Core updates will be installed automatically' )
-						: _wpsf__( 'Minor WP Core updates will not be installed automatically' ),
+						__( 'Minor WP Core updates will be installed automatically', 'wp-simple-firewall' )
+						: __( 'Minor WP Core updates will not be installed automatically', 'wp-simple-firewall' ),
 					'weight'  => 2,
 					'href'    => $this->getUrl_DirectLinkToOption( 'autoupdate_core' ),
-				);
+				];
 
 				$bHasDelay = $this->isModOptEnabled() && $this->getDelayUpdatesPeriod();
-				$aThis[ 'key_opts' ][ 'delay' ] = array(
-					'name'    => _wpsf__( 'Update Delay' ),
+				$aThis[ 'key_opts' ][ 'delay' ] = [
+					'name'    => __( 'Update Delay', 'wp-simple-firewall' ),
 					'enabled' => $bHasDelay,
 					'summary' => $bHasDelay ?
-						_wpsf__( 'Automatic updates are applied after a short delay' )
-						: _wpsf__( 'Automatic updates are applied immediately' ),
+						__( 'Automatic updates are applied after a short delay', 'wp-simple-firewall' )
+						: __( 'Automatic updates are applied immediately', 'wp-simple-firewall' ),
 					'weight'  => 1,
 					'href'    => $this->getUrl_DirectLinkToOption( 'update_delay' ),
-				);
+				];
 
 				$sName = $this->getCon()->getHumanName();
 				$bSelfAuto = $this->isModOptEnabled()
 							 && in_array( $this->getSelfAutoUpdateOpt(), [ 'auto', 'immediate' ] );
-				$aThis[ 'key_opts' ][ 'self' ] = array(
-					'name'    => _wpsf__( 'Self Auto-Update' ),
+				$aThis[ 'key_opts' ][ 'self' ] = [
+					'name'    => __( 'Self Auto-Update', 'wp-simple-firewall' ),
 					'enabled' => $bSelfAuto,
 					'summary' => $bSelfAuto ?
-						sprintf( _wpsf__( '%s is automatically updated' ), $sName )
-						: sprintf( _wpsf__( "%s isn't automatically updated" ), $sName ),
+						sprintf( __( '%s is automatically updated', 'wp-simple-firewall' ), $sName )
+						: sprintf( __( "%s isn't automatically updated", 'wp-simple-firewall' ), $sName ),
 					'weight'  => 1,
 					'href'    => $this->getUrl_DirectLinkToOption( 'autoupdate_plugin_self' ),
-				);
+				];
 			}
 		}
 
@@ -315,57 +314,57 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 		switch ( $sSectionSlug ) {
 
 			case 'section_enable_plugin_feature_automatic_updates_control' :
-				$sTitle = sprintf( _wpsf__( 'Enable Module: %s' ), $this->getMainFeatureName() );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Automatic Updates lets you manage the WordPress automatic updates engine so you choose what exactly gets updated automatically.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), sprintf( _wpsf__( 'Keep the %s feature turned on.' ), _wpsf__( 'Automatic Updates' ) ) )
-				);
-				$sTitleShort = sprintf( _wpsf__( '%s/%s Module' ), _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
+				$sTitleShort = sprintf( '%s/%s', __( 'On', 'wp-simple-firewall' ), __( 'Off', 'wp-simple-firewall' ) );
+				$sTitle = sprintf( __( 'Enable Module: %s', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Automatic Updates lets you manage the WordPress automatic updates engine so you choose what exactly gets updated automatically.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), sprintf( __( 'Keep the %s feature turned on.', 'wp-simple-firewall' ), __( 'Automatic Updates', 'wp-simple-firewall' ) ) )
+				];
 				break;
 
 			case 'section_disable_all_wordpress_automatic_updates' :
-				$sTitle = _wpsf__( 'Disable ALL WordPress Automatic Updates' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'If you never want WordPress to automatically update anything on your site, turn on this option.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Do not turn on this option unless you really need to block updates.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Turn Off' );
+				$sTitle = __( 'Disable ALL WordPress Automatic Updates', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'If you never want WordPress to automatically update anything on your site, turn on this option.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Do not turn on this option unless you really need to block updates.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Turn Off', 'wp-simple-firewall' );
 				break;
 
 			case 'section_automatic_plugin_self_update' :
-				$sTitle = _wpsf__( 'Automatic Plugin Self-Update' );
-				$aSummary = array(
+				$sTitle = __( 'Automatic Plugin Self-Update', 'wp-simple-firewall' );
+				$aSummary = [
 					sprintf( '%s - %s',
-						_wpsf__( 'Purpose' ),
-						sprintf( _wpsf__( 'Allows the %s plugin to automatically update itself when an update is available.' ), $sPlugName )
+						__( 'Purpose', 'wp-simple-firewall' ),
+						sprintf( __( 'Allows the %s plugin to automatically update itself when an update is available.', 'wp-simple-firewall' ), $sPlugName )
 					),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Keep this option turned on.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Self-Update' );
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Keep this option turned on.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Self-Update', 'wp-simple-firewall' );
 				break;
 
 			case 'section_automatic_updates_for_wordpress_components' :
-				$sTitle = _wpsf__( 'Automatic Updates For WordPress Components' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Control how automatic updates for each WordPress component is handled.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'You should at least allow minor updates for the WordPress core.' ) )
-				);
-				$sTitleShort = _wpsf__( 'WordPress Components' );
+				$sTitle = __( 'Automatic Updates For WordPress Components', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Control how automatic updates for each WordPress component is handled.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'You should at least allow minor updates for the WordPress core.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'WordPress Components', 'wp-simple-firewall' );
 				break;
 
 			case 'section_options' :
-				$sTitle = _wpsf__( 'Auto-Update Options' );
-				$sTitleShort = _wpsf__( 'Auto-Update Options' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Make adjustments to how automatic updates are handled on your site.' ) ),
-				);
+				$sTitle = __( 'Auto-Update Options', 'wp-simple-firewall' );
+				$sTitleShort = __( 'Auto-Update Options', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Make adjustments to how automatic updates are handled on your site.', 'wp-simple-firewall' ) ),
+				];
 				break;
 
 			default:
 				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
-		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
+		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : [];
 		$aOptionsParams[ 'title_short' ] = $sTitleShort;
 		return $aOptionsParams;
 	}
@@ -382,79 +381,79 @@ class ICWP_WPSF_FeatureHandler_Autoupdates extends ICWP_WPSF_FeatureHandler_Base
 		switch ( $sKey ) {
 
 			case 'enable_autoupdates' :
-				$sName = sprintf( _wpsf__( 'Enable %s Module' ), $this->getMainFeatureName() );
-				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Module' ), $this->getMainFeatureName() );
-				$sDescription = sprintf( _wpsf__( 'Un-Checking this option will completely disable the %s module.' ), $this->getMainFeatureName() );
+				$sName = sprintf( __( 'Enable %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sSummary = sprintf( __( 'Enable (or Disable) The %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sDescription = sprintf( __( 'Un-Checking this option will completely disable the %s module.', 'wp-simple-firewall' ), $this->getMainFeatureName() );
 				break;
 
 			case 'enable_autoupdate_disable_all' :
-				$sName = _wpsf__( 'Disable All' );
-				$sSummary = _wpsf__( 'Completely Disable WordPress Automatic Updates' );
-				$sDescription = _wpsf__( 'When selected, regardless of any other settings, all WordPress automatic updates on this site will be completely disabled!' );
+				$sName = __( 'Disable All', 'wp-simple-firewall' );
+				$sSummary = __( 'Completely Disable WordPress Automatic Updates', 'wp-simple-firewall' );
+				$sDescription = __( 'When selected, regardless of any other settings, all WordPress automatic updates on this site will be completely disabled!', 'wp-simple-firewall' );
 				break;
 
 			case 'autoupdate_plugin_self' :
-				$sName = _wpsf__( 'Auto Update Plugin' );
-				$sSummary = _wpsf__( 'Always Automatically Update This Plugin' );
+				$sName = __( 'Auto Update Plugin', 'wp-simple-firewall' );
+				$sSummary = __( 'Always Automatically Update This Plugin', 'wp-simple-firewall' );
 				$sDescription = sprintf(
-					_wpsf__( 'Regardless of any other settings, automatically update the "%s" plugin.' ),
+					__( 'Regardless of any other settings, automatically update the "%s" plugin.', 'wp-simple-firewall' ),
 					$sPlugName
 				);
 				break;
 
 			case 'autoupdate_core' :
-				$sName = _wpsf__( 'WordPress Core Updates' );
-				$sSummary = _wpsf__( 'Decide how the WordPress Core will automatically update, if at all' );
-				$sDescription = _wpsf__( 'At least automatically upgrading minor versions is recommended (and is the WordPress default).' );
+				$sName = __( 'WordPress Core Updates', 'wp-simple-firewall' );
+				$sSummary = __( 'Decide how the WordPress Core will automatically update, if at all', 'wp-simple-firewall' );
+				$sDescription = __( 'At least automatically upgrading minor versions is recommended (and is the WordPress default).', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_autoupdate_translations' :
-				$sName = _wpsf__( 'Translations' );
-				$sSummary = _wpsf__( 'Automatically Update Translations' );
-				$sDescription = _wpsf__( 'Note: Automatic updates for translations are enabled on WordPress by default.' );
+				$sName = __( 'Translations', 'wp-simple-firewall' );
+				$sSummary = __( 'Automatically Update Translations', 'wp-simple-firewall' );
+				$sDescription = __( 'Note: Automatic updates for translations are enabled on WordPress by default.', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_autoupdate_plugins' :
-				$sName = _wpsf__( 'Plugins' );
-				$sSummary = _wpsf__( 'Automatically Update All Plugins' );
-				$sDescription = _wpsf__( 'Note: Automatic updates for plugins are disabled on WordPress by default.' );
+				$sName = __( 'Plugins', 'wp-simple-firewall' );
+				$sSummary = __( 'Automatically Update All Plugins', 'wp-simple-firewall' );
+				$sDescription = __( 'Note: Automatic updates for plugins are disabled on WordPress by default.', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_individual_autoupdate_plugins' :
-				$sName = _wpsf__( 'Individually Select Plugins' );
-				$sSummary = _wpsf__( 'Select Individual Plugins To Automatically Update' );
-				$sDescription = _wpsf__( 'Turning this on will provide an option on the plugins page to select whether a plugin is automatically updated.' );
+				$sName = __( 'Individually Select Plugins', 'wp-simple-firewall' );
+				$sSummary = __( 'Select Individual Plugins To Automatically Update', 'wp-simple-firewall' );
+				$sDescription = __( 'Turning this on will provide an option on the plugins page to select whether a plugin is automatically updated.', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_autoupdate_themes' :
-				$sName = _wpsf__( 'Themes' );
-				$sSummary = _wpsf__( 'Automatically Update Themes' );
-				$sDescription = _wpsf__( 'Note: Automatic updates for themes are disabled on WordPress by default.' );
+				$sName = __( 'Themes', 'wp-simple-firewall' );
+				$sSummary = __( 'Automatically Update Themes', 'wp-simple-firewall' );
+				$sDescription = __( 'Note: Automatic updates for themes are disabled on WordPress by default.', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_autoupdate_ignore_vcs' :
-				$sName = _wpsf__( 'Ignore Version Control' );
-				$sSummary = _wpsf__( 'Ignore Version Control Systems Such As GIT and SVN' );
-				$sDescription = _wpsf__( 'If you use SVN or GIT and WordPress detects it, automatic updates are disabled by default. Check this box to ignore version control systems and allow automatic updates.' );
+				$sName = __( 'Ignore Version Control', 'wp-simple-firewall' );
+				$sSummary = __( 'Ignore Version Control Systems Such As GIT and SVN', 'wp-simple-firewall' );
+				$sDescription = __( 'If you use SVN or GIT and WordPress detects it, automatic updates are disabled by default. Check this box to ignore version control systems and allow automatic updates.', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_upgrade_notification_email' :
-				$sName = _wpsf__( 'Send Report Email' );
-				$sSummary = _wpsf__( 'Send email notices after automatic updates' );
-				$sDescription = _wpsf__( 'You can turn on/off email notices from automatic updates by un/checking this box.' );
+				$sName = __( 'Send Report Email', 'wp-simple-firewall' );
+				$sSummary = __( 'Send email notices after automatic updates', 'wp-simple-firewall' );
+				$sDescription = __( 'You can turn on/off email notices from automatic updates by un/checking this box.', 'wp-simple-firewall' );
 				break;
 
 			case 'override_email_address' :
-				$sName = _wpsf__( 'Report Email Address' );
-				$sSummary = _wpsf__( 'Where to send upgrade notification reports' );
-				$sDescription = _wpsf__( 'If this is empty, it will default to the Site Admin email address' );
+				$sName = __( 'Report Email Address', 'wp-simple-firewall' );
+				$sSummary = __( 'Where to send upgrade notification reports', 'wp-simple-firewall' );
+				$sDescription = __( 'If this is empty, it will default to the Site Admin email address', 'wp-simple-firewall' );
 				break;
 
 			case 'update_delay' :
-				$sName = _wpsf__( 'Update Delay' );
-				$sSummary = _wpsf__( 'Delay Automatic Updates For Period Of Stability' );
-				$sDescription = sprintf( _wpsf__( '%s will delay upgrades until the new update has been available for the set number of days.' ), $sPlugName )
-								.'<br />'._wpsf__( "This helps ensure updates are more stable before they're automatically applied to your site." );
+				$sName = __( 'Update Delay', 'wp-simple-firewall' );
+				$sSummary = __( 'Delay Automatic Updates For Period Of Stability', 'wp-simple-firewall' );
+				$sDescription = sprintf( __( '%s will delay upgrades until the new update has been available for the set number of days.', 'wp-simple-firewall' ), $sPlugName )
+								.'<br />'.__( "This helps ensure updates are more stable before they're automatically applied to your site.", 'wp-simple-firewall' );
 				break;
 
 			default:

@@ -275,41 +275,41 @@ class Request {
 	}
 
 	/**
-	 * @deprecated
 	 * @return int
+	 * @deprecated
 	 */
 	public function time() {
 		return $this->ts();
 	}
 
 	/**
-	 * @deprecated
 	 * @param bool $bMicro
 	 * @return int
+	 * @deprecated
 	 */
 	public function getRequestTime( $bMicro = false ) {
 		return $this->mts( $bMicro );
 	}
 
 	/**
-	 * @deprecated
 	 * @return string
+	 * @deprecated
 	 */
 	public function getRequestPath() {
 		return $this->getPath();
 	}
 
 	/**
-	 * @deprecated
 	 * @return string
+	 * @deprecated
 	 */
 	public function getRequestUri() {
 		return $this->server( 'REQUEST_URI', '' );
 	}
 
 	/**
-	 * @deprecated
 	 * @return array|false
+	 * @deprecated
 	 */
 	public function getRequestUriParts() {
 		return $this->getUriParts();

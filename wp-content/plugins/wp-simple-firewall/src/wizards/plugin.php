@@ -11,7 +11,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 * @return string
 	 */
 	protected function getPageTitle() {
-		return sprintf( _wpsf__( '%s Welcome Wizard' ), $this->getPluginCon()->getHumanName() );
+		return sprintf( __( '%s Welcome Wizard', 'wp-simple-firewall' ), $this->getPluginCon()->getHumanName() );
 	}
 
 	/**
@@ -100,23 +100,23 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 * @return string[]
 	 */
 	private function determineWizardSteps_Gdpr() {
-		return array(
+		return [
 			'start',
 			'search',
 			'results',
 			'finished',
-		);
+		];
 	}
 
 	/**
 	 * @return string[]
 	 */
 	private function determineWizardSteps_Import() {
-		return array(
+		return [
 			'start',
 			'import',
 			'finished',
-		);
+		];
 	}
 
 	/**
@@ -127,10 +127,10 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 		$oFO = $this->getModCon();
 		$oConn = $this->getPluginCon();
 
-		$aStepsSlugs = array(
+		$aStepsSlugs = [
 			'welcome',
 			'ip_detect'
-		);
+		];
 //		if ( !$oFO->isPremium() ) {
 //			$aStepsSlugs[] = 'license'; not showing it for now
 //		}
@@ -183,7 +183,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	protected function getRenderData_SlideExtra( $sStep ) {
 		$oConn = $this->getPluginCon();
 
-		$aAdditional = array();
+		$aAdditional = [];
 
 		$sCurrentWiz = $this->getWizardSlug();
 
@@ -191,50 +191,50 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 			switch ( $sStep ) {
 				case 'ip_detect':
-					$aAdditional = array(
-						'hrefs' => array(
+					$aAdditional = [
+						'hrefs' => [
 							'visitor_ip' => 'https://icwp.io/visitorip',
-						)
-					);
+						]
+					];
 					break;
 				case 'license':
 					break;
 				case 'import':
-					$aAdditional = array(
-						'hrefs' => array(
+					$aAdditional = [
+						'hrefs' => [
 							'blog_importexport' => 'https://icwp.io/av'
-						),
-						'imgs'  => array(
+						],
+						'imgs'  => [
 							'shieldnetworkmini' => $oConn->getPluginUrl_Image( 'shield/shieldnetworkmini.png' ),
-						)
-					);
+						]
+					];
 					break;
 
 				case 'optin':
 					$oUser = Services::WpUsers()->getCurrentWpUser();
-					$aAdditional = array(
-						'vars'    => array(
+					$aAdditional = [
+						'vars'    => [
 							'name'       => $oUser->first_name,
 							'user_email' => $oUser->user_email
-						),
-						'hrefs'   => array(
+						],
+						'hrefs'   => [
 							'privacy_policy' => $this->getModCon()->getDef( 'href_privacy_policy' )
-						),
-						'strings' => array(
+						],
+						'strings' => [
 							'privacy_policy' => sprintf(
 								'I certify that I have read and agree to the <a href="%s" target="_blank">Privacy Policy</a>',
 								$this->getModCon()->getDef( 'href_privacy_policy' )
 							),
-						)
-					);
+						]
+					];
 					break;
 
 				case 'thankyou':
 					break;
 
 				case 'how_shield_works':
-					$aAdditional = array(
-						'imgs'     => array(
+					$aAdditional = [
+						'imgs'     => [
 							'how_shield_works' => $oConn->getPluginUrl_Image( 'wizard/general-shield_where.png' ),
 							'modules'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_modules.png' ),
 							'options'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_options.png' ),
@@ -243,29 +243,29 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 							'actions'          => $oConn->getPluginUrl_Image( 'wizard/general-shield_actions.png' ),
 							'option_help'      => $oConn->getPluginUrl_Image( 'wizard/general-option_help.png' ),
 							'module_onoff'     => $oConn->getPluginUrl_Image( 'wizard/general-module_onoff.png' ),
-						),
-						'headings' => array(
-							'how_shield_works' => _wpsf__( 'Where to find Shield' ),
-							'modules'          => _wpsf__( 'Accessing Each Module' ),
-							'options'          => _wpsf__( 'Accessing Options' ),
-							'wizards'          => _wpsf__( 'Launching Wizards' ),
-							'help'             => _wpsf__( 'Finding Help' ),
-							'actions'          => _wpsf__( 'Actions (not Options)' ),
-							'option_help'      => _wpsf__( 'Help For Each Option' ),
-							'module_onoff'     => _wpsf__( 'Module On/Off Switch' ),
-						),
-						'captions' => array(
-							'how_shield_works' => sprintf( _wpsf__( "You'll find the main %s settings in the left-hand WordPress menu." ), $oConn->getHumanName() ),
-							'modules'          => _wpsf__( 'Shield is split up into independent modules for accessing the options of each feature.' ),
-							'options'          => _wpsf__( 'When you load a module, you can access the options by clicking on the Options Panel link.' ),
-							'wizards'          => _wpsf__( 'Launch helpful walk-through wizards for modules that have them.' ),
-							'help'             => _wpsf__( 'Each module also has a brief overview help section - there is more in-depth help available.' ),
-							'actions'          => _wpsf__( 'Certain modules have extra actions and features, e.g. Audit Trail Viewer.' )
-												  .' '._wpsf__( 'Note: Not all modules have the actions section' ),
-							'module_onoff'     => _wpsf__( 'Each module has an Enable/Disable checkbox to turn on/off all processing for that module' ),
-							'option_help'      => _wpsf__( 'To help you understand each option, most of them have a more info link, and/or a blog link, to read more' ),
-						),
-					);
+						],
+						'headings' => [
+							'how_shield_works' => __( 'Where to find Shield', 'wp-simple-firewall' ),
+							'modules'          => __( 'Accessing Each Module', 'wp-simple-firewall' ),
+							'options'          => __( 'Accessing Options', 'wp-simple-firewall' ),
+							'wizards'          => __( 'Launching Wizards', 'wp-simple-firewall' ),
+							'help'             => __( 'Finding Help', 'wp-simple-firewall' ),
+							'actions'          => __( 'Actions (not Options)', 'wp-simple-firewall' ),
+							'option_help'      => __( 'Help For Each Option', 'wp-simple-firewall' ),
+							'module_onoff'     => __( 'Module On/Off Switch', 'wp-simple-firewall' ),
+						],
+						'captions' => [
+							'how_shield_works' => sprintf( __( "You'll find the main %s settings in the left-hand WordPress menu.", 'wp-simple-firewall' ), $oConn->getHumanName() ),
+							'modules'          => __( 'Shield is split up into independent modules for accessing the options of each feature.', 'wp-simple-firewall' ),
+							'options'          => __( 'When you load a module, you can access the options by clicking on the Options Panel link.', 'wp-simple-firewall' ),
+							'wizards'          => __( 'Launch helpful walk-through wizards for modules that have them.', 'wp-simple-firewall' ),
+							'help'             => __( 'Each module also has a brief overview help section - there is more in-depth help available.', 'wp-simple-firewall' ),
+							'actions'          => __( 'Certain modules have extra actions and features, e.g. Audit Trail Viewer.', 'wp-simple-firewall' )
+												  .' '.__( 'Note: Not all modules have the actions section', 'wp-simple-firewall' ),
+							'module_onoff'     => __( 'Each module has an Enable/Disable checkbox to turn on/off all processing for that module', 'wp-simple-firewall' ),
+							'option_help'      => __( 'To help you understand each option, most of them have a more info link, and/or a blog link, to read more', 'wp-simple-firewall' ),
+						],
+					];
 					break;
 
 				default:
@@ -275,18 +275,18 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 		else if ( $sCurrentWiz == 'importexport' ) {
 			switch ( $sStep ) {
 				case 'import':
-					$aAdditional = array(
-						'hrefs' => array(
+					$aAdditional = [
+						'hrefs' => [
 							'blog_importexport' => 'https://icwp.io/av'
-						),
-						'imgs'  => array(
+						],
+						'imgs'  => [
 							'shieldnetworkmini' => $oConn->getPluginUrl_Image( 'shield/shieldnetworkmini.png' ),
-						)
-					);
+						]
+					];
 					break;
 				case 'results': //gdpr results
 
-					$aAdditional = array();
+					$aAdditional = [];
 					break;
 
 				default:
@@ -306,16 +306,16 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 						$nTotal += $aResult[ 'count' ];
 					}
 
-					$aAdditional = array(
-						'flags' => array(
+					$aAdditional = [
+						'flags' => [
 							'has_search_items' => $bHasSearchItems
-						),
-						'data'  => array(
+						],
+						'data'  => [
 							'result'      => $this->runGdprSearch(),
 							'count_total' => $nTotal,
 							'has_results' => $nTotal > 0,
-						)
-					);
+						]
+					];
 					break;
 
 				default:
@@ -333,7 +333,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 * @return \FernleafSystems\Utilities\Response
 	 */
 	private function wizardIpDetect() {
-		$oIps = \FernleafSystems\Wordpress\Services\Services::IP();
+		$oIps = Services::IP();
 		$sIp = Services::Request()->post( 'ip' );
 
 		$oResponse = new \FernleafSystems\Utilities\Response();
@@ -358,7 +358,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				$oModule->setVisitorAddressSource( $sSource )
 						->savePluginOptions();
 				$oResponse->setSuccessful( true );
-				$sMessage = _wpsf__( 'Success!' ).' '
+				$sMessage = __( 'Success!', 'wp-simple-firewall' ).' '
 							.sprintf( '"%s" was found to be the best source of visitor IP addresses for your site.', $sSource );
 			}
 		}
@@ -379,14 +379,14 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 			$bSuccess = $oModule->verifyLicense( true )
 								->hasValidWorkingLicense();
 			if ( $bSuccess ) {
-				$sMessage = _wpsf__( 'License was found and successfully installed.' );
+				$sMessage = __( 'License was found and successfully installed.', 'wp-simple-firewall' );
 			}
 			else {
-				$sMessage = _wpsf__( 'License could not be found.' );
+				$sMessage = __( 'License could not be found.', 'wp-simple-firewall' );
 			}
 		}
 		catch ( Exception $oE ) {
-			$sMessage = _wpsf__( $oE->getMessage() );
+			$sMessage = __( $oE->getMessage(), 'wp-simple-firewall' );
 		}
 
 		return ( new \FernleafSystems\Utilities\Response() )
@@ -411,18 +411,18 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 		$nCode = $oProc->getSubProImportExport()
 					   ->runImport( $sMasterSiteUrl, $sSecretKey, $bEnabledNetwork, $sSiteResponse );
 
-		$aErrors = array(
-			_wpsf__( 'Options imported successfully to your site.' ), // success
-			_wpsf__( 'Secret key was empty.' ),
-			_wpsf__( 'Secret key was not 40 characters long.' ),
-			_wpsf__( 'Secret key contains invalid characters - it should be letters and numbers only.' ),
-			_wpsf__( 'Source site URL could not be parsed correctly.' ),
-			_wpsf__( 'Could not parse the response from the site.' )
-			.' '._wpsf__( 'Check the secret key is correct for the remote site.' ),
-			_wpsf__( 'Failure response returned from the site.' ),
-			sprintf( _wpsf__( 'Remote site responded with - %s' ), $sSiteResponse ),
-			_wpsf__( 'Data returned from the site was empty.' )
-		);
+		$aErrors = [
+			__( 'Options imported successfully to your site.', 'wp-simple-firewall' ), // success
+			__( 'Secret key was empty.', 'wp-simple-firewall' ),
+			__( 'Secret key was not 40 characters long.', 'wp-simple-firewall' ),
+			__( 'Secret key contains invalid characters - it should be letters and numbers only.', 'wp-simple-firewall' ),
+			__( 'Source site URL could not be parsed correctly.', 'wp-simple-firewall' ),
+			__( 'Could not parse the response from the site.', 'wp-simple-firewall' )
+			.' '.__( 'Check the secret key is correct for the remote site.', 'wp-simple-firewall' ),
+			__( 'Failure response returned from the site.', 'wp-simple-firewall' ),
+			sprintf( __( 'Remote site responded with - %s', 'wp-simple-firewall' ), $sSiteResponse ),
+			__( 'Data returned from the site was empty.', 'wp-simple-firewall' )
+		];
 
 		$sMessage = isset( $aErrors[ $nCode ] ) ? $aErrors[ $nCode ] : 'Unknown Error';
 
@@ -453,10 +453,10 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				$oModule->setNewAccessKeyManually( $sKey )
 						->setSecurityAdminStatusOnOff( true );
 				$bSuccess = true;
-				$sMessage = _wpsf__( 'Security Admin setup was successful.' );
+				$sMessage = __( 'Security Admin setup was successful.', 'wp-simple-firewall' );
 			}
 			catch ( Exception $oE ) {
-				$sMessage = _wpsf__( $oE->getMessage() );
+				$sMessage = __( $oE->getMessage(), 'wp-simple-firewall' );
 			}
 		}
 
@@ -472,7 +472,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		$sInput = Services::Request()->post( 'AuditTrailOption' );
 		$bSuccess = false;
-		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
+		$sMessage = __( 'No changes were made as no option was selected', 'wp-simple-firewall' );
 
 		if ( !empty( $sInput ) ) {
 			$bEnabled = $sInput === 'Y';
@@ -484,12 +484,12 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 			$bSuccess = $oModule->isModuleEnabled() === $bEnabled;
 			if ( $bSuccess ) {
-				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Audit Trail' ),
-					$oModule->isModuleEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+				$sMessage = sprintf( '%s has been %s.', __( 'Audit Trail', 'wp-simple-firewall' ),
+					$oModule->isModuleEnabled() ? __( 'Enabled', 'wp-simple-firewall' ) : __( 'Disabled', 'wp-simple-firewall' )
 				);
 			}
 			else {
-				$sMessage = sprintf( _wpsf__( '%s setting could not be changed at this time.' ), _wpsf__( 'Audit Trail' ) );
+				$sMessage = sprintf( __( '%s setting could not be changed at this time.', 'wp-simple-firewall' ), __( 'Audit Trail', 'wp-simple-firewall' ) );
 			}
 		}
 
@@ -505,7 +505,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		$sInput = Services::Request()->post( 'IpManagerOption' );
 		$bSuccess = false;
-		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
+		$sMessage = __( 'No changes were made as no option was selected', 'wp-simple-firewall' );
 
 		if ( !empty( $sInput ) ) {
 			$bEnabled = $sInput === 'Y';
@@ -517,12 +517,12 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 			$bSuccess = $oModule->isModuleEnabled() === $bEnabled;
 			if ( $bSuccess ) {
-				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'IP Manager' ),
-					$oModule->isModuleEnabled() ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+				$sMessage = sprintf( '%s has been %s.', __( 'IP Manager', 'wp-simple-firewall' ),
+					$oModule->isModuleEnabled() ? __( 'Enabled', 'wp-simple-firewall' ) : __( 'Disabled', 'wp-simple-firewall' )
 				);
 			}
 			else {
-				$sMessage = sprintf( _wpsf__( '%s setting could not be changed at this time.' ), _wpsf__( 'IP Manager' ) );
+				$sMessage = sprintf( __( '%s setting could not be changed at this time.', 'wp-simple-firewall' ), __( 'IP Manager', 'wp-simple-firewall' ) );
 			}
 		}
 
@@ -538,7 +538,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		$sInput = Services::Request()->post( 'LoginProtectOption' );
 		$bSuccess = false;
-		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
+		$sMessage = __( 'No changes were made as no option was selected', 'wp-simple-firewall' );
 
 		if ( !empty( $sInput ) ) {
 			$bEnabled = $sInput === 'Y';
@@ -553,12 +553,12 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 			$bSuccess = $oModule->isEnabledGaspCheck() === $bEnabled;
 			if ( $bSuccess ) {
-				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Login Guard' ),
-					$bEnabled ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+				$sMessage = sprintf( '%s has been %s.', __( 'Login Guard', 'wp-simple-firewall' ),
+					$bEnabled ? __( 'Enabled', 'wp-simple-firewall' ) : __( 'Disabled', 'wp-simple-firewall' )
 				);
 			}
 			else {
-				$sMessage = sprintf( _wpsf__( '%s setting could not be changed at this time.' ), _wpsf__( 'Login Guard' ) );
+				$sMessage = sprintf( __( '%s setting could not be changed at this time.', 'wp-simple-firewall' ), __( 'Login Guard', 'wp-simple-firewall' ) );
 			}
 		}
 
@@ -576,7 +576,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 		$oModule = $this->getPluginCon()->getModule( 'plugin' );
 
 		$bSuccess = false;
-		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
+		$sMessage = __( 'No changes were made as no option was selected', 'wp-simple-firewall' );
 
 		$sForm = $oReq->post( 'wizard-step' );
 		if ( $sForm == 'optin_badge' ) {
@@ -586,7 +586,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				$bEnabled = $sInput === 'Y';
 				$oModule->setIsDisplayPluginBadge( $bEnabled );
 				$bSuccess = true;
-				$sMessage = _wpsf__( 'Preferences have been saved.' );
+				$sMessage = __( 'Preferences have been saved.', 'wp-simple-firewall' );
 			}
 		}
 		else if ( $sForm == 'optin_usage' ) {
@@ -596,7 +596,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				$bEnabled = $sInput === 'Y';
 				$oModule->setPluginTrackingPermission( $bEnabled );
 				$bSuccess = true;
-				$sMessage = _wpsf__( 'Preferences have been saved.' );
+				$sMessage = __( 'Preferences have been saved.', 'wp-simple-firewall' );
 			}
 		}
 
@@ -615,12 +615,12 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		if ( !empty( $sInput ) ) {
 			if ( $sInput === 'CLEAR' ) {
-				$aItems = array();
+				$aItems = [];
 			}
 			else {
 				$aItems[] = $sInput;
 				if ( $this->loadDP()->validEmail( $sInput ) ) {
-					$oUser = $this->loadWpUsers()->getUserByEmail( $sInput );
+					$oUser = Services::WpUsers()->getUserByEmail( $sInput );
 					if ( !is_null( $oUser ) ) {
 						$aItems[] = $oUser->user_login;
 					}
@@ -628,7 +628,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 				else {
 					$sUsername = sanitize_user( $sInput );
 					if ( !empty( $sUsername ) ) {
-						$oUser = $this->loadWpUsers()->getUserByUsername( $sUsername );
+						$oUser = Services::WpUsers()->getUserByUsername( $sUsername );
 						if ( $oUser instanceof WP_User ) {
 							$aItems[] = $oUser->user_email;
 						}
@@ -648,7 +648,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 		return ( new \FernleafSystems\Utilities\Response() )
 			->setSuccessful( true )
 			->setData( [ 'sSearchList' => $sSearchList ] )
-			->setMessageText( _wpsf__( 'Search item added.' ) );
+			->setMessageText( __( 'Search item added.', 'wp-simple-firewall' ) );
 	}
 
 	private function wizardConfirmDelete() {
@@ -667,10 +667,10 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 						 ->addWhereSearch( 'message', $sItem )
 						 ->all();
 			}
-			$sMessage = _wpsf__( 'All entries were deleted' );
+			$sMessage = __( 'All entries were deleted', 'wp-simple-firewall' );
 		}
 		else {
-			$sMessage = _wpsf__( 'Please check the box to confirm deletion.' );
+			$sMessage = __( 'Please check the box to confirm deletion.', 'wp-simple-firewall' );
 		}
 
 		return ( new \FernleafSystems\Utilities\Response() )
@@ -685,7 +685,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 		$sInput = Services::Request()->post( 'CommentsFilterOption' );
 		$bSuccess = false;
-		$sMessage = _wpsf__( 'No changes were made as no option was selected' );
+		$sMessage = __( 'No changes were made as no option was selected', 'wp-simple-firewall' );
 
 		if ( !empty( $sInput ) ) {
 			$bEnabled = $sInput === 'Y';
@@ -700,12 +700,12 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 
 			$bSuccess = $oModule->isEnabledGaspCheck() === $bEnabled;
 			if ( $bSuccess ) {
-				$sMessage = sprintf( '%s has been %s.', _wpsf__( 'Comment SPAM Protection' ),
-					$bEnabled ? _wpsf__( 'Enabled' ) : _wpsf__( 'Disabled' )
+				$sMessage = sprintf( '%s has been %s.', __( 'Comment SPAM Protection', 'wp-simple-firewall' ),
+					$bEnabled ? __( 'Enabled', 'wp-simple-firewall' ) : __( 'Disabled', 'wp-simple-firewall' )
 				);
 			}
 			else {
-				$sMessage = sprintf( _wpsf__( '%s setting could not be changed at this time.' ), _wpsf__( 'Comment SPAM Protection' ) );
+				$sMessage = sprintf( __( '%s setting could not be changed at this time.', 'wp-simple-firewall' ), __( 'Comment SPAM Protection', 'wp-simple-firewall' ) );
 			}
 		}
 
@@ -718,10 +718,9 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 * @return array
 	 */
 	private function getGdprSearchItems() {
-		$aItems = $this->loadWp()
-					   ->getTransient( $this->getPluginCon()->prefix( 'gdpr-items' ) );
+		$aItems = Services::WpGeneral()->getTransient( $this->getPluginCon()->prefix( 'gdpr-items' ) );
 		if ( !is_array( $aItems ) ) {
-			$aItems = array();
+			$aItems = [];
 		}
 		return $aItems;
 	}
@@ -732,15 +731,15 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 	 */
 	private function setGdprSearchItems( $aItems ) {
 		if ( !is_array( $aItems ) ) {
-			$aItems = array();
+			$aItems = [];
 		}
 		$aItems = array_filter( array_unique( $aItems ) );
-		$this->loadWp()
-			 ->setTransient(
-				 $this->getPluginCon()->prefix( 'gdpr-items' ),
-				 $aItems,
-				 MINUTE_IN_SECONDS*10
-			 );
+		Services::WpGeneral()
+				->setTransient(
+					$this->getPluginCon()->prefix( 'gdpr-items' ),
+					$aItems,
+					MINUTE_IN_SECONDS*10
+				);
 		return $aItems;
 	}
 
@@ -755,7 +754,7 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 						 ->getQuerySelector()
 						 ->setResultsAsVo( false );
 
-		$aItems = array();
+		$aItems = [];
 		foreach ( $this->getGdprSearchItems() as $sItem ) {
 			try {
 				$aResults = $oFinder->reset()
@@ -767,14 +766,14 @@ class ICWP_WPSF_Wizard_Plugin extends ICWP_WPSF_Wizard_BaseWpsf {
 									->query();
 			}
 			catch ( \Exception $oE ) {
-				$aResults = array();
+				$aResults = [];
 			}
 //			$aResults = array_intersect_key( $aResults, array_flip( [ 'wp_username', 'message' ] ) );
-			$aItems[ $sItem ] = array(
+			$aItems[ $sItem ] = [
 				'entries' => $aResults,
 				'count'   => count( $aResults ),
 				'has'     => count( $aResults ) > 0,
-			);
+			];
 		}
 		return $aItems;
 	}

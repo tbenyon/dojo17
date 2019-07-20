@@ -78,11 +78,11 @@ class Plugins {
 	 */
 	public function install( $sUrlToInstall, $bOverwrite = true, $bMaintenanceMode = false ) {
 
-		$aResult = array(
+		$aResult = [
 			'successful'  => true,
 			'plugin_info' => '',
-			'errors'      => array()
-		);
+			'errors'      => []
+		];
 
 		$oUpgraderSkin = new Upgrades\UpgraderSkin();
 		$oUpgrader = new Upgrades\PluginUpgrader( $oUpgraderSkin );
@@ -122,12 +122,12 @@ class Plugins {
 	public function installFromWpOrg( $sSlug ) {
 		include_once( ABSPATH.'wp-admin/includes/plugin-install.php' );
 
-		$api = plugins_api( 'plugin_information', array(
+		$api = plugins_api( 'plugin_information', [
 			'slug'   => $sSlug,
-			'fields' => array(
+			'fields' => [
 				'sections' => false,
-			),
-		) );
+			],
+		] );
 
 		if ( !is_wp_error( $api ) ) {
 			return $this->install( $api->download_link, true, true );
@@ -180,14 +180,14 @@ class Plugins {
 	 */
 	public function update( $sFile ) {
 
-		$aResult = array(
+		$aResult = [
 			'successful' => 1,
-			'errors'     => array()
-		);
+			'errors'     => []
+		];
 
 		$oUpgraderSkin = new Upgrades\BulkPluginUpgraderSkin();
 		ob_start();
-		( new Upgrades\PluginUpgrader( $oUpgraderSkin ) )->bulk_upgrade( array( $sFile ) );
+		( new Upgrades\PluginUpgrader( $oUpgraderSkin ) )->bulk_upgrade( [ $sFile ] );
 		if ( ob_get_contents() ) {
 			// for some reason this errors with no buffer present
 			ob_end_clean();
@@ -259,6 +259,22 @@ class Plugins {
 
 		return $sFilename;
 	}
+	/**
+	 * @param string $sDirName
+	 * @return string|null
+	 */
+	public function findPluginFileFromDirName( $sDirName ) {
+		$sFile = null;
+		if ( !empty( $sDirName ) ) {
+			foreach ( $this->getInstalledBaseFiles() as $sF ) {
+				if ( strpos( $sFile, $sDirName.'/' ) === 0 ) {
+					$sFile = $sF;
+					break;
+				}
+			}
+		}
+		return $sFile;
+	}
 
 	/**
 	 * @param string $sFile - plugin base file, e.g. wp-folder/wp-plugin.php
@@ -274,11 +290,11 @@ class Plugins {
 	 */
 	public function getLinkPluginActivate( $sPluginFile ) {
 		$sUrl = self_admin_url( 'plugins.php' );
-		$aQueryArgs = array(
+		$aQueryArgs = [
 			'action'   => 'activate',
 			'plugin'   => urlencode( $sPluginFile ),
 			'_wpnonce' => wp_create_nonce( 'activate-plugin_'.$sPluginFile )
-		);
+		];
 		return add_query_arg( $aQueryArgs, $sUrl );
 	}
 
@@ -288,11 +304,11 @@ class Plugins {
 	 */
 	public function getLinkPluginDeactivate( $sPluginFile ) {
 		$sUrl = self_admin_url( 'plugins.php' );
-		$aQueryArgs = array(
+		$aQueryArgs = [
 			'action'   => 'deactivate',
 			'plugin'   => urlencode( $sPluginFile ),
 			'_wpnonce' => wp_create_nonce( 'deactivate-plugin_'.$sPluginFile )
-		);
+		];
 		return add_query_arg( $aQueryArgs, $sUrl );
 	}
 
@@ -302,11 +318,11 @@ class Plugins {
 	 */
 	public function getLinkPluginUpgrade( $sPluginFile ) {
 		$sUrl = self_admin_url( 'update.php' );
-		$aQueryArgs = array(
+		$aQueryArgs = [
 			'action'   => 'upgrade-plugin',
 			'plugin'   => urlencode( $sPluginFile ),
 			'_wpnonce' => wp_create_nonce( 'upgrade-plugin_'.$sPluginFile )
-		);
+		];
 		return add_query_arg( $aQueryArgs, $sUrl );
 	}
 
@@ -315,14 +331,7 @@ class Plugins {
 	 * @return array|null
 	 */
 	public function getPlugin( $sPluginFile ) {
-		$aPlugin = null;
-
-		$aPlugins = $this->getPlugins();
-		if ( !empty( $sPluginFile ) && !empty( $aPlugins )
-			 && is_array( $aPlugins ) && array_key_exists( $sPluginFile, $aPlugins ) ) {
-			$aPlugin = $aPlugins[ $sPluginFile ];
-		}
-		return $aPlugin;
+		return $this->isInstalled( $sPluginFile ) ? $this->getPlugins()[ $sPluginFile ] : null;
 	}
 
 	/**
@@ -367,6 +376,13 @@ class Plugins {
 	}
 
 	/**
+	 * @return array
+	 */
+	public function getInstalledBaseFiles() {
+		return array_keys( $this->getPlugins() );
+	}
+
+	/**
 	 * @return string[]
 	 */
 	public function getInstalledPluginFiles() {
@@ -392,7 +408,7 @@ class Plugins {
 		if ( !function_exists( 'get_plugins' ) ) {
 			require_once( ABSPATH.'wp-admin/includes/plugin.php' );
 		}
-		return function_exists( 'get_plugins' ) ? get_plugins() : array();
+		return function_exists( 'get_plugins' ) ? get_plugins() : [];
 	}
 
 	/**
@@ -415,8 +431,8 @@ class Plugins {
 	public function getAllExtendedData() {
 		$oData = Services::WpGeneral()->getTransient( 'update_plugins' );
 		return array_merge(
-			isset( $oData->no_update ) ? $oData->no_update : array(),
-			isset( $oData->response ) ? $oData->response : array()
+			isset( $oData->no_update ) ? $oData->no_update : [],
+			isset( $oData->response ) ? $oData->response : []
 		);
 	}
 
@@ -426,14 +442,14 @@ class Plugins {
 	 */
 	public function getExtendedData( $sBaseFile ) {
 		$aData = $this->getAllExtendedData();
-		return isset( $aData[ $sBaseFile ] ) ? $aData[ $sBaseFile ] : array();
+		return isset( $aData[ $sBaseFile ] ) ? $aData[ $sBaseFile ] : [];
 	}
 
 	/**
 	 * @return array
 	 */
 	public function getAllSlugs() {
-		$aSlugs = array();
+		$aSlugs = [];
 
 		foreach ( $this->getAllExtendedData() as $sBaseName => $oPlugData ) {
 			if ( isset( $oPlugData->slug ) ) {
@@ -490,7 +506,7 @@ class Plugins {
 			$this->checkForUpdates();
 		}
 		$aUpdates = Services::WpGeneral()->getWordpressUpdates( 'plugins' );
-		return is_array( $aUpdates ) ? $aUpdates : array();
+		return is_array( $aUpdates ) ? $aUpdates : [];
 	}
 
 	/**
@@ -514,11 +530,11 @@ class Plugins {
 	 * @return string
 	 */
 	public function getUrl_Upgrade( $sPluginFile ) {
-		$aQueryArgs = array(
+		$aQueryArgs = [
 			'action'   => 'upgrade-plugin',
 			'plugin'   => urlencode( $sPluginFile ),
 			'_wpnonce' => wp_create_nonce( 'upgrade-plugin_'.$sPluginFile )
-		);
+		];
 		return add_query_arg( $aQueryArgs, self_admin_url( 'update.php' ) );
 	}
 
@@ -529,11 +545,11 @@ class Plugins {
 	 */
 	protected function getUrl_Action( $sPluginFile, $sAction ) {
 		return add_query_arg(
-			array(
+			[
 				'action'   => $sAction,
 				'plugin'   => urlencode( $sPluginFile ),
 				'_wpnonce' => wp_create_nonce( $sAction.'-plugin_'.$sPluginFile )
-			),
+			],
 			self_admin_url( 'plugins.php' )
 		);
 	}
@@ -551,12 +567,34 @@ class Plugins {
 	 * @return bool
 	 */
 	public function isInstalled( $sFile ) {
-		return !empty( $sFile ) && !is_null( $this->getPlugin( $sFile ) );
+		return !empty( $sFile ) && in_array( $sFile, $this->getInstalledBaseFiles() );
+	}
+
+	/**
+	 * @param string $sBaseFile
+	 * @return bool
+	 */
+	public function isPluginAutomaticallyUpdated( $sBaseFile ) {
+		$oUpdater = Services::WpGeneral()->getWpAutomaticUpdater();
+		if ( !$oUpdater ) {
+			return false;
+		}
+
+		// Due to a change in the filter introduced in version 3.8.2
+		if ( Services::WpGeneral()->getWordpressIsAtLeastVersion( '3.8.2' ) ) {
+			$mPluginItem = new \stdClass();
+			$mPluginItem->plugin = $sBaseFile;
+		}
+		else {
+			$mPluginItem = $sBaseFile;
+		}
+
+		return $oUpdater->should_update( 'plugin', $mPluginItem, WP_PLUGIN_DIR );
 	}
 
 	/**
 	 * @param string $sFile
-	 * @return boolean|\stdClass
+	 * @return bool
 	 */
 	public function isUpdateAvailable( $sFile ) {
 		return !is_null( $this->getUpdateInfo( $sFile ) );

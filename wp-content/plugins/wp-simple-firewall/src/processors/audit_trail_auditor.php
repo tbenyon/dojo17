@@ -1,7 +1,6 @@
 <?php
 
 use FernleafSystems\Wordpress\Plugin\Shield\Databases\AuditTrail;
-use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_AuditTrail_Auditor extends ICWP_WPSF_BaseDbProcessor {
 
@@ -17,7 +16,7 @@ class ICWP_WPSF_Processor_AuditTrail_Auditor extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	public function init() {
 		parent::init();
-		add_action( $this->getMod()->prefix( 'add_new_audit_entry' ), array( $this, 'addAuditTrialEntry' ) );
+		add_action( $this->getCon()->prefix( 'add_new_audit_entry' ), [ $this, 'addAuditTrialEntry' ] );
 	}
 
 	public function cleanupDatabase() {
@@ -148,7 +147,7 @@ class ICWP_WPSF_Processor_AuditTrail_Auditor extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'audit_trail_table_columns' );
-		return ( is_array( $aDef ) ? $aDef : array() );
+		return ( is_array( $aDef ) ? $aDef : [] );
 	}
 
 	/**

@@ -106,7 +106,7 @@ class Render {
 	 * @return $this
 	 */
 	public function clearRenderVars() {
-		return $this->setRenderVars( array() );
+		return $this->setRenderVars( [] );
 	}
 
 	/**
@@ -115,10 +115,10 @@ class Render {
 	protected function getTwigEnvironment() {
 		return new \Twig_Environment(
 			new \Twig_Loader_Filesystem( $this->getTemplateRoots() ),
-			array(
+			[
 				'debug'            => true,
 				'strict_variables' => true,
-			)
+			]
 		);
 	}
 
@@ -135,11 +135,11 @@ class Render {
 	 */
 	public function getTemplateEngine() {
 		if ( !isset( $this->nTemplateEngine )
-			 || !in_array( $this->nTemplateEngine, array(
+			 || !in_array( $this->nTemplateEngine, [
 				self::TEMPLATE_ENGINE_TWIG,
 				self::TEMPLATE_ENGINE_PHP,
 				self::TEMPLATE_ENGINE_HTML
-			) ) ) {
+			] ) ) {
 			$this->nTemplateEngine = self::TEMPLATE_ENGINE_PHP;
 		}
 		return $this->nTemplateEngine;
@@ -187,17 +187,16 @@ class Render {
 	 */
 	private function getTemplateRootsPlain() {
 		if ( !is_array( $this->aTemplateRoots ) ) {
-			$this->aTemplateRoots = array();
+			$this->aTemplateRoots = [];
 		}
 		return $this->aTemplateRoots;
 	}
-
 
 	/**
 	 * @return array
 	 */
 	public function getRenderVars() {
-		return is_array( $this->aRenderVars ) ? $this->aRenderVars : array();
+		return is_array( $this->aRenderVars ) ? $this->aRenderVars : [];
 	}
 
 	/**

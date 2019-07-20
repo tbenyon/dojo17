@@ -47,12 +47,13 @@
       "type":        "promo"
     },
     "plugin-mailing-list-signup": {
-      "id":          "plugin-mailing-list-signup",
-      "schedule":    "once",
-      "valid_admin": true,
-      "delay_days":  15,
-      "type":        "promo",
-      "twig":        true
+      "id":           "plugin-mailing-list-signup",
+      "schedule":     "once",
+      "valid_admin":  true,
+      "delay_days":   15,
+      "type":         "promo",
+      "twig":         true,
+      "drip_form_id": "250437573"
     },
     "rate-plugin":                {
       "id":          "rate-plugin",
@@ -64,25 +65,28 @@
   },
   "sections":      [
     {
-      "slug":        "section_defaults",
-      "primary":     true,
-      "title":       "Plugin Defaults",
-      "title_short": "Plugin Defaults"
+      "slug":          "section_defaults",
+      "primary":       true,
+      "title":         "Plugin Defaults",
+      "title_short":   "Plugin Defaults",
+      "help_video_id": "338533495"
     },
     {
-      "slug":        "section_general_plugin_options",
-      "title":       "General Plugin Options",
-      "title_short": "General Options"
+      "slug":          "section_general_plugin_options",
+      "title":         "General Plugin Options",
+      "title_short":   "General Options",
+      "help_video_id": "338540386"
+    },
+    {
+      "slug":          "section_third_party_google",
+      "title":         "Google reCAPTCHA",
+      "title_short":   "Google reCAPTCHA",
+      "help_video_id": "338546796"
     },
     {
       "slug":        "section_importexport",
       "title":       "Import / Export",
       "title_short": "Import / Export"
-    },
-    {
-      "slug":        "section_third_party_google",
-      "title":       "Google",
-      "title_short": "Google"
     },
     {
       "slug":        "section_global_security_options",
@@ -368,6 +372,13 @@
       "default":      0
     },
     {
+      "key":          "activated_at",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "type":         "integer",
+      "default":      0
+    },
+    {
       "key":          "importexport_secretkey_expires_at",
       "section":      "section_non_ui",
       "transferable": false,
@@ -416,6 +427,13 @@
       "section":      "section_non_ui",
       "type":         "text",
       "default":      ""
+    },
+    {
+      "key":          "openssl_private_key",
+      "transferable": false,
+      "section":      "section_non_ui",
+      "type":         "text",
+      "default":      ""
     }
   ],
   "definitions":   {
@@ -433,17 +451,30 @@
       "created_at",
       "deleted_at"
     ],
+    "geoip_table_name":       "geoip",
+    "geoip_table_columns":    [
+      "id",
+      "ip",
+      "meta",
+      "created_at",
+      "deleted_at"
+    ],
     "active_plugin_features": [
       {
         "slug":          "insights",
         "storage_key":   "insights",
-        "menu_priority": 5,
-        "min_php":       "5.4"
+        "load_priority": 1,
+        "menu_priority": 5
       },
       {
         "slug":          "admin_access_restriction",
         "storage_key":   "admin_access_restriction",
         "load_priority": 11
+      },
+      {
+        "slug":          "ips",
+        "storage_key":   "ips",
+        "load_priority": 12
       },
       {
         "slug":        "hack_protect",
@@ -477,11 +508,6 @@
       {
         "slug":        "lockdown",
         "storage_key": "lockdown"
-      },
-      {
-        "slug":          "ips",
-        "storage_key":   "ips",
-        "load_priority": 12
       },
       {
         "slug":          "statistics",
@@ -530,9 +556,6 @@
           "ip_detect":                {
             "title": "IP Detection"
           },
-          "license":                  {
-            "title": "Go Pro"
-          },
           "admin_access_restriction": {
             "title": "Security Admin"
           },
@@ -557,28 +580,6 @@
           "thankyou":                 {
             "security_admin": false,
             "title":          "Thank You!"
-          }
-        }
-      },
-      "gdpr":    {
-        "title":                "GDPR Data Wizard",
-        "desc":                 "Walks you through the searching and removal of personally identifiable data.",
-        "min_user_permissions": "manage_options",
-        "has_premium":          true,
-        "steps":                {
-          "start":    {
-            "security_admin": false,
-            "title":          "Start: GDPR Compliance"
-          },
-          "search":   {
-            "title": "Input Search"
-          },
-          "results":  {
-            "title": "Search Results"
-          },
-          "finished": {
-            "security_admin": false,
-            "title":          "Finished: GDPR Compliance"
           }
         }
       }

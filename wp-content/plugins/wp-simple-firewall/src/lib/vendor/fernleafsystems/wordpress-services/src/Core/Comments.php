@@ -11,9 +11,27 @@ use FernleafSystems\Wordpress\Services\Services;
 class Comments {
 
 	/**
-	 * @var bool
+	 * @param string $sAuthorEmail
+	 * @return bool
 	 */
-	protected $bIsCommentSubmission;
+	public function countApproved( $sAuthorEmail ) {
+		$nCount = 0;
+
+		if ( Services::Data()->validEmail( $sAuthorEmail ) ) {
+			$oDb = Services::WpDb();
+			$sQuery = sprintf(
+				"SELECT COUNT(*) FROM %s
+				WHERE
+					comment_author_email = '%s'
+					AND comment_approved = 1 ",
+				$oDb->getTable_Comments(),
+				esc_sql( $sAuthorEmail )
+			);
+			$nCount = (int)$oDb->getVar( $sQuery );
+		}
+
+		return $nCount;
+	}
 
 	/**
 	 * @param int $nId
@@ -41,8 +59,7 @@ class Comments {
 		}
 		$bOpen = is_a( $oPost, '\WP_Post' )
 				 && comments_open( $oPost->ID )
-				 && get_post_status( $oPost ) != 'trash'
-				 && !post_password_required( $oPost->ID );
+				 && get_post_status( $oPost ) != 'trash';
 		return $bOpen;
 	}
 
@@ -50,7 +67,7 @@ class Comments {
 	 * @return bool
 	 */
 	public function isCommentsOpenByDefault() {
-		return ( Services::WpGeneral()->getOption( 'default_comment_status' ) == 'open' );
+		return Services::WpGeneral()->getOption( 'default_comment_status' ) === 'open';
 	}
 
 	/**
@@ -58,67 +75,38 @@ class Comments {
 	 * @return bool
 	 */
 	public function isCommentAuthorPreviouslyApproved( $sAuthorEmail ) {
-
-		if ( empty( $sAuthorEmail ) || !is_email( $sAuthorEmail ) ) {
-			return false;
-		}
-
-		$oDb = Services::WpDb();
-		$sQuery = "
-				SELECT comment_approved
-				FROM %s
-				WHERE
-					comment_author_email = '%s'
-					AND comment_approved = '1'
-					LIMIT 1
-			";
-
-		$sQuery = sprintf(
-			$sQuery,
-			$oDb->getTable_Comments(),
-			esc_sql( $sAuthorEmail )
-		);
-		return $oDb->getVar( $sQuery ) == 1;
+		return $this->countApproved( $sAuthorEmail ) > 0;
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isCommentSubmission() {
-		if ( !isset( $this->bIsCommentSubmission ) ) {
-			$this->bIsCommentSubmission = Services::Request()->isPost()
-										  && Services::WpPost()->getIsCurrentPage( 'wp-comments-post.php' );
-			if ( $this->bIsCommentSubmission ) {
-				$nPostId = Services::Request()->post( 'comment_post_ID' );
-				$this->bIsCommentSubmission = !empty( $nPostId ) && is_numeric( $nPostId );
-			}
-		}
-		return $this->bIsCommentSubmission;
+		$oReq = Services::Request();
+		$nPostId = $oReq->post( 'comment_post_ID' );
+		return $oReq->isPost() && !empty( $nPostId ) && is_numeric( $nPostId )
+			   && Services::WpPost()->isCurrentPage( 'wp-comments-post.php' );
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function getCommentSubmissionEmail() {
-		$sData = null;
-		if ( $this->isCommentSubmission() ) {
-			$sData = Services::Request()->query( 'email' );
-			$sData = is_string( $sData ) ? trim( $sData ) : null;
-		}
-		return $sData;
+		$sEmail = $this->isCommentSubmission() ? trim( (string)Services::Request()->query( 'email', '' ) ) : '';
+		return Services::Data()->validEmail( $sEmail ) ? $sEmail : null;
 	}
 
 	/**
 	 * @return array
 	 */
 	public function getCommentSubmissionComponents() {
-		return array(
+		return [
 			'comment_post_ID',
 			'author',
 			'email',
 			'url',
 			'comment',
 			'comment_parent',
-		);
+		];
 	}
 }

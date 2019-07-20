@@ -43,10 +43,10 @@ class ServiceProviders {
 		$sStoreKey = $this->getPrefixedStoreKey( 'serviceips_cloudflare' );
 		$aIps = $oWp->getTransient( $sStoreKey );
 		if ( empty( $aIps ) ) {
-			$aIps = array(
+			$aIps = [
 				4 => $this->downloadServiceIps_Cloudflare( 4 ),
 				6 => $this->downloadServiceIps_Cloudflare( 6 )
-			);
+			];
 			$oWp->setTransient( $sStoreKey, $aIps, WEEK_IN_SECONDS*4 );
 		}
 		return $aIps;
@@ -72,7 +72,7 @@ class ServiceProviders {
 	 * @return string[]
 	 */
 	public function getIps_DuckDuckGo() {
-		return array( '107.20.237.51', '23.21.226.191', '107.21.1.8', '54.208.102.37' );
+		return [ '107.20.237.51', '23.21.226.191', '107.21.1.8', '54.208.102.37' ];
 	}
 
 	/**
@@ -117,10 +117,10 @@ class ServiceProviders {
 		$sStoreKey = $this->getPrefixedStoreKey( 'serviceips_pingdom' );
 		$aIps = $oWp->getTransient( $sStoreKey );
 		if ( empty( $aIps ) ) {
-			$aIps = array(
+			$aIps = [
 				4 => $this->downloadServiceIps_Pingdom( 4 ),
 				6 => $this->downloadServiceIps_Pingdom( 6 )
-			);
+			];
 			$oWp->setTransient( $sStoreKey, $aIps, WEEK_IN_SECONDS*4 );
 		}
 		return $bFlat ? array_merge( $aIps[ 4 ], $aIps[ 6 ] ) : $aIps;
@@ -160,10 +160,10 @@ class ServiceProviders {
 		$sStoreKey = $this->getPrefixedStoreKey( 'serviceips_uptimerobot' );
 		$aIps = $oWp->getTransient( $sStoreKey );
 		if ( empty( $aIps ) ) {
-			$aIps = array(
+			$aIps = [
 				4 => $this->downloadServiceIps_UptimeRobot( 4 ),
 				6 => $this->downloadServiceIps_UptimeRobot( 6 )
-			);
+			];
 			$oWp->setTransient( $sStoreKey, $aIps, WEEK_IN_SECONDS*4 );
 		}
 		return $bFlat ? array_merge( $aIps[ 4 ], $aIps[ 6 ] ) : $aIps;
@@ -504,7 +504,7 @@ class ServiceProviders {
 	 */
 	private function downloadServiceIps_Standard( $sSourceUrl, $sIpVersion = null ) {
 		if ( !is_null( $sIpVersion ) ) {
-			if ( !in_array( (int)$sIpVersion, array( 4, 6 ) ) ) {
+			if ( !in_array( (int)$sIpVersion, [ 4, 6 ] ) ) {
 				$sIpVersion = 4;
 			}
 			$sSourceUrl = Services::HttpRequest()->getContent( sprintf( $sSourceUrl, $sIpVersion ) );

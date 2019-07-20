@@ -14,33 +14,33 @@ class PluginUpgrader extends \Plugin_Upgrader {
 	 * @param array  $args
 	 * @return array|bool|\WP_Error
 	 */
-	public function install( $package, $args = array() ) {
+	public function install( $package, $args = [] ) {
 
-		$defaults = array(
+		$defaults = [
 			'clear_update_cache' => true,
-		);
+		];
 		$parsed_args = wp_parse_args( $args, $defaults );
 
 		$this->init();
 		$this->install_strings();
 
-		add_filter( 'upgrader_source_selection', array( $this, 'check_package' ) );
-		add_filter( 'upgrader_clear_destination', array( $this, 'clearStatCache' ) );
+		add_filter( 'upgrader_source_selection', [ $this, 'check_package' ] );
+		add_filter( 'upgrader_clear_destination', [ $this, 'clearStatCache' ] );
 
-		$oResult = $this->run( array(
+		$oResult = $this->run( [
 			'package'           => $package,
 			'destination'       => WP_PLUGIN_DIR,
 			'clear_destination' => $this->getOverwriteMode(),
 			// key to overwrite and why we're extending the native wordpress class
 			'clear_working'     => true,
-			'hook_extra'        => array(
+			'hook_extra'        => [
 				'type'   => 'plugin',
 				'action' => 'install',
-			)
-		) );
+			]
+		] );
 
-		remove_filter( 'upgrader_source_selection', array( $this, 'check_package' ) );
-		remove_filter( 'upgrader_clear_destination', array( $this, 'clearStatCache' ) );
+		remove_filter( 'upgrader_source_selection', [ $this, 'check_package' ] );
+		remove_filter( 'upgrader_clear_destination', [ $this, 'clearStatCache' ] );
 
 		if ( !$this->result || is_wp_error( $this->result ) ) {
 			return $this->result;

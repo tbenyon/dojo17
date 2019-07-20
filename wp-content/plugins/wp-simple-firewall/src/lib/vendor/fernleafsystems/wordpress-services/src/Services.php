@@ -324,7 +324,7 @@ class Services {
 	static protected function getObj( $sKeyFunction ) {
 		$sFullKey = 'service_'.strtolower( $sKeyFunction );
 		if ( !is_array( self::$aItems ) ) {
-			self::$aItems = array();
+			self::$aItems = [];
 		}
 		if ( !isset( self::$aItems[ $sFullKey ] ) ) {
 			self::$aItems[ $sFullKey ] = self::$oDic[ $sFullKey ];

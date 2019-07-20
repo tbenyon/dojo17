@@ -17,6 +17,39 @@ class Response {
 	}
 
 	/**
+	 * @param string $sKey
+	 * @return bool
+	 */
+	public function cookieDelete( $sKey ) {
+		unset( $_COOKIE[ $sKey ] );
+		return $this->cookieSet( $sKey, '', -1000000 );
+	}
+
+	/**
+	 * @param string $sKey
+	 * @param string $mValue
+	 * @param int    $nExpireLength
+	 * @param null   $sPath
+	 * @param null   $sDomain
+	 * @param bool   $bSsl
+	 * @return bool
+	 */
+	public function cookieSet( $sKey, $mValue, $nExpireLength = 3600, $sPath = null, $sDomain = null, $bSsl = null ) {
+		if ( function_exists( 'headers_sent' ) && headers_sent() ) {
+			return false;
+		}
+		$_COOKIE[ $sKey ] = $mValue;
+		return setcookie(
+			$sKey,
+			$mValue,
+			(int)( Services::Request()->ts() + $nExpireLength ),
+			( is_null( $sPath ) && defined( 'COOKIEPATH' ) ) ? COOKIEPATH : $sPath,
+			( is_null( $sDomain ) && defined( 'COOKIE_DOMAIN' ) ) ? COOKIE_DOMAIN : $sDomain,
+			is_null( $bSsl ) ? ( is_ssl() ? true : false ) : $bSsl
+		);
+	}
+
+	/**
 	 * @param string $sStringContent
 	 * @param string $sFilename
 	 * @return bool
@@ -36,7 +69,7 @@ class Response {
 	 * @param bool   $bSafe
 	 * @param bool   $bProtectAgainstInfiniteLoops - if false, ignores the redirect loop protection
 	 */
-	public function redirect( $sUrl, $aQueryParams = array(), $bSafe = true, $bProtectAgainstInfiniteLoops = true ) {
+	public function redirect( $sUrl, $aQueryParams = [], $bSafe = true, $bProtectAgainstInfiniteLoops = true ) {
 		$sUrl = empty( $aQueryParams ) ? $sUrl : add_query_arg( $aQueryParams, $sUrl );
 
 		// we prevent any repetitive redirect loops
@@ -45,7 +78,7 @@ class Response {
 				return;
 			}
 			else {
-				Services::Data()->setCookie( 'icwp-isredirect', 'yes', 7 );
+				Services::Request()->cookie( 'icwp-isredirect', 'yes', 7 );
 			}
 		}
 
@@ -59,28 +92,28 @@ class Response {
 	/**
 	 * @param array $aQueryParams
 	 */
-	public function redirectHere( $aQueryParams = array() ) {
+	public function redirectHere( $aQueryParams = [] ) {
 		$this->redirect( Services::Request()->getUri(), $aQueryParams );
 	}
 
 	/**
 	 * @param array $aQueryParams
 	 */
-	public function redirectToLogin( $aQueryParams = array() ) {
+	public function redirectToLogin( $aQueryParams = [] ) {
 		$this->redirect( wp_login_url(), $aQueryParams );
 	}
 
 	/**
 	 * @param array $aQueryParams
 	 */
-	public function redirectToAdmin( $aQueryParams = array() ) {
+	public function redirectToAdmin( $aQueryParams = [] ) {
 		$this->redirect( is_multisite() ? get_admin_url() : admin_url(), $aQueryParams );
 	}
 
 	/**
 	 * @param array $aQueryParams
 	 */
-	public function redirectToHome( $aQueryParams = array() ) {
+	public function redirectToHome( $aQueryParams = [] ) {
 		$this->redirect( home_url(), $aQueryParams );
 	}
 

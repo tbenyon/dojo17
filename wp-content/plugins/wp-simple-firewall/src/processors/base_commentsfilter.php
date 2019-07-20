@@ -25,17 +25,17 @@ class ICWP_WPSF_Processor_CommentsFilter_Base extends ICWP_WPSF_Processor_BaseWp
 	 */
 	public function run() {
 		$oFO = $this->getMod();
-		add_filter( 'preprocess_comment', array( $this, 'doCommentChecking' ), 5 );
-		add_filter( $oFO->prefix( 'cf_status' ), array( $this, 'getCommentStatus' ), 1 );
-		add_filter( $oFO->prefix( 'cf_status_expl' ), array( $this, 'getCommentStatusExplanation' ), 1 );
+		add_filter( 'preprocess_comment', [ $this, 'doCommentChecking' ], 5 );
+		add_filter( $oFO->prefix( 'cf_status' ), [ $this, 'getCommentStatus' ], 1 );
+		add_filter( $oFO->prefix( 'cf_status_expl' ), [ $this, 'getCommentStatusExplanation' ], 1 );
 	}
 
 	/**
-	 * @param array $aCommentData
+	 * @param array $aCommData
 	 * @return array
 	 */
-	public function doCommentChecking( $aCommentData ) {
-		return $aCommentData;
+	public function doCommentChecking( $aCommData ) {
+		return $aCommData;
 	}
 
 	/**
@@ -85,7 +85,7 @@ class ICWP_WPSF_Processor_CommentsFilter_Base extends ICWP_WPSF_Processor_BaseWp
 	protected function setCommentStatusExplanation( $sExplanation ) {
 		self::$sCommentStatusExplanation =
 			'[* '.sprintf(
-				_wpsf__( '%s plugin marked this comment as "%s".' ).' '._wpsf__( 'Reason: %s' ),
+				__( '%s plugin marked this comment as "%s".', 'wp-simple-firewall' ).' '.__( 'Reason: %s', 'wp-simple-firewall' ),
 				$this->getCon()->getHumanName(),
 				self::$sCommentStatus,
 				$sExplanation

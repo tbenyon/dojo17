@@ -9,11 +9,11 @@ use FernleafSystems\Wordpress\Services\Services;
 class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_BaseWpsf {
 
 	public function run() {
-		add_action( 'password_reset', array( $this, 'onPasswordReset' ), 100, 1 );
-		add_filter( 'registration_errors', array( $this, 'checkPassword' ), 100, 3 );
-		add_action( 'user_profile_update_errors', array( $this, 'checkPassword' ), 100, 3 );
-		add_action( 'validate_password_reset', array( $this, 'checkPassword' ), 100, 3 );
-		add_filter( 'login_message', array( $this, 'addPasswordResetMessage' ) );
+		add_action( 'password_reset', [ $this, 'onPasswordReset' ], 100, 1 );
+		add_filter( 'registration_errors', [ $this, 'checkPassword' ], 100, 3 );
+		add_action( 'user_profile_update_errors', [ $this, 'checkPassword' ], 100, 3 );
+		add_action( 'validate_password_reset', [ $this, 'checkPassword' ], 100, 3 );
+		add_filter( 'login_message', [ $this, 'addPasswordResetMessage' ] );
 	}
 
 	/**
@@ -31,7 +31,7 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 	 * @param int    $nUserId
 	 */
 	public function onWpSetLoggedInCookie( $sCookie, $nExpire, $nExpiration, $nUserId ) {
-		$this->captureLogin( $this->loadWpUsers()->getUserById( $nUserId ) );
+		$this->captureLogin( Services::WpUsers()->getUserById( $nUserId ) );
 	}
 
 	/**
@@ -55,7 +55,7 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 	}
 
 	public function onWpLoaded() {
-		if ( is_admin() && !$this->loadRequest()->isMethodPost() && $this->loadWpUsers()->isUserLoggedIn() ) {
+		if ( is_admin() && !$this->loadRequest()->isMethodPost() && Services::WpUsers()->isUserLoggedIn() ) {
 			$this->processExpiredPassword();
 			$this->processFailedCheckPassword();
 		}
@@ -91,9 +91,9 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 			$nPassStartedAt = (int)$this->getCon()->getCurrentUserMeta()->pass_started_at;
 			if ( $nPassStartedAt > 0 ) {
 				if ( $this->time() - $nPassStartedAt > $oFO->getPassExpireTimeout() ) {
-					$this->addToAuditEntry( _wpsf__( 'Forcing user to update expired password.' ) );
+					$this->addToAuditEntry( __( 'Forcing user to update expired password.', 'wp-simple-firewall' ) );
 					$this->redirectToResetPassword(
-						sprintf( _wpsf__( 'Your password has expired (after %s days).' ), $oFO->getPassExpireDays() )
+						sprintf( __( 'Your password has expired (after %s days).', 'wp-simple-firewall' ), $oFO->getPassExpireDays() )
 					);
 				}
 			}
@@ -110,11 +110,11 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 
 		if ( $bPassCheckFailed ) {
 			$this->addToAuditEntry(
-				_wpsf__( 'Forcing user to update password that fails to meet policies.' ),
+				__( 'Forcing user to update password that fails to meet policies.', 'wp-simple-firewall' ),
 				'1', 'um_password_force_update'
 			);
 			$this->redirectToResetPassword(
-				_wpsf__( "Your password doesn't meet requirements set by your security administrator." )
+				__( "Your password doesn't meet requirements set by your security administrator.", 'wp-simple-firewall' )
 			);
 		}
 	}
@@ -123,8 +123,8 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 	 * IMPORTANT: User must be logged-in for this to work correctly
 	 * We have a 2 minute delay between redirects because some custom user forms redirect to custom
 	 * password reset pages. This prevents users following this flow.
-	 * @uses wp_redirect()
 	 * @param string $sMessage
+	 * @uses wp_redirect()
 	 */
 	private function redirectToResetPassword( $sMessage ) {
 
@@ -134,17 +134,16 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 
 			$oMeta->pass_reset_last_redirect_at = $this->time();
 
-			$oWp = $this->loadWp();
-			$oWpUsers = $this->loadWpUsers();
-			$sAction = $this->loadRequest()->query( 'action' );
+			$oWpUsers = Services::WpUsers();
+			$sAction = Services::Request()->query( 'action' );
 			$oUser = $oWpUsers->getCurrentWpUser();
-			if ( $oUser && ( !$oWp->isRequestLoginUrl() || !in_array( $sAction, array( 'rp', 'resetpass' ) ) ) ) {
+			if ( $oUser && ( !$this->loadWp()->isRequestLoginUrl() || !in_array( $sAction, [ 'rp', 'resetpass' ] ) ) ) {
 
-				$sMessage .= ' '._wpsf__( 'For your security, please use the password section below to update your password.' );
+				$sMessage .= ' '.__( 'For your security, please use the password section below to update your password.', 'wp-simple-firewall' );
 				$this->getMod()
 					 ->setFlashAdminNotice( $sMessage );
 
-				$oWp->doRedirect( $oWpUsers->getPasswordResetUrl( $oUser ) );
+				Services::Response()->redirect( $oWpUsers->getPasswordResetUrl( $oUser ) );
 			}
 		}
 	}
@@ -160,13 +159,13 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 			if ( !empty( $sPassword ) ) {
 				try {
 					$this->applyPasswordChecks( $sPassword );
-					if ( $this->loadWpUsers()->isUserLoggedIn() ) {
+					if ( Services::WpUsers()->isUserLoggedIn() ) {
 						$this->getCon()->getCurrentUserMeta()->pass_check_failed_at = 0;
 					}
 				}
 				catch ( \Exception $oE ) {
-					$sMessage = _wpsf__( 'Your security administrator has imposed requirements for password quality.' )
-								.'<br/>'.sprintf( _wpsf__( 'Reason' ).': '.$oE->getMessage() );
+					$sMessage = __( 'Your security administrator has imposed requirements for password quality.', 'wp-simple-firewall' )
+								.'<br/>'.sprintf( __( 'Reason', 'wp-simple-firewall' ).': '.$oE->getMessage() );
 					$oErrors->add( 'shield_password_policy', $sMessage );
 
 					/** @var ICWP_WPSF_FeatureHandler_UserManagement $oFO */
@@ -174,7 +173,7 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 					$oFO->setOptInsightsAt( 'last_password_block_at' );
 
 					$this->addToAuditEntry(
-						_wpsf__( 'Blocked attempted password update that failed policy requirements.' ),
+						__( 'Blocked attempted password update that failed policy requirements.', 'wp-simple-firewall' ),
 						'1', 'um_password_update_blocked'
 					);
 				}
@@ -209,8 +208,7 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 		$oFO = $this->getMod();
 		$nMin = $oFO->getPassMinStrength();
 
-		$oStengther = new \ZxcvbnPhp\Zxcvbn();
-		$aResults = $oStengther->passwordStrength( $sPassword );
+		$aResults = ( new \ZxcvbnPhp\Zxcvbn() )->passwordStrength( $sPassword );
 		$nScore = $aResults[ 'score' ];
 
 		if ( $nMin > 0 && $nScore < $nMin ) {
@@ -231,7 +229,7 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 		$nMin = $oFO->getPassMinLength();
 		$nLength = strlen( $sPassword );
 		if ( $nMin > 0 && $nLength < $nMin ) {
-			throw new \Exception( sprintf( _wpsf__( 'Password length (%s) too short (min: %s characters)' ), $nLength, $nMin ) );
+			throw new \Exception( sprintf( __( 'Password length (%s) too short (min: %s characters)', 'wp-simple-firewall' ), $nLength, $nMin ) );
 		}
 		return true;
 	}
@@ -255,57 +253,49 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 	 * @throws \Exception
 	 */
 	protected function sendRequestToPwned( $sPass ) {
-		/** @var ICWP_WPSF_FeatureHandler_UserManagement $oFO */
-		$oFO = $this->getMod();
-		$oCon = $this->getCon();
-
-		$aResponse = $this->loadFS()->requestUrl(
-			sprintf( '%s/%s', $oFO->getDef( 'pwned_api_url_password_single' ), hash( 'sha1', $sPass ) ),
-			array(
-				'headers' => array(
-					'user-agent' => sprintf( '%s WP Plugin-v%s', $oCon->getHumanName(), $oCon->getVersion() )
-				)
-			),
-			true
+		$oHttpReq = Services::HttpRequest();
+		$bSuccess = $oHttpReq->get(
+			sprintf( '%s/%s', $this->getMod()->getDef( 'pwned_api_url_password_single' ), hash( 'sha1', $sPass ) ),
+			[
+				'headers' => [ 'user-agent' => sprintf( '%s WP Plugin-v%s', 'Shield', $this->getCon()->getVersion() ) ]
+			]
 		);
 
 		$sError = '';
-		if ( is_wp_error( $aResponse ) ) {
-			$sError = $aResponse->get_error_message();
+		if ( !$bSuccess ) {
+			$sError = 'API request failed';
 		}
-		else if ( empty( $aResponse ) ) {
-			$sError = 'Response was empty';
-		}
-		else if ( is_array( $aResponse ) ) {
-			if ( empty( $aResponse[ 'response' ][ 'code' ] ) ) {
-				$sError = 'Unexpected Error: No response code available from the API';
+		else {
+			$nCode = $oHttpReq->lastResponse->getCode();
+			if ( empty( $nCode ) ) {
+				$sError = 'Unexpected Error: No response code available from the Response';
 			}
-			else if ( $aResponse[ 'response' ][ 'code' ] == 404 ) {
+			else if ( $nCode == 404 ) {
 				// means that the password isn't on the pwned list. It's acceptable.
 			}
-			else if ( empty( $aResponse[ 'body' ] ) ) {
-				$sError = 'Unexpected Error: The response from the API was empty';
+			else if ( empty( $oHttpReq->lastResponse->body ) ) {
+				$sError = 'Unexpected Error: The response from the Pwned API was empty';
 			}
 			else {
 				// password pwned
-				$nCount = intval( $aResponse[ 'body' ] );
+				$nCount = intval( $oHttpReq->lastResponse[ 'body' ] );
 				if ( $nCount == 0 ) {
 					$sError = 'Unexpected Error: The API response could not be properly parsed.';
 				}
 				else {
-					$sError = _wpsf__( 'Please use a different password.' )
-							  .' '._wpsf__( 'This password has already been pwned.' )
+					$sError = __( 'Please use a different password.', 'wp-simple-firewall' )
+							  .' '.__( 'This password has already been pwned.', 'wp-simple-firewall' )
 							  .' '.sprintf(
 								  '(<a href="%s" target="_blank">%s</a>)',
 								  'https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/',
-								  sprintf( _wpsf__( '%s times' ), $nCount )
+								  sprintf( __( '%s times', 'wp-simple-firewall' ), $nCount )
 							  );
 				}
 			}
 		}
 
 		if ( !empty( $sError ) ) {
-			throw new \Exception( $sError );
+			throw new \Exception( '[Pwned Request] '.$sError );
 		}
 
 		return true;
@@ -317,62 +307,55 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 	 * @throws \Exception
 	 */
 	protected function sendRequestToPwnedRange( $sPass ) {
-		/** @var ICWP_WPSF_FeatureHandler_UserManagement $oFO */
-		$oFO = $this->getMod();
-		$oCon = $this->getCon();
+		$oHttpReq = Services::HttpRequest();
 
 		$sPassHash = strtoupper( hash( 'sha1', $sPass ) );
 		$sSubHash = substr( $sPassHash, 0, 5 );
 
-		$aResponse = $this->loadFS()->requestUrl(
-			sprintf( '%s/%s', $oFO->getDef( 'pwned_api_url_password_range' ), $sSubHash ),
-			array(
-				'headers' => array(
-					'user-agent' => sprintf( '%s WP Plugin-v%s', $oCon->getHumanName(), $oCon->getVersion() )
-				)
-			),
-			true
+		$bSuccess = $oHttpReq->get(
+			sprintf( '%s/%s', $this->getMod()->getDef( 'pwned_api_url_password_range' ), $sSubHash ),
+			[
+				'headers' => [ 'user-agent' => sprintf( '%s WP Plugin-v%s', 'Shield', $this->getCon()->getVersion() ) ]
+			]
 		);
 
 		$sError = '';
-		if ( is_wp_error( $aResponse ) ) {
-			$sError = $aResponse->get_error_message();
+		if ( !$bSuccess ) {
+			$sError = 'API request failed';
 		}
-		else if ( empty( $aResponse ) ) {
-			$sError = 'Response was empty';
-		}
-		else if ( is_array( $aResponse ) ) {
-			if ( empty( $aResponse[ 'response' ][ 'code' ] ) ) {
+		else {
+			$nCode = $oHttpReq->lastResponse->getCode();
+			if ( empty( $nCode ) ) {
 				$sError = 'Unexpected Error: No response code available from the Pwned API';
 			}
-			else if ( $aResponse[ 'response' ][ 'code' ] != 200 ) {
+			else if ( $nCode != 200 ) {
 				$sError = 'Unexpected Error: The response from the Pwned API was unexpected';
 			}
-			else if ( empty( $aResponse[ 'body' ] ) ) {
+			else if ( empty( $oHttpReq->lastResponse->body ) ) {
 				$sError = 'Unexpected Error: The response from the Pwned API was empty';
 			}
 			else {
 				$nCount = 0;
-				foreach ( array_map( 'trim', explode( "\n", trim( $aResponse[ 'body' ] ) ) ) as $sRow ) {
+				foreach ( array_map( 'trim', explode( "\n", trim( $oHttpReq->lastResponse->body ) ) ) as $sRow ) {
 					if ( $sSubHash.substr( strtoupper( $sRow ), 0, 35 ) == $sPassHash ) {
 						$nCount = substr( $sRow, 36 );
 						break;
 					}
 				}
 				if ( $nCount > 0 ) {
-					$sError = _wpsf__( 'Please use a different password.' )
-							  .'<br/>'._wpsf__( 'This password has been pwned.' )
+					$sError = __( 'Please use a different password.', 'wp-simple-firewall' )
+							  .'<br/>'.__( 'This password has been pwned.', 'wp-simple-firewall' )
 							  .' '.sprintf(
 								  '(<a href="%s" target="_blank">%s</a>)',
 								  'https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/',
-								  sprintf( _wpsf__( '%s times' ), $nCount )
+								  sprintf( __( '%s times', 'wp-simple-firewall' ), $nCount )
 							  );
 				}
 			}
 		}
 
 		if ( !empty( $sError ) ) {
-			throw new \Exception( $sError );
+			throw new \Exception( '[Pwned Request] '.$sError );
 		}
 
 		return true;
@@ -385,7 +368,7 @@ class ICWP_WPSF_Processor_UserManagement_Passwords extends ICWP_WPSF_Processor_B
 		$sPass = null;
 
 		// Edd: edd_user_pass; Woo: password;
-		foreach ( array( 'pwd', 'pass1' ) as $sKey ) {
+		foreach ( [ 'pwd', 'pass1' ] as $sKey ) {
 			$sP = $this->loadRequest()->post( $sKey );
 			if ( !empty( $sP ) ) {
 				$sPass = $sP;

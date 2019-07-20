@@ -21,10 +21,10 @@ class BulkPluginUpgraderSkin extends \Bulk_Plugin_Upgrader_Skin {
 	 * BulkPluginUpgraderSkin constructor.
 	 * @param array $args
 	 */
-	public function __construct( $args = array() ) {
+	public function __construct( $args = [] ) {
 		parent::__construct( array_merge( $args, compact( 'nonce', 'url' ) ) );
-		$this->aErrors = array();
-		$this->aFeedback = array();
+		$this->aErrors = [];
+		$this->aFeedback = [];
 	}
 
 	/**
@@ -73,7 +73,7 @@ class BulkPluginUpgraderSkin extends \Bulk_Plugin_Upgrader_Skin {
 	 * @return array
 	 */
 	public function getErrors() {
-		return is_array( $this->aErrors ) ? $this->aErrors : array();
+		return is_array( $this->aErrors ) ? $this->aErrors : [];
 	}
 
 	/**

@@ -16,23 +16,65 @@ class ICWP_WPSF_Processor_LoginProtect extends ICWP_WPSF_Processor_BaseWpsf {
 		}
 
 		if ( $oFO->isCustomLoginPathEnabled() ) {
-			$this->getProcessorWpLogin()->run();
+			$this->getSubProRename()->run();
 		}
 
 		// Add GASP checking to the login form.
 		if ( $oFO->isEnabledGaspCheck() ) {
-			$this->getProcessorGasp()->run();
+			$this->getSubProGasp()->run();
 		}
 
 		if ( $oFO->isCooldownEnabled() && Services::Request()->isPost() ) {
-			$this->getProcessorCooldown()->run();
+			$this->getSubProCooldown()->run();
 		}
 
 		if ( $oFO->isGoogleRecaptchaEnabled() ) {
-			$this->getProcessorGoogleRecaptcha()->run();
+			$this->getSubProRecaptcha()->run();
 		}
 
-		$this->getProcessorLoginIntent()->run();
+		$this->getSubProIntent()->run();
+	}
+
+	public function onWpEnqueueJs() {
+		/** @var ICWP_WPSF_FeatureHandler_LoginProtect $oFO */
+		$oFO = $this->getMod();
+
+		if ( $oFO->isEnabledBotJs() ) {
+			$oConn = $this->getCon();
+
+			$sAsset = 'shield-antibot';
+			$sUnique = $this->prefix( $sAsset );
+			wp_register_script(
+				$sUnique,
+				$oConn->getPluginUrl_Js( $sAsset.'.js' ),
+				[ 'jquery' ],
+				$oConn->getVersion(),
+				true
+			);
+			wp_enqueue_script( $sUnique );
+
+			wp_localize_script(
+				$sUnique,
+				'icwp_wpsf_vars_lpantibot',
+				[
+					'form_selectors' => implode( ',', $oFO->getAntiBotFormSelectors() ),
+					'uniq'           => preg_replace( '#[^a-zA-Z0-9]#', '', apply_filters( 'icwp_shield_lp_gasp_uniqid', uniqid() ) ),
+					'cbname'         => $oFO->getGaspKey(),
+					'strings'        => [
+						'label' => $oFO->getTextImAHuman(),
+						'alert' => $oFO->getTextPleaseCheckBox(),
+					],
+					'flags'          => [
+						'gasp'  => $oFO->isEnabledGaspCheck(),
+						'recap' => $oFO->isGoogleRecaptchaEnabled(),
+					]
+				]
+			);
+
+			if ( $oFO->isGoogleRecaptchaEnabled() ) {
+				$this->setRecaptchaToEnqueue();
+			}
+		}
 	}
 
 	/**
@@ -56,61 +98,74 @@ class ICWP_WPSF_Processor_LoginProtect extends ICWP_WPSF_Processor_BaseWpsf {
 		$oFO = $this->getMod();
 
 		if ( $oFO->isEmailAuthenticationOptionOn() && !$oFO->isEmailAuthenticationActive() && !$oFO->getIfCanSendEmailVerified() ) {
-			$aRenderData = array(
+			$aRenderData = [
 				'notice_attributes' => $aNoticeAttributes,
-				'strings'           => array(
+				'strings'           => [
 					'title'             => $this->getCon()->getHumanName()
-										   .': '._wpsf__( 'Please verify email has been received' ),
-					'need_you_confirm'  => _wpsf__( "Before we can activate email 2-factor authentication, we need you to confirm your website can send emails." ),
-					'please_click_link' => _wpsf__( "Please click the link in the email you received." ),
+										   .': '.__( 'Please verify email has been received', 'wp-simple-firewall' ),
+					'need_you_confirm'  => __( "Before we can activate email 2-factor authentication, we need you to confirm your website can send emails.", 'wp-simple-firewall' ),
+					'please_click_link' => __( "Please click the link in the email you received.", 'wp-simple-firewall' ),
 					'email_sent_to'     => sprintf(
-						_wpsf__( "The email has been sent to you at blog admin address: %s" ),
+						__( "The email has been sent to you at blog admin address: %s", 'wp-simple-firewall' ),
 						get_bloginfo( 'admin_email' )
 					),
-					'how_resend_email'  => _wpsf__( "Resend verification email" ),
-					'how_turn_off'      => _wpsf__( "Disable 2FA by email" ),
-				),
+					'how_resend_email'  => __( "Resend verification email", 'wp-simple-firewall' ),
+					'how_turn_off'      => __( "Disable 2FA by email", 'wp-simple-firewall' ),
+				],
 				'ajax'              => [
 					'resend_verification_email' => $oFO->getAjaxActionData( 'resend_verification_email', true ),
 					'disable_2fa_email'         => $oFO->getAjaxActionData( 'disable_2fa_email', true ),
 				]
-			);
+			];
 			$this->insertAdminNotice( $aRenderData );
 		}
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_LoginProtect_Intent
+	 * @return array
 	 */
-	public function getProcessorLoginIntent() {
-		return new ICWP_WPSF_Processor_LoginProtect_Intent( $this->getMod() );
+	protected function getSubProMap() {
+		return [
+			'cooldown'  => 'ICWP_WPSF_Processor_LoginProtect_Cooldown',
+			'gasp'      => 'ICWP_WPSF_Processor_LoginProtect_Gasp',
+			'intent'    => 'ICWP_WPSF_Processor_LoginProtect_Intent',
+			'recaptcha' => 'ICWP_WPSF_Processor_LoginProtect_GoogleRecaptcha',
+			'rename'    => 'ICWP_WPSF_Processor_LoginProtect_WpLogin',
+		];
 	}
 
 	/**
 	 * @return ICWP_WPSF_Processor_LoginProtect_Cooldown
 	 */
-	protected function getProcessorCooldown() {
-		return new ICWP_WPSF_Processor_LoginProtect_Cooldown( $this->getMod() );
+	private function getSubProCooldown() {
+		return $this->getSubPro( 'cooldown' );
 	}
 
 	/**
 	 * @return ICWP_WPSF_Processor_LoginProtect_Gasp
 	 */
-	protected function getProcessorGasp() {
-		return new ICWP_WPSF_Processor_LoginProtect_Gasp( $this->getMod() );
+	private function getSubProGasp() {
+		return $this->getSubPro( 'gasp' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_LoginProtect_WpLogin
+	 * @return ICWP_WPSF_Processor_LoginProtect_Intent
 	 */
-	protected function getProcessorWpLogin() {
-		return new ICWP_WPSF_Processor_LoginProtect_WpLogin( $this->getMod() );
+	public function getSubProIntent() {
+		return $this->getSubPro( 'intent' );
 	}
 
 	/**
 	 * @return ICWP_WPSF_Processor_LoginProtect_GoogleRecaptcha
 	 */
-	protected function getProcessorGoogleRecaptcha() {
-		return new ICWP_WPSF_Processor_LoginProtect_GoogleRecaptcha( $this->getMod() );
+	private function getSubProRecaptcha() {
+		return $this->getSubPro( 'recaptcha' );
+	}
+
+	/**
+	 * @return ICWP_WPSF_Processor_LoginProtect_WpLogin
+	 */
+	private function getSubProRename() {
+		return $this->getSubPro( 'rename' );
 	}
 }

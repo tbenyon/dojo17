@@ -31,7 +31,7 @@ class PluginUserMeta {
 	 */
 	static public function Load( $sPrefix, $nUserId = 0 ) {
 		if ( !is_array( self::$aMetas ) ) {
-			self::$aMetas = array();
+			self::$aMetas = [];
 		}
 		if ( empty( $nUserId ) ) {
 			$nUserId = Services::WpUsers()->getCurrentWpUserId();
@@ -40,11 +40,18 @@ class PluginUserMeta {
 			throw new \Exception( 'Attempting to get meta of non-logged in user.' );
 		}
 
-		if ( !isset( self::$aMetas[ $nUserId ] ) ) {
-			self::$aMetas[ $nUserId ] = new static( $sPrefix, $nUserId );
+		if ( !isset( self::$aMetas[ $sPrefix.$nUserId ] ) ) {
+			static::AddToCache( new static( $sPrefix, $nUserId ) );
 		}
 
-		return self::$aMetas[ $nUserId ];
+		return self::$aMetas[ $sPrefix.$nUserId ];
+	}
+
+	/**
+	 * @param static $oMeta
+	 */
+	static public function AddToCache( $oMeta ) {
+		self::$aMetas[ $oMeta->prefix.$oMeta->user_id ] = $oMeta;
 	}
 
 	/**
@@ -52,25 +59,14 @@ class PluginUserMeta {
 	 * @param int    $nUserId
 	 */
 	public function __construct( $sPrefix, $nUserId = 0 ) {
-		$this->init( $sPrefix, $nUserId );
-		add_action( 'shutdown', array( $this, 'save' ) );
-	}
-
-	/**
-	 * Cannot use Data store (__get()) yet
-	 * @param int $sPrefix
-	 * @param int $nUserId
-	 * @return $this
-	 */
-	private function init( $sPrefix, $nUserId ) {
 		$aStore = Services::WpUsers()->getUserMeta( $sPrefix.'-meta', $nUserId );
 		if ( !is_array( $aStore ) ) {
-			$aStore = array();
+			$aStore = [];
 		}
 		$this->applyFromArray( $aStore );
 		$this->prefix = $sPrefix;
 		$this->user_id = $nUserId;
-		return $this;
+		add_action( 'shutdown', [ $this, 'save' ] );
 	}
 
 	/**
@@ -79,7 +75,7 @@ class PluginUserMeta {
 	public function delete() {
 		if ( $this->user_id > 0 ) {
 			Services::WpUsers()->deleteUserMeta( $this->getStorageKey(), $this->user_id );
-			remove_action( 'shutdown', array( $this, 'save' ) );
+			remove_action( 'shutdown', [ $this, 'save' ] );
 		}
 		return $this;
 	}

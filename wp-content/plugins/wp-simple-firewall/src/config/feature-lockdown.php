@@ -2,7 +2,7 @@
   "slug":        "lockdown",
   "properties":  {
     "slug":                  "lockdown",
-    "name":                  "Lockdown",
+    "name":                  "WP Lockdown",
     "show_module_menu_item": false,
     "show_module_options":   true,
     "storage_key":           "lockdown",
@@ -76,7 +76,7 @@
       "default":     "N",
       "type":        "checkbox",
       "link_info":   "https://icwp.io/e6",
-      "link_blog":   "",
+      "link_blog":   "https://icwp.io/fb",
       "name":        "Disable XML-RPC",
       "summary":     "Disable The XML-RPC System",
       "description": "Checking this option will completely turn off the whole XML-RPC system."

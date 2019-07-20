@@ -4,6 +4,11 @@ namespace FernleafSystems\Wordpress\Services\Utilities\WpOrg;
 
 use FernleafSystems\Wordpress\Services\Services;
 
+/**
+ * @deprecated
+ * Class Core
+ * @package FernleafSystems\Wordpress\Services\Utilities\WpOrg
+ */
 class Core {
 
 	const URL_SVN_ROOT = 'https://core.svn.wordpress.org';
@@ -60,7 +65,7 @@ class Core {
 	 * @return array
 	 */
 	protected function downloadVersions() {
-		$aV = array();
+		$aV = [];
 		$sSvnVersionsContent = Services::HttpRequest()->getContent(
 			sprintf( '%s/%s/', static::URL_SVN_ROOT, 'tags' )
 		);

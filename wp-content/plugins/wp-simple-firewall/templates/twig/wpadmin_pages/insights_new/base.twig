@@ -14,15 +14,51 @@
 					<span class="navbar-toggler-icon"></span>
 				</button>
 				<div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-					<div class="navbar-nav">
+					<ul class="navbar-nav">
 						{% for navkey,navdata in hrefs.top_nav %}
-							<a class="nav-item nav-link{% if navdata.active %} active{% endif %}"
-							   id="NavItem-{{ navkey }}"
-							   href="{{ navdata.href }}">{{ navdata.name }}
-								{% if navdata.active %} <span class="sr-only">(current){% endif %}</a>
+							{% if navdata.subnavs is empty %}
+								<li class="nav-item">
+									<a class="nav-link{% if navdata.active %} active{% endif %}"
+									   id="NavItem-{{ navkey }}"
+									   href="{{ navdata.href }}">{{ navdata.name }}
+										{% if navdata.active %} <span class="sr-only">(current){% endif %}</a>
+								</li>
+							{% else %}
+								<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle{% if navdata.active %} active{% endif %}"
+									   data-toggle="dropdown" href="#" role="button"
+									   aria-haspopup="true" aria-expanded="false">{{ navdata.name }}</a>
+									<div class="dropdown-menu">
+										{% for subnavslug,subnavdata in navdata.subnavs %}
+											<a class="dropdown-item {% if subnavdata.active %} active{% endif %}"
+											   href="{{ subnavdata.href }}">
+												<span class="module-icon module-icon-{{ subnavslug }}"></span>
+												<span class="module-name">{{ subnavdata.name }}</span>
+											</a>
+										{% endfor %}
+									</div>
+								</li>
+							{% endif %}
 						{% endfor %}
 						<div class="nav-item" id="PluginHeadwayChangelog"></div>
-					</div>
+
+						<select class="selectpicker" data-live-search="true"
+								title="Jump to plugin option"
+								data-size="10" multiple
+								data-header="Type below to search all plugin options ..."
+								onchange="location = this.value;">
+							{% for select_section_name,select_section_opts in vars.search_select %}
+								<optgroup label="{{ select_section_name }}">
+									{% for select_opt_key,select_opt_data in select_section_opts %}
+										<option value="{{ select_opt_data.href }}" aria-selected="false"
+												data-tokens="{{ select_opt_data.summary }}"
+										>{{ select_opt_data.name }}
+										</option>
+									{% endfor %}
+								</optgroup>
+							{% endfor %}
+						</select>
+					</ul>
 				</div>
 				{#<form class="form-inline">#}
 				{#<input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">#}
@@ -36,7 +72,13 @@
 	  var HW_config = {
 		  selector: "#PluginHeadwayChangelog", // CSS selector where to inject the badge
 		  account: "{{ vars.changelog_id }}"
-	  }
+	  };
+	  jQuery( document ).ready( function () {
+		  jQuery.fn.selectpicker.Constructor.BootstrapVersion = '4';
+
+		  jQuery( '.selectpicker' ).selectpicker()
+		  .removeAttr("selected");
+	  } );
 	</script>
 	<script async src="https://cdn.headwayapp.co/widget.js"></script>
 {% endblock %}

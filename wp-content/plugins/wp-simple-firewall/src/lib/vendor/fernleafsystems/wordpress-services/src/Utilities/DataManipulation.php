@@ -97,7 +97,7 @@ class DataManipulation {
 	 * @return array
 	 */
 	public function removeFromArrayByValue( $aArray, $mValue, $bFirstOnly = false ) {
-		$aKeys = array();
+		$aKeys = [];
 
 		if ( $bFirstOnly ) {
 			$mKey = array_search( $mValue, $aArray, true );

@@ -37,24 +37,21 @@ class Fs {
 	}
 
 	/**
-	 * @param string  $sOriginalNeedle
+	 * @param string  $sNeedle
 	 * @param string  $sDir
 	 * @param boolean $bIncludeExtension
 	 * @param boolean $bCaseSensitive
-	 * @return bool
+	 * @return string|null
 	 */
-	public function fileExistsInDir( $sOriginalNeedle, $sDir, $bIncludeExtension = true, $bCaseSensitive = false ) {
+	public function findFileInDir( $sNeedle, $sDir, $bIncludeExtension = true, $bCaseSensitive = false ) {
 		if ( empty( $sNeedle ) || empty( $sDir ) || !$this->canAccessDirectory( $sDir ) ) {
 			return false;
 		}
 
 		$aAllFiles = $this->getAllFilesInDir( $sDir, false );
 		if ( !$bCaseSensitive ) {
-			$sNeedle = strtolower( $sOriginalNeedle );
+			$sNeedle = strtolower( $sNeedle );
 			$aAllFiles = array_map( 'strtolower', $aAllFiles );
-		}
-		else {
-			$sNeedle = $sOriginalNeedle;
 		}
 
 		//if the file you're searching for doesn't have an extension, then we don't include extensions in search
@@ -63,23 +60,26 @@ class Fs {
 		$bIncludeExtension = $bIncludeExtension && $bHasExtension;
 		$sNeedlePreExtension = $bHasExtension ? substr( $sNeedle, 0, $nDotPosition ) : $sNeedle;
 
-		$bFound = false;
+		$sTheFile = null;
 		foreach ( $aAllFiles as $sFilename ) {
 
+			$sFilePart = basename( $sFilename );
 			if ( $bIncludeExtension ) {
-				$bFound = ( $sFilename == $sNeedle );
+				if ( $sFilePart == $sNeedle ) {
+					$sTheFile = $sFilename;
+					break;
+				}
 			}
 			else {
 				// This is not entirely accurate as it only finds whether a file "starts" with needle, ignoring subsequent characters
-				$bFound = ( strpos( $sFilename, $sNeedlePreExtension ) === 0 );
-			}
-
-			if ( $bFound ) {
-				break;
+				if ( strpos( $sFilePart, $sNeedlePreExtension ) === 0 ) {
+					$sTheFile = $sFilename;
+					break;
+				}
 			}
 		}
 
-		return $bFound;
+		return $sTheFile;
 	}
 
 	/**
@@ -96,15 +96,15 @@ class Fs {
 	 * @return string[]
 	 */
 	public function getAllFilesInDir( $sDir, $bIncludeDirs = true ) {
-		$aFiles = array();
+		$aFiles = [];
 		if ( $this->canAccessDirectory( $sDir ) ) {
 			foreach ( $this->getDirIterator( $sDir ) as $oFileItem ) {
 				if ( !$oFileItem->isDot() && ( $oFileItem->isFile() || $bIncludeDirs ) ) {
-					$aFiles[] = $oFileItem->getFilename();
+					$aFiles[] = $oFileItem->getPathname();
 				}
 			}
 		}
-		return ( empty( $aFiles ) ? array() : $aFiles );
+		return empty( $aFiles ) ? [] : $aFiles;
 	}
 
 	/**
@@ -152,11 +152,11 @@ class Fs {
 	 */
 	public function getCanWpRemoteGet() {
 		$bCan = false;
-		$aUrlsToTest = array(
+		$aUrlsToTest = [
 			'https://www.microsoft.com',
 			'https://www.google.com',
 			'https://www.facebook.com'
-		);
+		];
 		foreach ( $aUrlsToTest as $sUrl ) {
 			if ( Services::HttpRequest()->get( $sUrl ) ) {
 				$bCan = true;
@@ -293,7 +293,7 @@ class Fs {
 	 * @return \SplFileInfo[]
 	 */
 	public function getFilesInDir( $sDir, $nMaxDepth = 1, $oDirIterator = null ) {
-		$aList = array();
+		$aList = [];
 
 		try {
 			if ( empty( $oDirIterator ) ) {
@@ -476,48 +476,48 @@ class Fs {
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sUrl
 	 * @param array  $aRequestArgs
 	 * @return array|bool
+	 * @deprecated
 	 */
-	public function requestUrl( $sUrl, $aRequestArgs = array() ) {
+	public function requestUrl( $sUrl, $aRequestArgs = [] ) {
 		return Services::HttpRequest()->requestUrl( $sUrl, $aRequestArgs );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sUrl
 	 * @param array  $aRequestArgs
 	 * @return array|false
+	 * @deprecated
 	 */
-	public function getUrl( $sUrl, $aRequestArgs = array() ) {
+	public function getUrl( $sUrl, $aRequestArgs = [] ) {
 		return Services::HttpRequest()->requestUrl( $sUrl, $aRequestArgs, 'GET' );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sUrl
 	 * @param array  $aRequestArgs
 	 * @return false|string
+	 * @deprecated
 	 */
-	public function getUrlContent( $sUrl, $aRequestArgs = array() ) {
+	public function getUrlContent( $sUrl, $aRequestArgs = [] ) {
 		return Services::HttpRequest()->getContent( $sUrl, $aRequestArgs );
 	}
 
 	/**
-	 * @deprecated
 	 * @param string $sUrl
 	 * @param array  $aRequestArgs
 	 * @return array|false
+	 * @deprecated
 	 */
-	public function postUrl( $sUrl, $aRequestArgs = array() ) {
+	public function postUrl( $sUrl, $aRequestArgs = [] ) {
 		return Services::HttpRequest()->requestUrl( $sUrl, $aRequestArgs, 'POST' );
 	}
 
 	/**
-	 * @deprecated
 	 * @return string
+	 * @deprecated
 	 */
 	public function getWpConfigPath() {
 		return Services::WpGeneral()->getPath_WpConfig();

@@ -25,6 +25,9 @@ class ICWP_WPSF_Processor_HackProtect_Scanner extends ICWP_WPSF_BaseDbProcessor 
 		if ( $oFO->isUfcEnabled() ) {
 			$this->getSubProcessorUfc()->run();
 		}
+		if ( $oFO->isMalScanEnabled() ) {
+//			$this->getSubProcessorMal()->run();
+		}
 		if ( $oFO->isPtgEnabled() ) {
 			$this->getSubProcessorPtg()->run();
 		}
@@ -40,42 +43,49 @@ class ICWP_WPSF_Processor_HackProtect_Scanner extends ICWP_WPSF_BaseDbProcessor 
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_HackProtect_Apc|mixed
+	 * @return ICWP_WPSF_Processor_HackProtect_Apc
 	 */
 	public function getSubProcessorApc() {
 		return $this->getSubPro( 'apc' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_HackProtect_Ufc|mixed
+	 * @return ICWP_WPSF_Processor_HackProtect_Ufc
 	 */
 	protected function getSubProcessorIntegrity() {
 		return $this->getSubPro( 'int' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_HackProtect_Ptg|mixed
+	 * @return ICWP_WPSF_Processor_HackProtect_Ptg
 	 */
 	public function getSubProcessorPtg() {
 		return $this->getSubPro( 'ptg' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_HackProtect_Ufc|mixed
+	 * @return ICWP_WPSF_Processor_HackProtect_Ufc
 	 */
 	public function getSubProcessorUfc() {
 		return $this->getSubPro( 'ufc' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_HackProtect_Wcf|mixed
+	 * @return ICWP_WPSF_Processor_HackProtect_Mal
+	 */
+	public function getSubProcessorMal() {
+		return $this->getSubPro( 'mal' );
+	}
+
+	/**
+	 * @return ICWP_WPSF_Processor_HackProtect_Wcf
 	 */
 	public function getSubProcessorWcf() {
 		return $this->getSubPro( 'wcf' );
 	}
 
 	/**
-	 * @return ICWP_WPSF_Processor_HackProtect_Wpv|mixed
+	 * @return ICWP_WPSF_Processor_HackProtect_Wpv
 	 */
 	public function getSubProcessorWpv() {
 		return $this->getSubPro( 'wpv' );
@@ -88,16 +98,17 @@ class ICWP_WPSF_Processor_HackProtect_Scanner extends ICWP_WPSF_BaseDbProcessor 
 		return [
 			'apc' => 'ICWP_WPSF_Processor_HackProtect_Apc',
 			'int' => 'ICWP_WPSF_Processor_HackProtect_Integrity',
+			'mal' => 'ICWP_WPSF_Processor_HackProtect_Mal',
 			'ptg' => 'ICWP_WPSF_Processor_HackProtect_Ptg',
 			'ufc' => 'ICWP_WPSF_Processor_HackProtect_Ufc',
-			'wpv' => 'ICWP_WPSF_Processor_HackProtect_Wpv',
 			'wcf' => 'ICWP_WPSF_Processor_HackProtect_Wcf',
+			'wpv' => 'ICWP_WPSF_Processor_HackProtect_Wpv',
 		];
 	}
 
 	/**
 	 * @param string $sKey
-	 * @return ICWP_WPSF_Processor_ScanBase|null
+	 * @return ICWP_WPSF_Processor_ScanBase|mixed|null
 	 */
 	protected function getSubPro( $sKey ) {
 		/** @var ICWP_WPSF_Processor_ScanBase $oPro */
@@ -106,10 +117,10 @@ class ICWP_WPSF_Processor_HackProtect_Scanner extends ICWP_WPSF_BaseDbProcessor 
 	}
 
 	/**
-	 * @return \FernleafSystems\Wordpress\Plugin\Shield\Databases\Scanner\Handler
+	 * @return Scanner\Handler
 	 */
 	protected function createDbHandler() {
-		return new \FernleafSystems\Wordpress\Plugin\Shield\Databases\Scanner\Handler();
+		return new Scanner\Handler();
 	}
 
 	/**
@@ -117,17 +128,16 @@ class ICWP_WPSF_Processor_HackProtect_Scanner extends ICWP_WPSF_BaseDbProcessor 
 	 * @param string $sItemId
 	 */
 	public function downloadItemFile( $sItemId ) {
-		/** @var \FernleafSystems\Wordpress\Plugin\Shield\Databases\Scanner\EntryVO $oEntry */
+		/** @var Scanner\EntryVO $oEntry */
 		$oEntry = $this->getDbHandler()
 					   ->getQuerySelector()
 					   ->byId( (int)$sItemId );
 		if ( !empty( $oEntry ) ) {
 			$sPath = $oEntry->meta[ 'path_full' ];
-			$oFs = $this->loadFS();
+			$oFs = Services::WpFs();
 			if ( $oFs->isFile( $sPath ) ) {
 				header( 'Set-Cookie: fileDownload=true; path=/' );
-				$this->loadRequest()
-					 ->downloadStringAsFile( $oFs->getFileContent( $sPath ), basename( $sPath ) );
+				Services::Response()->downloadStringAsFile( $oFs->getFileContent( $sPath ), basename( $sPath ) );
 			}
 		}
 
@@ -157,6 +167,6 @@ class ICWP_WPSF_Processor_HackProtect_Scanner extends ICWP_WPSF_BaseDbProcessor 
 	 */
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'table_columns_scanner' );
-		return ( is_array( $aDef ) ? $aDef : array() );
+		return ( is_array( $aDef ) ? $aDef : [] );
 	}
 }

@@ -18,14 +18,14 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 		parent::run();
 
 		// For display on the Plugins page
-		add_action( 'load-plugins.php', array( $this, 'addPluginVulnerabilityRows' ), 10, 2 );
-		add_action( 'upgrader_process_complete', array( $this, 'doScan' ), 10, 2 );
-		add_action( 'deleted_plugin', array( $this, 'doScan' ), 10, 2 );
+		add_action( 'load-plugins.php', [ $this, 'addPluginVulnerabilityRows' ], 10, 2 );
+		add_action( 'upgrader_process_complete', [ $this, 'doScan' ], 10, 2 );
+		add_action( 'deleted_plugin', [ $this, 'doScan' ], 10, 2 );
 
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getMod();
 		if ( $oFO->isWpvulnAutoupdatesEnabled() ) {
-			add_filter( 'auto_update_plugin', array( $this, 'autoupdateVulnerablePlugins' ), PHP_INT_MAX, 2 );
+			add_filter( 'auto_update_plugin', [ $this, 'autoupdateVulnerablePlugins' ], PHP_INT_MAX, 2 );
 		}
 	}
 
@@ -116,7 +116,7 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 	 * @return boolean
 	 */
 	public function autoupdateVulnerablePlugins( $bDoAutoUpdate, $mItem ) {
-		$sItemFile = $this->loadWp()->getFileFromAutomaticUpdateItem( $mItem );
+		$sItemFile = Services::WpGeneral()->getFileFromAutomaticUpdateItem( $mItem );
 		// TODO Audit.
 		return $bDoAutoUpdate || ( $this->getPluginVulnerabilities( $sItemFile ) > 0 );
 	}
@@ -139,13 +139,12 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 		if ( $oFO->isWpvulnPluginsHighlightEnabled() && $this->countVulnerablePlugins() > 0 ) {
 			// These 3 add the 'Vulnerable' plugin status view.
 			// BUG: when vulnerable is active, only 1 plugin is available to "All" status. don't know fix.
-			add_action( 'pre_current_active_plugins', array( $this, 'addVulnerablePluginStatusView' ), 1000 );
-			add_filter( 'all_plugins', array( $this, 'filterPluginsToView' ), 1000 );
-			add_filter( 'views_plugins', array( $this, 'addPluginsStatusViewLink' ), 1000 );
-
-			add_filter( 'manage_plugins_columns', array( $this, 'fCountColumns' ), 1000 );
+			add_action( 'pre_current_active_plugins', [ $this, 'addVulnerablePluginStatusView' ], 1000 );
+			add_filter( 'all_plugins', [ $this, 'filterPluginsToView' ], 1000 );
+			add_filter( 'views_plugins', [ $this, 'addPluginsStatusViewLink' ], 1000 );
+			add_filter( 'manage_plugins_columns', [ $this, 'fCountColumns' ], 1000 );
 			foreach ( Services::WpPlugins()->getInstalledPluginFiles() as $sPluginFile ) {
-				add_action( "after_plugin_row_$sPluginFile", array( $this, 'attachVulnerabilityWarning' ), 100, 2 );
+				add_action( "after_plugin_row_$sPluginFile", [ $this, 'attachVulnerabilityWarning' ], 100, 2 );
 			}
 		}
 	}
@@ -155,7 +154,7 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 			global $status;
 			$status = 'vulnerable';
 		}
-		add_filter( 'views_plugins', array( $this, 'addPluginsStatusViewLink' ), 1000 );
+		add_filter( 'views_plugins', [ $this, 'addPluginsStatusViewLink' ], 1000 );
 	}
 
 	/**
@@ -170,7 +169,7 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 			add_query_arg( 'plugin_status', 'vulnerable', 'plugins.php' ),
 			( 'vulnerable' === $status ) ? ' class="current"' : '',
 			sprintf( '%s <span class="count">(%s)</span>',
-				_wpsf__( 'Vulnerable' ),
+				__( 'Vulnerable', 'wp-simple-firewall' ),
 				number_format_i18n( $this->countVulnerablePlugins() )
 			)
 		);
@@ -200,18 +199,18 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 		$aVuln = $this->getPluginVulnerabilities( $sPluginFile );
 		if ( count( $aVuln ) ) {
 			$sOurName = $this->getCon()->getHumanName();
-			$aRenderData = array(
-				'strings'  => array(
-					'known_vuln'     => sprintf( _wpsf__( '%s has discovered that the currently installed version of the %s plugin has known security vulnerabilities.' ),
+			$aRenderData = [
+				'strings'  => [
+					'known_vuln'     => sprintf( __( '%s has discovered that the currently installed version of the %s plugin has known security vulnerabilities.', 'wp-simple-firewall' ),
 						$sOurName, '<strong>'.$aPluginData[ 'Name' ].'</strong>' ),
-					'name'           => _wpsf__( 'Vulnerability Name' ),
-					'type'           => _wpsf__( 'Vulnerability Type' ),
-					'fixed_versions' => _wpsf__( 'Fixed Versions' ),
-					'more_info'      => _wpsf__( 'More Info' ),
-				),
+					'name'           => __( 'Vulnerability Name', 'wp-simple-firewall' ),
+					'type'           => __( 'Vulnerability Type', 'wp-simple-firewall' ),
+					'fixed_versions' => __( 'Fixed Versions', 'wp-simple-firewall' ),
+					'more_info'      => __( 'More Info', 'wp-simple-firewall' ),
+				],
 				'vulns'    => $aVuln,
 				'nColspan' => $this->nColumnsCount
-			);
+			];
 			echo $this->getMod()
 					  ->renderTemplate( 'snippets/plugin-vulnerability.php', $aRenderData );
 		}
@@ -232,52 +231,52 @@ class ICWP_WPSF_Processor_HackProtect_Wpv extends ICWP_WPSF_Processor_HackProtec
 	protected function emailResults( $oRes ) {
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oFO */
 		$oFO = $this->getMod();
-		$oWpPlugins = $this->loadWpPlugins();
-		$oWpThemes = $this->loadWpThemes();
+		$oWpPlugins = Services::WpPlugins();
+		$oWpThemes = Services::WpThemes();
 		$oCon = $this->getCon();
 
-		$aContent = array(
-			sprintf( _wpsf__( '%s has detected items with known security vulnerabilities.' ), $oCon->getHumanName() ),
-			_wpsf__( 'You should update or remove these items at your earliest convenience.' ),
-			_wpsf__( 'Details for the items(s) are below:' ),
+		$aContent = [
+			sprintf( __( '%s has detected items with known security vulnerabilities.', 'wp-simple-firewall' ), $oCon->getHumanName() ),
+			__( 'You should update or remove these items at your earliest convenience.', 'wp-simple-firewall' ),
+			__( 'Details for the items(s) are below:', 'wp-simple-firewall' ),
 			'',
-		);
+		];
 
 		/** @var Shield\Scans\Wpv\ResultItem $oItem */
 		foreach ( $oRes->getItems() as $oItem ) {
 
 			if ( $oItem->context == 'plugins' ) {
 				$aPlugin = $oWpPlugins->getPlugin( $oItem->slug );
-				$sName = sprintf( '%s - %s', _wpsf__( 'Plugin' ), empty( $aPlugin ) ? 'Unknown' : $aPlugin[ 'Name' ] );
+				$sName = sprintf( '%s - %s', __( 'Plugin', 'wp-simple-firewall' ), empty( $aPlugin ) ? 'Unknown' : $aPlugin[ 'Name' ] );
 			}
 			else {
-				$sName = sprintf( '%s - %s', _wpsf__( 'Theme' ), $oWpThemes->getCurrentThemeName() );
+				$sName = sprintf( '%s - %s', __( 'Theme', 'wp-simple-firewall' ), $oWpThemes->getCurrentThemeName() );
 			}
 
 			$oVuln = $oItem->getWpVulnVo();
-			$aContent[] = implode( "<br />", array(
-				sprintf( '%s: %s', _wpsf__( 'Item' ), $sName ),
-				'- '.sprintf( _wpsf__( 'Vulnerability Title: %s' ), $oVuln->title ),
-				'- '.sprintf( _wpsf__( 'Vulnerability Type: %s' ), $oVuln->vuln_type ),
-				'- '.sprintf( _wpsf__( 'Fixed Version: %s' ), $oVuln->fixed_in ),
-				'- '.sprintf( _wpsf__( 'Further Information: %s' ), $oVuln->getUrl() ),
+			$aContent[] = implode( "<br />", [
+				sprintf( '%s: %s', __( 'Item', 'wp-simple-firewall' ), $sName ),
+				'- '.sprintf( __( 'Vulnerability Title: %s', 'wp-simple-firewall' ), $oVuln->title ),
+				'- '.sprintf( __( 'Vulnerability Type: %s', 'wp-simple-firewall' ), $oVuln->vuln_type ),
+				'- '.sprintf( __( 'Fixed Version: %s', 'wp-simple-firewall' ), $oVuln->fixed_in ),
+				'- '.sprintf( __( 'Further Information: %s', 'wp-simple-firewall' ), $oVuln->getUrl() ),
 				'',
-			) );
+			] );
 		}
 
 		$aContent[] = $this->getScannerButtonForEmail();
 		$aContent[] = '';
 
-		$sSubject = sprintf( '%s - %s', _wpsf__( 'Warning' ), _wpsf__( 'Plugin(s) Discovered With Known Security Vulnerabilities.' ) );
+		$sSubject = sprintf( '%s - %s', __( 'Warning', 'wp-simple-firewall' ), __( 'Plugin(s) Discovered With Known Security Vulnerabilities.', 'wp-simple-firewall' ) );
 		$sTo = $oFO->getPluginDefaultRecipientAddress();
 		$bSendSuccess = $this->getEmailProcessor()
 							 ->sendEmailWithWrap( $sTo, $sSubject, $aContent );
 
 		if ( $bSendSuccess ) {
-			$this->addToAuditEntry( sprintf( _wpsf__( 'Successfully sent Plugin Vulnerability Notification email alert to: %s' ), $sTo ) );
+			$this->addToAuditEntry( sprintf( __( 'Successfully sent Plugin Vulnerability Notification email alert to: %s', 'wp-simple-firewall' ), $sTo ) );
 		}
 		else {
-			$this->addToAuditEntry( sprintf( _wpsf__( 'Failed to send Plugin Vulnerability Notification email alert to: %s' ), $sTo ) );
+			$this->addToAuditEntry( sprintf( __( 'Failed to send Plugin Vulnerability Notification email alert to: %s', 'wp-simple-firewall' ), $sTo ) );
 		}
 		return $bSendSuccess;
 	}

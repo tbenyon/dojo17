@@ -10,17 +10,17 @@ class ICWP_WPSF_Processor_Plugin_Badge extends ICWP_WPSF_Processor_BaseWpsf {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
 		if ( $oFO->isDisplayPluginBadge() ) {
-			add_action( 'wp_enqueue_scripts', array( $this, 'includeJquery' ) );
-			add_action( 'login_enqueue_scripts', array( $this, 'includeJquery' ) );
-			add_action( 'wp_footer', array( $this, 'printPluginBadge' ), 100 );
-			add_action( 'login_footer', array( $this, 'printPluginBadge' ), 100 );
+			add_action( 'wp_enqueue_scripts', [ $this, 'includeJquery' ] );
+			add_action( 'login_enqueue_scripts', [ $this, 'includeJquery' ] );
+			add_action( 'wp_footer', [ $this, 'printPluginBadge' ], 100 );
+			add_action( 'login_footer', [ $this, 'printPluginBadge' ], 100 );
 		}
-		add_action( 'widgets_init', array( $this, 'addPluginBadgeWidget' ) );
-		add_filter( $oFO->prefix( 'dashboard_widget_content' ), array( $this, 'gatherPluginWidgetContent' ), 100 );
+		add_action( 'widgets_init', [ $this, 'addPluginBadgeWidget' ] );
+		add_filter( $oFO->prefix( 'dashboard_widget_content' ), [ $this, 'gatherPluginWidgetContent' ], 100 );
 	}
 
 	public function includeJquery() {
-		wp_enqueue_script( 'jquery', null, array(), false, true );
+		wp_enqueue_script( 'jquery', null, [], false, true );
 	}
 
 	/**
@@ -33,18 +33,18 @@ class ICWP_WPSF_Processor_Plugin_Badge extends ICWP_WPSF_Processor_BaseWpsf {
 		$oCon = $this->getCon();
 
 		$aLabels = $oCon->getLabels();
-		$sFooter = sprintf( _wpsf__( '%s is provided by %s' ), $oCon->getHumanName(),
+		$sFooter = sprintf( __( '%s is provided by %s', 'wp-simple-firewall' ), $oCon->getHumanName(),
 			sprintf( '<a href="%s">%s</a>', $aLabels[ 'AuthorURI' ], $aLabels[ 'Author' ] )
 		);
 
-		$aDisplayData = array(
-			'sInstallationDays' => sprintf( _wpsf__( 'Days Installed: %s' ), $this->getInstallationDays() ),
+		$aDisplayData = [
+			'sInstallationDays' => sprintf( __( 'Days Installed: %s', 'wp-simple-firewall' ), $this->getInstallationDays() ),
 			'sFooter'           => $sFooter,
-			'sIpAddress'        => sprintf( _wpsf__( 'Your IP address is: %s' ), $this->ip() )
-		);
+			'sIpAddress'        => sprintf( __( 'Your IP address is: %s', 'wp-simple-firewall' ), $this->ip() )
+		];
 
 		if ( !is_array( $aContent ) ) {
-			$aContent = array();
+			$aContent = [];
 		}
 		$aContent[] = $oFO->renderTemplate( 'snippets/widget_dashboard_plugin.php', $aDisplayData );
 		return $aContent;

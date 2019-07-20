@@ -4,6 +4,11 @@ namespace FernleafSystems\Wordpress\Services\Utilities\WpOrg;
 
 use FernleafSystems\Wordpress\Services\Services;
 
+/**
+ * @deprecated
+ * Class Plugins
+ * @package FernleafSystems\Wordpress\Services\Utilities\WpOrg
+ */
 class Plugins {
 
 	const URL_TEMPLATE_DOWNLOAD_ZIP = 'https://downloads.wordpress.org/plugin/%s.%s.zip';
@@ -42,7 +47,7 @@ class Plugins {
 	 * @return string[]
 	 */
 	public function getAllVersions() {
-		$aV = array();
+		$aV = [];
 		$sSvnVersionsContent = Services::HttpRequest()->getContent(
 			sprintf( static::URL_TEMPLATE_DOWNLOAD_SVN_VERSIONS, $this->getWorkingSlug() )
 		);
@@ -70,12 +75,12 @@ class Plugins {
 	 */
 	public function latestVersion() {
 		$sFileLocation = null;
-		$api = plugins_api( 'plugin_information', array(
+		$api = plugins_api( 'plugin_information', [
 			'slug'   => $this->getWorkingSlug(),
-			'fields' => array(
+			'fields' => [
 				'sections' => false,
-			),
-		) );
+			],
+		] );
 
 		if ( is_wp_error( $api ) ) {
 			throw new \Exception( $api->get_error_message() );

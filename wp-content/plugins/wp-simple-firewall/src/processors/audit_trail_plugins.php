@@ -5,9 +5,9 @@ class ICWP_WPSF_Processor_AuditTrail_Plugins extends ICWP_WPSF_AuditTrail_Audito
 	/**
 	 */
 	public function run() {
-		add_action( 'deactivated_plugin', array( $this, 'auditDeactivatedPlugin' ) );
-		add_action( 'activated_plugin', array( $this, 'auditActivatedPlugin' ) );
-		add_action( 'check_admin_referer', array( $this, 'auditEditedPluginFile' ), 10, 2 );
+		add_action( 'deactivated_plugin', [ $this, 'auditDeactivatedPlugin' ] );
+		add_action( 'activated_plugin', [ $this, 'auditActivatedPlugin' ] );
+		add_action( 'check_admin_referer', [ $this, 'auditEditedPluginFile' ], 10, 2 );
 	}
 
 	/**
@@ -19,7 +19,7 @@ class ICWP_WPSF_Processor_AuditTrail_Plugins extends ICWP_WPSF_AuditTrail_Audito
 		}
 
 		$this->add( 'plugins', 'plugin_activated', 1,
-			sprintf( _wpsf__( 'Plugin "%s" was activated.' ), $sPlugin )
+			sprintf( __( 'Plugin "%s" was activated.', 'wp-simple-firewall' ), $sPlugin )
 		);
 	}
 
@@ -32,13 +32,13 @@ class ICWP_WPSF_Processor_AuditTrail_Plugins extends ICWP_WPSF_AuditTrail_Audito
 		}
 
 		$this->add( 'plugins', 'plugin_deactivated', 1,
-			sprintf( _wpsf__( 'Plugin "%s" was deactivated.' ), $sPlugin )
+			sprintf( __( 'Plugin "%s" was deactivated.', 'wp-simple-firewall' ), $sPlugin )
 		);
 	}
 
 	/**
-	 * @param string  $sAction
-	 * @param boolean $bResult
+	 * @param string $sAction
+	 * @param bool   $bResult
 	 */
 	public function auditEditedPluginFile( $sAction, $bResult ) {
 
@@ -50,7 +50,7 @@ class ICWP_WPSF_Processor_AuditTrail_Plugins extends ICWP_WPSF_AuditTrail_Audito
 		$sFileName = str_replace( $sStub, '', $sAction );
 
 		$this->add( 'plugins', 'file_edited', 2,
-			sprintf( _wpsf__( 'An attempt was made to edit the plugin file "%s" directly through the WordPress editor.' ), $sFileName )
+			sprintf( __( 'An attempt was made to edit the plugin file "%s" directly through the WordPress editor.', 'wp-simple-firewall' ), $sFileName )
 		);
 	}
 }

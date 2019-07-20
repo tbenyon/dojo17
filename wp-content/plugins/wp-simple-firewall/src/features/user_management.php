@@ -5,6 +5,8 @@ use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
+	use Shield\AuditTrail\Auditor;
+
 	/**
 	 * @param array $aAjaxResponse
 	 * @return array
@@ -45,17 +47,17 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		$aIds = $oReq->post( 'ids' );
 		if ( empty( $aIds ) || !is_array( $aIds ) ) {
 			$bSuccess = false;
-			$sMessage = _wpsf__( 'No items selected.' );
+			$sMessage = __( 'No items selected.', 'wp-simple-firewall' );
 		}
 		else if ( !in_array( $oReq->post( 'bulk_action' ), [ 'delete' ] ) ) {
-			$sMessage = _wpsf__( 'Not a supported action.' );
+			$sMessage = __( 'Not a supported action.', 'wp-simple-firewall' );
 		}
 		else {
 			$nYourId = $oProcessor->getCurrentSession()->id;
 			$bIncludesYourSession = in_array( $nYourId, $aIds );
 
 			if ( $bIncludesYourSession && ( count( $aIds ) == 1 ) ) {
-				$sMessage = _wpsf__( 'Please logout if you want to delete your own session.' );
+				$sMessage = __( 'Please logout if you want to delete your own session.', 'wp-simple-firewall' );
 			}
 			else {
 				$bSuccess = true;
@@ -67,17 +69,17 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 						$oDel->deleteById( $nId );
 					}
 				}
-				$sMessage = _wpsf__( 'Selected items were deleted.' );
+				$sMessage = __( 'Selected items were deleted.', 'wp-simple-firewall' );
 				if ( $bIncludesYourSession ) {
-					$sMessage .= ' *'._wpsf__( 'Your session was retained' );
+					$sMessage .= ' *'.__( 'Your session was retained', 'wp-simple-firewall' );
 				}
 			}
 		}
 
-		return array(
+		return [
 			'success' => $bSuccess,
 			'message' => $sMessage,
-		);
+		];
 	}
 
 	/**
@@ -90,23 +92,23 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		$bSuccess = false;
 		$nId = $oReq->post( 'rid', -1 );
 		if ( !is_numeric( $nId ) || $nId < 0 ) {
-			$sMessage = _wpsf__( 'Invalid session selected' );
+			$sMessage = __( 'Invalid session selected', 'wp-simple-firewall' );
 		}
 		else if ( $this->getSession()->id === $nId ) {
-			$sMessage = _wpsf__( 'Please logout if you want to delete your own session.' );
+			$sMessage = __( 'Please logout if you want to delete your own session.', 'wp-simple-firewall' );
 		}
 		else if ( $oProcessor->getDbHandler()->getQueryDeleter()->deleteById( $nId ) ) {
-			$sMessage = _wpsf__( 'User session deleted' );
+			$sMessage = __( 'User session deleted', 'wp-simple-firewall' );
 			$bSuccess = true;
 		}
 		else {
-			$sMessage = _wpsf__( "User session wasn't deleted" );
+			$sMessage = __( "User session wasn't deleted", 'wp-simple-firewall' );
 		}
 
-		return array(
+		return [
 			'success' => $bSuccess,
 			'message' => $sMessage,
-		);
+		];
 	}
 
 	private function ajaxExec_BuildTableTraffic() {
@@ -124,10 +126,10 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 			->setDbHandler( $this->getSessionsProcessor()->getDbHandler() )
 			->setSecAdminUsers( $oSecAdminMod->getSecurityAdminUsers() );
 
-		return array(
+		return [
 			'success' => true,
 			'html'    => $oTableBuilder->buildTable()
-		);
+		];
 	}
 
 	/**
@@ -167,22 +169,22 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	}
 
 	protected function doExtraSubmitProcessing() {
-		$sAdminEmail = $this->getOpt( 'enable_admin_login_email_notification' );
-		if ( !Services::Data()->validEmail( $sAdminEmail ) ) {
+		if ( !Services::Data()->validEmail( $this->getAdminLoginNotificationEmail() ) ) {
 			$this->getOptionsVo()->resetOptToDefault( 'enable_admin_login_email_notification' );
-		}
-
-		if ( $this->getOpt( 'session_username_concurrent_limit' ) < 0 ) {
-			$this->getOptionsVo()->resetOptToDefault( 'session_username_concurrent_limit' );
-		}
-
-		if ( $this->getOpt( 'session_timeout_interval' ) < 1 ) {
-			$this->getOptionsVo()->resetOptToDefault( 'session_timeout_interval' );
 		}
 
 		if ( $this->getIdleTimeoutInterval() > $this->getMaxSessionTime() ) {
 			$this->setOpt( 'session_idle_timeout_interval', $this->getOpt( 'session_timeout_interval' )*24 );
 		}
+
+		$this->setOpt( 'auto_idle_roles',
+			array_unique( array_filter( array_map(
+				function ( $sRole ) {
+					return preg_replace( '#[^\sa-z0-9_-]#i', '', trim( strtolower( $sRole ) ) );
+				},
+				$this->getSuspendAutoIdleUserRoles()
+			) ) )
+		);
 	}
 
 	/**
@@ -205,15 +207,15 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	protected function getDisplayStrings() {
 		return $this->loadDP()->mergeArraysRecursive(
 			parent::getDisplayStrings(),
-			array(
-				'um_current_user_settings'          => _wpsf__( 'Current User Sessions' ),
-				'um_username'                       => _wpsf__( 'Username' ),
-				'um_logged_in_at'                   => _wpsf__( 'Logged In At' ),
-				'um_last_activity_at'               => _wpsf__( 'Last Activity At' ),
-				'um_last_activity_uri'              => _wpsf__( 'Last Activity URI' ),
-				'um_login_ip'                       => _wpsf__( 'Login IP' ),
-				'um_need_to_enable_user_management' => _wpsf__( 'You need to enable the User Management feature to view and manage user sessions.' ),
-			)
+			[
+				'um_current_user_settings'          => __( 'Current User Sessions', 'wp-simple-firewall' ),
+				'um_username'                       => __( 'Username', 'wp-simple-firewall' ),
+				'um_logged_in_at'                   => __( 'Logged In At', 'wp-simple-firewall' ),
+				'um_last_activity_at'               => __( 'Last Activity At', 'wp-simple-firewall' ),
+				'um_last_activity_uri'              => __( 'Last Activity URI', 'wp-simple-firewall' ),
+				'um_login_ip'                       => __( 'Login IP', 'wp-simple-firewall' ),
+				'um_need_to_enable_user_management' => __( 'You need to enable the User Management feature to view and manage user sessions.', 'wp-simple-firewall' ),
+			]
 		);
 	}
 
@@ -283,13 +285,13 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return int
 	 */
 	public function getPassStrengthName( $nStrength ) {
-		$aMap = array(
-			_wpsf__( 'Very Weak' ),
-			_wpsf__( 'Weak' ),
-			_wpsf__( 'Medium' ),
-			_wpsf__( 'Strong' ),
-			_wpsf__( 'Very Strong' ),
-		);
+		$aMap = [
+			__( 'Very Weak', 'wp-simple-firewall' ),
+			__( 'Weak', 'wp-simple-firewall' ),
+			__( 'Medium', 'wp-simple-firewall' ),
+			__( 'Strong', 'wp-simple-firewall' ),
+			__( 'Very Strong', 'wp-simple-firewall' ),
+		];
 		return $aMap[ max( 0, min( 4, $nStrength ) ) ];
 	}
 
@@ -322,11 +324,15 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		return $this->isOpt( 'pass_prevent_pwned', 'Y' );
 	}
 
+	/**
+	 * @return bool
+	 */
 	public function isSuspendEnabled() {
-		return ( $this->isSuspendManualEnabled()
+		return $this->isPremium() &&
+			   ( $this->isSuspendManualEnabled()
 				 || $this->isSuspendAutoIdleEnabled()
 				 || $this->isSuspendAutoPasswordEnabled()
-			   ) && $this->isPremium();
+			   );
 	}
 
 	/**
@@ -340,14 +346,23 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return int
 	 */
 	public function getSuspendAutoIdleTime() {
-		return $this->getOpt( 'auto_idle', 0 )*DAY_IN_SECONDS;
+		return $this->getOpt( 'auto_idle_days', 0 )*DAY_IN_SECONDS;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getSuspendAutoIdleUserRoles() {
+		$aRoles = $this->getOpt( 'auto_idle_roles', [] );
+		return is_array( $aRoles ) ? $aRoles : [];
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isSuspendAutoIdleEnabled() {
-		return $this->getSuspendAutoIdleTime() > 0;
+		return ( $this->getSuspendAutoIdleTime() > 0 )
+			   && ( count( $this->getSuspendAutoIdleUserRoles() ) > 0 );
 	}
 
 	/**
@@ -359,18 +374,40 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	}
 
 	/**
-	 * @param int  $nId
+	 * @param int  $nUserId
 	 * @param bool $bAdd - set true to add, false to remove
 	 * @return $this
 	 */
-	public function addRemoveHardSuspendUserId( $nId, $bAdd = true ) {
+	public function addRemoveHardSuspendUserId( $nUserId, $bAdd = true ) {
+		$sAdminUser = Services::WpUsers()->getCurrentWpUsername();
+
 		$aIds = $this->getOpt( 'hard_suspended_userids', [] );
-		if ( $bAdd ) {
-			$aIds[ $nId ] = Services::Request()->ts();
+		if ( !is_array( $aIds ) ) {
+			$aIds = [];
 		}
-		else if ( isset( $aIds[ $nId ] ) ) {
-			unset( $aIds[ $nId ] );
+
+		$bIdSuspended = isset( $aIds[ $nUserId ] );
+		$oMeta = $this->getCon()->getUserMeta( Services::WpUsers()->getUserById( $nUserId ) );
+
+		if ( $bAdd && !$bIdSuspended ) {
+			$oMeta->hard_suspended_at = Services::Request()->ts();
+			$aIds[ $nUserId ] = $oMeta->hard_suspended_at;
+			$this->createNewAudit(
+				'wpsf',
+				sprintf( __( 'User ID %s suspended by admin (%s)', 'wp-simple-firewall' ), $nUserId, $sAdminUser ),
+				1, 'suspend_user'
+			);
 		}
+		else if ( !$bAdd && $bIdSuspended ) {
+			$oMeta->hard_suspended_at = 0;
+			unset( $aIds[ $nUserId ] );
+			$this->createNewAudit(
+				'wpsf',
+				sprintf( __( 'User ID %s unsuspended by admin (%s)', 'wp-simple-firewall' ), $nUserId, $sAdminUser ),
+				1, 'unsuspend_user'
+			);
+		}
+
 		return $this->setOpt( 'hard_suspended_userids', $aIds );
 	}
 
@@ -388,32 +425,32 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 */
 	public function addInsightsNoticeData( $aAllNotices ) {
 
-		$aNotices = array(
-			'title'    => _wpsf__( 'Users' ),
-			'messages' => array()
-		);
+		$aNotices = [
+			'title'    => __( 'Users', 'wp-simple-firewall' ),
+			'messages' => []
+		];
 
 		{ //admin user
 			$oAdmin = Services::WpUsers()->getUserByUsername( 'admin' );
 			if ( !empty( $oAdmin ) && user_can( $oAdmin, 'manage_options' ) ) {
-				$aNotices[ 'messages' ][ 'admin' ] = array(
+				$aNotices[ 'messages' ][ 'admin' ] = [
 					'title'   => 'Admin User',
-					'message' => sprintf( _wpsf__( "Default 'admin' user still available." ) ),
+					'message' => sprintf( __( "Default 'admin' user still available.", 'wp-simple-firewall' ) ),
 					'href'    => '',
-					'rec'     => _wpsf__( "Default 'admin' user should be disabled or removed." )
-				);
+					'rec'     => __( "Default 'admin' user should be disabled or removed.", 'wp-simple-firewall' )
+				];
 			}
 		}
 
 		{//password policies
 			if ( !$this->isPasswordPoliciesEnabled() ) {
-				$aNotices[ 'messages' ][ 'password' ] = array(
+				$aNotices[ 'messages' ][ 'password' ] = [
 					'title'   => 'Password Policies',
-					'message' => _wpsf__( "Strong password policies are not enforced." ),
+					'message' => __( "Strong password policies are not enforced.", 'wp-simple-firewall' ),
 					'href'    => $this->getUrl_DirectLinkToSection( 'section_passwords' ),
-					'action'  => sprintf( 'Go To %s', _wpsf__( 'Options' ) ),
-					'rec'     => _wpsf__( 'Password policies should be turned-on.' )
-				);
+					'action'  => sprintf( 'Go To %s', __( 'Options', 'wp-simple-firewall' ) ),
+					'rec'     => __( 'Password policies should be turned-on.', 'wp-simple-firewall' )
+				];
 			}
 		}
 
@@ -428,64 +465,64 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 * @return array
 	 */
 	public function addInsightsConfigData( $aAllData ) {
-		$aThis = array(
-			'strings'      => array(
-				'title' => _wpsf__( 'User Management' ),
-				'sub'   => _wpsf__( 'Sessions Control & Password Policies' ),
-			),
-			'key_opts'     => array(),
+		$aThis = [
+			'strings'      => [
+				'title' => __( 'User Management', 'wp-simple-firewall' ),
+				'sub'   => __( 'Sessions Control & Password Policies', 'wp-simple-firewall' ),
+			],
+			'key_opts'     => [],
 			'href_options' => $this->getUrl_AdminPage()
-		);
+		];
 
 		if ( !$this->isModOptEnabled() ) {
 			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
 		}
 		else {
 			$bHasIdle = $this->hasSessionIdleTimeout();
-			$aThis[ 'key_opts' ][ 'idle' ] = array(
-				'name'    => _wpsf__( 'Idle Users' ),
+			$aThis[ 'key_opts' ][ 'idle' ] = [
+				'name'    => __( 'Idle Users', 'wp-simple-firewall' ),
 				'enabled' => $bHasIdle,
 				'summary' => $bHasIdle ?
-					sprintf( _wpsf__( 'Idle sessions are terminated after %s hours' ), $this->getOpt( 'session_idle_timeout_interval' ) )
-					: _wpsf__( 'Idle sessions wont be terminated' ),
+					sprintf( __( 'Idle sessions are terminated after %s hours', 'wp-simple-firewall' ), $this->getOpt( 'session_idle_timeout_interval' ) )
+					: __( 'Idle sessions wont be terminated', 'wp-simple-firewall' ),
 				'weight'  => 2,
 				'href'    => $this->getUrl_DirectLinkToOption( 'session_idle_timeout_interval' ),
-			);
+			];
 
 			$bLocked = $this->isLockToIp();
-			$aThis[ 'key_opts' ][ 'lock' ] = array(
-				'name'    => _wpsf__( 'Lock To IP' ),
+			$aThis[ 'key_opts' ][ 'lock' ] = [
+				'name'    => __( 'Lock To IP', 'wp-simple-firewall' ),
 				'enabled' => $bLocked,
 				'summary' => $bLocked ?
-					_wpsf__( 'Sessions are locked to IP address' )
-					: _wpsf__( "Sessions aren't locked to IP address" ),
+					__( 'Sessions are locked to IP address', 'wp-simple-firewall' )
+					: __( "Sessions aren't locked to IP address", 'wp-simple-firewall' ),
 				'weight'  => 1,
 				'href'    => $this->getUrl_DirectLinkToOption( 'session_lock_location' ),
-			);
+			];
 
 			$bPolicies = $this->isPasswordPoliciesEnabled();
 
 			$bPwned = $bPolicies && $this->isPassPreventPwned();
-			$aThis[ 'key_opts' ][ 'pwned' ] = array(
-				'name'    => _wpsf__( 'Pwned Passwords' ),
+			$aThis[ 'key_opts' ][ 'pwned' ] = [
+				'name'    => __( 'Pwned Passwords', 'wp-simple-firewall' ),
 				'enabled' => $bPwned,
 				'summary' => $bPwned ?
-					_wpsf__( 'Pwned passwords are blocked on this site' )
-					: _wpsf__( 'Pwned passwords are allowed on this site' ),
+					__( 'Pwned passwords are blocked on this site', 'wp-simple-firewall' )
+					: __( 'Pwned passwords are allowed on this site', 'wp-simple-firewall' ),
 				'weight'  => 2,
 				'href'    => $this->getUrl_DirectLinkToOption( 'pass_prevent_pwned' ),
-			);
+			];
 
 			$bIndepthPolices = $bPolicies && $this->isPremium();
-			$aThis[ 'key_opts' ][ 'policies' ] = array(
-				'name'    => _wpsf__( 'Password Policies' ),
+			$aThis[ 'key_opts' ][ 'policies' ] = [
+				'name'    => __( 'Password Policies', 'wp-simple-firewall' ),
 				'enabled' => $bIndepthPolices,
 				'summary' => $bIndepthPolices ?
-					_wpsf__( 'Several password policies are active' )
-					: _wpsf__( 'Limited or no password polices are active' ),
+					__( 'Several password policies are active', 'wp-simple-firewall' )
+					: __( 'Limited or no password polices are active', 'wp-simple-firewall' ),
 				'weight'  => 2,
 				'href'    => $this->getUrl_DirectLinkToSection( 'section_passwords' ),
-			);
+			];
 		}
 
 		$aAllData[ $this->getSlug() ] = $aThis;
@@ -503,65 +540,65 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 		switch ( $sSectionSlug ) {
 
 			case 'section_enable_plugin_feature_user_accounts_management' :
-				$sTitle = sprintf( _wpsf__( 'Enable Module: %s' ), $this->getMainFeatureName() );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'User Management offers real user sessions, finer control over user session time-out, and ensures users have logged-in in a correct manner.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), sprintf( _wpsf__( 'Keep the %s feature turned on.' ), _wpsf__( 'User Management' ) ) )
-				);
-				$sTitleShort = sprintf( _wpsf__( '%s/%s Module' ), _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
+				$sTitleShort = sprintf( '%s/%s', __( 'On', 'wp-simple-firewall' ), __( 'Off', 'wp-simple-firewall' ) );
+				$sTitle = sprintf( __( 'Enable Module: %s', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'User Management offers real user sessions, finer control over user session time-out, and ensures users have logged-in in a correct manner.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), sprintf( __( 'Keep the %s feature turned on.', 'wp-simple-firewall' ), __( 'User Management', 'wp-simple-firewall' ) ) )
+				];
 				break;
 
 			case 'section_passwords' :
-				$sTitle = _wpsf__( 'Password Policies' );
-				$sTitleShort = _wpsf__( 'Password Policies' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Have full control over passwords used by users on the site.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Requirements' ), sprintf( 'WordPress v%s+', '4.4.0' ) ),
-				);
+				$sTitle = __( 'Password Policies', 'wp-simple-firewall' );
+				$sTitleShort = __( 'Password Policies', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Have full control over passwords used by users on the site.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Use of this feature is highly recommend.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Requirements', 'wp-simple-firewall' ), sprintf( 'WordPress v%s+', '4.4.0' ) ),
+				];
 				break;
 
 			case 'section_admin_login_notification' :
-				$sTitle = _wpsf__( 'Admin Login Notification' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'So you can be made aware of when a WordPress administrator has logged into your site when you are not expecting it.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Notifications' );
+				$sTitle = __( 'Admin Login Notification', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'So you can be made aware of when a WordPress administrator has logged into your site when you are not expecting it.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Use of this feature is highly recommend.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Notifications', 'wp-simple-firewall' );
 				break;
 
 			case 'section_multifactor_authentication' :
-				$sTitle = _wpsf__( 'Multi-Factor User Authentication' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Verifies the identity of users who log in to your site - i.e. they are who they say they are.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ).' '._wpsf__( 'However, if your host blocks email sending you may lock yourself out.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Multi-Factor Authentication' );
+				$sTitle = __( 'Multi-Factor User Authentication', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Verifies the identity of users who log in to your site - i.e. they are who they say they are.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Use of this feature is highly recommend.', 'wp-simple-firewall' ).' '.__( 'However, if your host blocks email sending you may lock yourself out.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Multi-Factor Authentication', 'wp-simple-firewall' );
 				break;
 
 			case 'section_user_session_management' :
-				$sTitle = _wpsf__( 'User Session Management' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Allows you to better control user sessions on your site and expire idle sessions and prevent account sharing.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Session Options' );
+				$sTitle = __( 'User Session Management', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Allows you to better control user sessions on your site and expire idle sessions and prevent account sharing.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Use of this feature is highly recommend.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Session Options', 'wp-simple-firewall' );
 				break;
 
 			case 'section_suspend' :
-				$sTitleShort = _wpsf__( 'User Suspension' );
-				$sTitle = _wpsf__( 'Automatic And Manual User Suspension' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Automatically suspend accounts to prevent login by certain users.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Use of this feature is highly recommend.' ) )
-				);
+				$sTitleShort = __( 'User Suspension', 'wp-simple-firewall' );
+				$sTitle = __( 'Automatic And Manual User Suspension', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Automatically suspends accounts to prevent login by certain users.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Use of this feature is highly recommend.', 'wp-simple-firewall' ) )
+				];
 				break;
 
 			default:
 				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
-		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
+		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : [];
 		$aOptionsParams[ 'title_short' ] = $sTitleShort;
 		return $aOptionsParams;
 	}
@@ -573,125 +610,135 @@ class ICWP_WPSF_FeatureHandler_UserManagement extends ICWP_WPSF_FeatureHandler_B
 	 */
 	protected function loadStrings_Options( $aOptionsParams ) {
 
-		$sKey = $aOptionsParams[ 'key' ];
-		switch ( $sKey ) {
+		$oOptsVo = $this->getOptionsVo();
+		switch ( $aOptionsParams[ 'key' ] ) {
 
 			case 'enable_user_management' :
-				$sName = sprintf( _wpsf__( 'Enable %s Module' ), $this->getMainFeatureName() );
-				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Module' ), $this->getMainFeatureName() );
-				$sDescription = sprintf( _wpsf__( 'Un-Checking this option will completely disable the %s module.' ), $this->getMainFeatureName() );
+				$sName = sprintf( __( 'Enable %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sSummary = sprintf( __( 'Enable (or Disable) The %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sDescription = sprintf( __( 'Un-Checking this option will completely disable the %s module.', 'wp-simple-firewall' ), $this->getMainFeatureName() );
 				break;
 
 			case 'enable_admin_login_email_notification' :
-				$sName = _wpsf__( 'Admin Login Notification Email' );
-				$sSummary = _wpsf__( 'Send An Notification Email When Administrator Logs In' );
-				$sDescription = _wpsf__( 'If you would like to be notified every time an administrator user logs into this WordPress site, enter a notification email address.' )
-								.'<br />'._wpsf__( 'No email address - No Notification.' );
+				$sName = __( 'Admin Login Notification Email', 'wp-simple-firewall' );
+				$sSummary = __( 'Send An Notification Email When Administrator Logs In', 'wp-simple-firewall' );
+				$sDescription = __( 'If you would like to be notified every time an administrator user logs into this WordPress site, enter a notification email address.', 'wp-simple-firewall' )
+								.'<br />'.__( 'No email address - No Notification.', 'wp-simple-firewall' );
 				break;
 
 			case 'enable_user_login_email_notification' :
-				$sName = _wpsf__( 'User Login Notification Email' );
-				$sSummary = _wpsf__( 'Send Email Notification To Each User Upon Successful Login' );
-				$sDescription = _wpsf__( 'A notification is sent to each user when a successful login occurs for their account.' );
+				$sName = __( 'User Login Notification Email', 'wp-simple-firewall' );
+				$sSummary = __( 'Send Email Notification To Each User Upon Successful Login', 'wp-simple-firewall' );
+				$sDescription = __( 'A notification is sent to each user when a successful login occurs for their account.', 'wp-simple-firewall' );
 				break;
 
 			case 'session_timeout_interval' :
-				$sName = _wpsf__( 'Session Timeout' );
-				$sSummary = _wpsf__( 'Specify How Many Days After Login To Automatically Force Re-Login' );
-				$sDescription = _wpsf__( 'WordPress default is 2 days, or 14 days if you check the "Remember Me" box.' )
-								.'<br />'._wpsf__( 'Think of this as an absolute maximum possible session length.' )
-								.'<br />'.sprintf( _wpsf__( 'This cannot be less than %s.' ), '<strong>1</strong>' )
-								.' '.sprintf( '%s: %s', _wpsf__( 'Default' ), '<strong>'.$this->getOptionsVo()
-																							  ->getOptDefault( 'session_timeout_interval' ).'</strong>' );
+				$sName = __( 'Session Timeout', 'wp-simple-firewall' );
+				$sSummary = __( 'Specify How Many Days After Login To Automatically Force Re-Login', 'wp-simple-firewall' );
+				$sDescription = __( 'WordPress default is 2 days, or 14 days if you check the "Remember Me" box.', 'wp-simple-firewall' )
+								.'<br />'.__( 'Think of this as an absolute maximum possible session length.', 'wp-simple-firewall' )
+								.'<br />'.sprintf( __( 'This cannot be less than %s.', 'wp-simple-firewall' ), '<strong>1</strong>' )
+								.' '.sprintf( '%s: %s', __( 'Default', 'wp-simple-firewall' ), '<strong>'.$this->getOptionsVo()
+																											   ->getOptDefault( 'session_timeout_interval' ).'</strong>' );
 				break;
 
 			case 'session_idle_timeout_interval' :
-				$sName = _wpsf__( 'Idle Timeout' );
-				$sSummary = _wpsf__( 'Specify How Many Hours After Inactivity To Automatically Logout User' );
-				$sDescription = _wpsf__( 'If the user is inactive for the number of hours specified, they will be forcefully logged out next time they return.' )
-								.'<br />'.sprintf( _wpsf__( 'Set to %s to turn off this option.' ), '"<strong>0</strong>"' );
+				$sName = __( 'Idle Timeout', 'wp-simple-firewall' );
+				$sSummary = __( 'Specify How Many Hours After Inactivity To Automatically Logout User', 'wp-simple-firewall' );
+				$sDescription = __( 'If the user is inactive for the number of hours specified, they will be forcefully logged out next time they return.', 'wp-simple-firewall' )
+								.'<br />'.sprintf( __( 'Set to %s to turn off this option.', 'wp-simple-firewall' ), '"<strong>0</strong>"' );
 				break;
 
 			case 'session_lock_location' :
-				$sName = _wpsf__( 'Lock To Location' );
-				$sSummary = _wpsf__( 'Locks A User Session To IP address' );
-				$sDescription = _wpsf__( 'When selected, a session is restricted to the same IP address as when the user logged in.' )
-								.' '._wpsf__( "If a logged-in user's IP address changes, the session will be invalidated and they'll be forced to re-login to WordPress." );
+				$sName = __( 'Lock To Location', 'wp-simple-firewall' );
+				$sSummary = __( 'Locks A User Session To IP address', 'wp-simple-firewall' );
+				$sDescription = __( 'When selected, a session is restricted to the same IP address as when the user logged in.', 'wp-simple-firewall' )
+								.' '.__( "If a logged-in user's IP address changes, the session will be invalidated and they'll be forced to re-login to WordPress.", 'wp-simple-firewall' );
 				break;
 
 			case 'session_username_concurrent_limit' :
-				$sName = _wpsf__( 'Max Simultaneous Sessions' );
-				$sSummary = _wpsf__( 'Limit Simultaneous Sessions For The Same Username' );
-				$sDescription = _wpsf__( 'The number provided here is the maximum number of simultaneous, distinct, sessions allowed for any given username.' )
-								.'<br />'._wpsf__( "Zero (0) will allow unlimited simultaneous sessions." );
+				$sName = __( 'Max Simultaneous Sessions', 'wp-simple-firewall' );
+				$sSummary = __( 'Limit Simultaneous Sessions For The Same Username', 'wp-simple-firewall' );
+				$sDescription = __( 'The number provided here is the maximum number of simultaneous, distinct, sessions allowed for any given username.', 'wp-simple-firewall' )
+								.'<br />'.__( "Zero (0) will allow unlimited simultaneous sessions.", 'wp-simple-firewall' );
 				break;
 
 			case 'enable_password_policies' :
-				$sName = _wpsf__( 'Enable Password Policies' );
-				$sSummary = _wpsf__( 'Enable The Password Policies Detailed Below' );
-				$sDescription = _wpsf__( 'Turn on/off all password policy settings.' );
+				$sName = __( 'Enable Password Policies', 'wp-simple-firewall' );
+				$sSummary = __( 'Enable The Password Policies Detailed Below', 'wp-simple-firewall' );
+				$sDescription = __( 'Turn on/off all password policy settings.', 'wp-simple-firewall' );
 				break;
 
 			case 'pass_prevent_pwned' :
-				$sName = _wpsf__( 'Prevent Pwned Passwords' );
-				$sSummary = _wpsf__( 'Prevent Use Of "Pwned" Passwords' );
-				$sDescription = _wpsf__( 'Prevents users from using any passwords found on the public available list of "pwned" passwords.' );
+				$sName = __( 'Prevent Pwned Passwords', 'wp-simple-firewall' );
+				$sSummary = __( 'Prevent Use Of "Pwned" Passwords', 'wp-simple-firewall' );
+				$sDescription = __( 'Prevents users from using any passwords found on the public available list of "pwned" passwords.', 'wp-simple-firewall' );
 				break;
 
 			case 'pass_min_length' :
-				$sName = _wpsf__( 'Minimum Length' );
-				$sSummary = _wpsf__( 'Minimum Password Length' );
-				$sDescription = _wpsf__( 'All passwords that a user sets must be at least this many characters in length.' )
-								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
+				$sName = __( 'Minimum Length', 'wp-simple-firewall' );
+				$sSummary = __( 'Minimum Password Length', 'wp-simple-firewall' );
+				$sDescription = __( 'All passwords that a user sets must be at least this many characters in length.', 'wp-simple-firewall' )
+								.'<br/>'.__( 'Set to Zero(0) to disable.', 'wp-simple-firewall' );
 				break;
 
 			case 'pass_min_strength' :
-				$sName = _wpsf__( 'Minimum Strength' );
-				$sSummary = _wpsf__( 'Minimum Password Strength' );
-				$sDescription = _wpsf__( 'All passwords that a user sets must meet this minimum strength.' );
+				$sName = __( 'Minimum Strength', 'wp-simple-firewall' );
+				$sSummary = __( 'Minimum Password Strength', 'wp-simple-firewall' );
+				$sDescription = __( 'All passwords that a user sets must meet this minimum strength.', 'wp-simple-firewall' );
 				break;
 
 			case 'pass_force_existing' :
-				$sName = _wpsf__( 'Apply To Existing Users' );
-				$sSummary = _wpsf__( 'Apply Password Policies To Existing Users and Their Passwords' );
-				$sDescription = _wpsf__( "Forces existing users to update their passwords if they don't meet requirements, after they next login." )
-								.'<br/>'._wpsf__( 'Note: You may want to warn users prior to enabling this option.' );
+				$sName = __( 'Apply To Existing Users', 'wp-simple-firewall' );
+				$sSummary = __( 'Apply Password Policies To Existing Users and Their Passwords', 'wp-simple-firewall' );
+				$sDescription = __( "Forces existing users to update their passwords if they don't meet requirements, after they next login.", 'wp-simple-firewall' )
+								.'<br/>'.__( 'Note: You may want to warn users prior to enabling this option.', 'wp-simple-firewall' );
 				break;
 
 			case 'pass_expire' :
-				$sName = _wpsf__( 'Password Expiration' );
-				$sSummary = _wpsf__( 'Passwords Expire After This Many Days' );
-				$sDescription = _wpsf__( 'Users will be forced to reset their passwords after the number of days specified.' )
-								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
+				$sName = __( 'Password Expiration', 'wp-simple-firewall' );
+				$sSummary = __( 'Passwords Expire After This Many Days', 'wp-simple-firewall' );
+				$sDescription = __( 'Users will be forced to reset their passwords after the number of days specified.', 'wp-simple-firewall' )
+								.'<br/>'.__( 'Set to Zero(0) to disable.', 'wp-simple-firewall' );
 				break;
 
 			case 'manual_suspend' :
-				$sName = _wpsf__( 'Allow Manual User Suspension' );
-				$sSummary = _wpsf__( 'Manually Suspend User Accounts To Prevent Login' );
-				$sDescription = _wpsf__( 'Users may be forcefully suspended by administrators to prevent future login.' );
+				$sName = __( 'Allow Manual User Suspension', 'wp-simple-firewall' );
+				$sSummary = __( 'Manually Suspend User Accounts To Prevent Login', 'wp-simple-firewall' );
+				$sDescription = __( 'Users may be suspended by administrators to prevent future login.', 'wp-simple-firewall' );
 				break;
 
 			case 'auto_password' :
-				$sName = _wpsf__( 'Auto-Suspend Expired Passwords' );
-				$sSummary = _wpsf__( 'Automatically Suspend Users With Expired Passwords' );
-				$sDescription = _wpsf__( 'Automatically suspend login by users and require password reset to unsuspend.' )
+				$sName = __( 'Auto-Suspend Expired Passwords', 'wp-simple-firewall' );
+				$sSummary = __( 'Automatically Suspend Users With Expired Passwords', 'wp-simple-firewall' );
+				$sDescription = __( 'Automatically suspends login by users and requires password reset to unsuspend.', 'wp-simple-firewall' )
 								.'<br/>'.sprintf(
 									'<strong>%s</strong> - %s',
-									_wpsf__( 'Important' ),
-									_wpsf__( 'Requires password expiration policy to be set.' )
+									__( 'Important', 'wp-simple-firewall' ),
+									__( 'Requires password expiration policy to be set.', 'wp-simple-firewall' )
 								);
 				break;
 
-			case 'auto_idle' :
-				$sName = _wpsf__( 'Auto-Suspend Idle Users' );
-				$sSummary = _wpsf__( 'Automatically Suspend Idle User Accounts' );
-				$sDescription = _wpsf__( 'Automatically suspend login by idle users and require password reset to unsuspend.' )
-								.'<br/>'._wpsf__( 'Specify the number of days since last login to consider a user as idle.' )
-								.'<br/>'._wpsf__( 'Set to Zero(0) to disable.' );
+			case 'auto_idle_days' :
+				$sName = __( 'Auto-Suspend Idle Users', 'wp-simple-firewall' );
+				$sSummary = __( 'Automatically Suspend Idle User Accounts', 'wp-simple-firewall' );
+				$sDescription = __( 'Automatically suspends login for idle accounts and requires password reset to unsuspend.', 'wp-simple-firewall' )
+								.'<br/>'.__( 'Specify the number of days since last login to consider a user as idle.', 'wp-simple-firewall' )
+								.'<br/>'.__( 'Set to Zero(0) to disable.', 'wp-simple-firewall' );
+				break;
+
+			case 'auto_idle_roles' :
+				$sName = __( 'Auto-Suspend Idle User Roles', 'wp-simple-firewall' );
+				$sSummary = __( 'Apply Automatic Suspension To Accounts With These Roles', 'wp-simple-firewall' );
+				$sDescription = __( 'Automatic suspension for idle accounts applies only to the roles you specify.', 'wp-simple-firewall' )
+								.'<br/>'.sprintf( '%s: %s', __( 'Important', 'wp-simple-firewall' ), __( 'Take a new line for each user role.', 'wp-simple-firewall' ) )
+								.'<br/>'.sprintf( '%s: %s', __( 'Available Roles', 'wp-simple-firewall' ), implode( ', ', Services::WpUsers()
+																																  ->getAvailableUserRoles() ) )
+								.'<br/>'.sprintf( '%s: %s', __( 'Default', 'wp-simple-firewall' ), implode( ', ', $oOptsVo->getOptDefault( 'auto_idle_roles' ) ) );
 				break;
 
 			default:
-				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $sKey ) );
+				throw new \Exception( sprintf( 'An option has been defined but without strings assigned to it. Option key: "%s".', $aOptionsParams[ 'key' ] ) );
 		}
 
 		$aOptionsParams[ 'name' ] = $sName;

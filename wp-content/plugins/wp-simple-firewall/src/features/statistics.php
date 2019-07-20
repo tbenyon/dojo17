@@ -1,5 +1,7 @@
 <?php
 
+use FernleafSystems\Wordpress\Services\Services; // TODO: use after 7.5
+
 class ICWP_WPSF_FeatureHandler_Statistics extends ICWP_WPSF_FeatureHandler_BaseWpsf {
 
 	/**
@@ -13,7 +15,7 @@ class ICWP_WPSF_FeatureHandler_Statistics extends ICWP_WPSF_FeatureHandler_BaseW
 	 * @return string
 	 */
 	public function getFullReportingTableName() {
-		return $this->loadDbProcessor()->getPrefix().$this->getReportingTableName();
+		return \FernleafSystems\Wordpress\Services\Services::WpDb()->getPrefix().$this->getReportingTableName();
 	}
 
 	/**
@@ -27,39 +29,39 @@ class ICWP_WPSF_FeatureHandler_Statistics extends ICWP_WPSF_FeatureHandler_BaseW
 		switch ( $sSectionSlug ) {
 
 			case 'section_enable_plugin_feature_statistics' :
-				$sTitle = sprintf( _wpsf__( 'Enable Module: %s' ), $this->getMainFeatureName() );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Helps you see at a glance how effective the plugin has been.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), sprintf( _wpsf__( 'Keep the %s feature turned on.' ), $this->getMainFeatureName() ) )
-				);
-				$sTitleShort = sprintf( _wpsf__( '%s/%s Module' ), _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
+				$sTitleShort = sprintf( '%s/%s', __( 'On', 'wp-simple-firewall' ), __( 'Off', 'wp-simple-firewall' ) );
+				$sTitle = sprintf( __( 'Enable Module: %s', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Helps you see at a glance how effective the plugin has been.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), sprintf( __( 'Keep the %s feature turned on.', 'wp-simple-firewall' ), $this->getMainFeatureName() ) )
+				];
 				break;
 
 			case 'section_enable_plugin_feature_reporting' :
-				$sTitle = sprintf( _wpsf__( 'Enable Module: %s' ), $this->getMainFeatureName() );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'To track stats and issue reports.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), sprintf( _wpsf__( 'Keep the %s feature turned on.' ), $this->getMainFeatureName() ) )
-				);
-				$sTitleShort = sprintf( _wpsf__( '%s/%s Module' ), _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
+				$sTitleShort = sprintf( '%s/%s', __( 'On', 'wp-simple-firewall' ), __( 'Off', 'wp-simple-firewall' ) );
+				$sTitle = sprintf( __( 'Enable Module: %s', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'To track stats and issue reports.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), sprintf( __( 'Keep the %s feature turned on.', 'wp-simple-firewall' ), $this->getMainFeatureName() ) )
+				];
 				break;
 
 			case 'section_stats_sharing' :
-				$sTitle = _wpsf__( 'Statistics Sharing' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Help us to provide globally accessible statistics on the effectiveness of the plugin.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Enabling this option helps us improve our plugin over time.' ) )
-					._wpsf__( 'All statistics data collection is 100% anonymous.' )._wpsf__( 'Neither we nor anyone else will be able to trace the data back to the originating site.' )
+				$sTitle = __( 'Statistics Sharing', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Help us to provide globally accessible statistics on the effectiveness of the plugin.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Enabling this option helps us improve our plugin over time.', 'wp-simple-firewall' ) )
+					.__( 'All statistics data collection is 100% anonymous.', 'wp-simple-firewall' ).__( 'Neither we nor anyone else will be able to trace the data back to the originating site.', 'wp-simple-firewall' )
 
-				);
-				$sTitleShort = _wpsf__( 'Sharing' );
+				];
+				$sTitleShort = __( 'Sharing', 'wp-simple-firewall' );
 				break;
 
 			default:
 				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
-		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
+		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : [];
 		$aOptionsParams[ 'title_short' ] = $sTitleShort;
 		return $aOptionsParams;
 	}
@@ -75,15 +77,15 @@ class ICWP_WPSF_FeatureHandler_Statistics extends ICWP_WPSF_FeatureHandler_BaseW
 		switch ( $sKey ) {
 
 			case 'enable_statistics' :
-				$sName = sprintf( _wpsf__( 'Enable %s Module' ), $this->getMainFeatureName() );
-				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Module' ), $this->getMainFeatureName() );
-				$sDescription = sprintf( _wpsf__( 'Un-Checking this option will completely disable the %s module.' ), $this->getMainFeatureName() );
+				$sName = sprintf( __( 'Enable %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sSummary = sprintf( __( 'Enable (or Disable) The %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sDescription = sprintf( __( 'Un-Checking this option will completely disable the %s module.', 'wp-simple-firewall' ), $this->getMainFeatureName() );
 				break;
 
 			case 'enable_reporting' :
-				$sName = sprintf( _wpsf__( 'Enable %s Module' ), $this->getMainFeatureName() );
-				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Module' ), $this->getMainFeatureName() );
-				$sDescription = sprintf( _wpsf__( 'Un-Checking this option will completely disable the %s module.' ), $this->getMainFeatureName() );
+				$sName = sprintf( __( 'Enable %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sSummary = sprintf( __( 'Enable (or Disable) The %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sDescription = sprintf( __( 'Un-Checking this option will completely disable the %s module.', 'wp-simple-firewall' ), $this->getMainFeatureName() );
 				break;
 
 			default:

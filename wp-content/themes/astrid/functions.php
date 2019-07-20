@@ -437,7 +437,7 @@ function astrid_footer_credits() {
 		printf( __( 'Powered by %s', 'astrid' ), 'WordPress' );
 	echo '</a>';
 	echo '<span class="sep"> | </span>';
-	printf( __( 'Theme: %2$s by %1$s.', 'astrid' ), 'aThemes', '<a href="http://athemes.com/theme/astrid" rel="designer">Astrid</a>' );
+	printf( __( 'Theme: %2$s by %1$s.', 'astrid' ), 'aThemes', '<a href="http://athemes.com/theme/astrid" rel="nofollow">Astrid</a>' );
 }
 add_action( 'astrid_footer', 'astrid_footer_credits' );
 
@@ -505,3 +505,97 @@ require get_template_directory() . '/inc/demo-content/setup.php';
  * Woocommerce
  */
 require get_template_directory() . '/woocommerce/woocommerce.php';
+
+
+
+
+
+
+/**
+ * Gutenberg
+ */
+add_theme_support( 'align-wide' );
+
+function astrid_editor_styles() {
+	wp_enqueue_style( 'astrid-block-editor-styles', get_theme_file_uri( '/astrid-gutenberg-editor-styles.css' ), '', '1.0', 'all' );
+
+	$body_font 		= get_theme_mod('body_font_name', '//fonts.googleapis.com/css?family=Open+Sans:300,300italic,600,600italic');
+	$headings_font 	= get_theme_mod('headings_font_name', '//fonts.googleapis.com/css?family=Josefin+Sans:300italic,300');
+	$remove 		= array("<link href='", "' rel='stylesheet' type='text/css'>", "https:", "http:");
+	$body_url 		= str_replace($remove, '', $body_font);
+	$headings_url 	= str_replace($remove, '', $headings_font);	
+
+	wp_enqueue_style( 'astrid-body-fonts', esc_url($body_url) ); 
+	
+	wp_enqueue_style( 'astrid-headings-fonts', esc_url($headings_url) ); 
+
+	//Dynamic styles
+	$custom = '';
+
+	//Fonts
+	$body_fonts 	= get_theme_mod('body_font_family');	
+	$headings_fonts = get_theme_mod('headings_font_family');
+	if ( $body_fonts !='' ) {
+		$custom .= ".editor-block-list__layout, .editor-block-list__layout .editor-block-list__block { font-family:" . $body_fonts . ";}"."\n";
+	}
+	if ( $headings_fonts !='' ) {
+		$custom .= ".editor-post-title__block .editor-post-title__input, .editor-block-list__layout .editor-post-title__input, .editor-block-list__layout h1, .editor-block-list__layout h2, .editor-block-list__layout h3, .editor-block-list__layout h4, .editor-block-list__layout h5, .editor-block-list__layout h6 { font-family:" . $headings_fonts . ";}"."\n";
+	} 	   
+	
+	
+	//H1 size
+	$h1_size = get_theme_mod( 'h1_size','36' );
+	if ($h1_size) {
+		$custom .= ".editor-block-list__layout h1 { font-size:" . intval($h1_size) . "px; }"."\n";
+	}
+	//H2 size
+	$h2_size = get_theme_mod( 'h2_size','30' );
+	if ($h2_size) {
+		$custom .= ".editor-block-list__layout h2 { font-size:" . intval($h2_size) . "px; }"."\n";
+	}
+	//H3 size
+	$h3_size = get_theme_mod( 'h3_size','24' );
+	if ($h3_size) {
+		$custom .= ".editor-block-list__layout h3 { font-size:" . intval($h3_size) . "px; }"."\n";
+	}
+	//H4 size
+	$h4_size = get_theme_mod( 'h4_size','16' );
+	if ($h4_size) {
+		$custom .= ".editor-block-list__layout h4 { font-size:" . intval($h4_size) . "px; }"."\n";
+	}
+	//H5 size
+	$h5_size = get_theme_mod( 'h5_size','14' );
+	if ($h5_size) {
+		$custom .= ".editor-block-list__layout h5 { font-size:" . intval($h5_size) . "px; }"."\n";
+	}
+	//H6 size
+	$h6_size = get_theme_mod( 'h6_size','12' );
+	if ($h6_size) {
+		$custom .= ".editor-block-list__layout h6 { font-size:" . intval($h6_size) . "px; }"."\n";
+	}
+	//Body size
+	$body_size = get_theme_mod( 'body_size', '14' );
+	if ($body_size) {
+		$custom .= ".editor-block-list__block, .editor-block-list__block p { font-size:" . intval($body_size) . "px; }"."\n";
+	}
+
+	//Body
+	$body_text = get_theme_mod( 'body_text_color', '#656D6D' );
+	$custom .= ".editor-block-list__layout, .editor-block-list__layout .editor-block-list__block { color:" . esc_attr($body_text) . "}"."\n";
+
+	//Small screens font sizes
+	$custom .= "@media only screen and (max-width: 780px) { 
+		h1 { font-size: 32px;}
+		h2 { font-size: 28px;}
+		h3 { font-size: 22px;}
+		h4 { font-size: 18px;}
+		h5 { font-size: 16px;}
+		h6 { font-size: 14px;}
+	}" . "\n";
+
+	
+	//Output all the styles
+	wp_add_inline_style( 'astrid-block-editor-styles', $custom );	
+
+}
+add_action( 'enqueue_block_editor_assets', 'astrid_editor_styles' );

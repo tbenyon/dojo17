@@ -26,14 +26,14 @@ class UpgraderSkin extends \WP_Upgrader_Skin {
 	 * @return array
 	 */
 	public function getErrors() {
-		return is_array( $this->aErrors ) ? $this->aErrors : array();
+		return is_array( $this->aErrors ) ? $this->aErrors : [];
 	}
 
 	/**
 	 * @return array
 	 */
 	public function getFeedback() {
-		return is_array( $this->aFeedback ) ? $this->aFeedback : array();
+		return is_array( $this->aFeedback ) ? $this->aFeedback : [];
 	}
 
 	function error( $errors ) {

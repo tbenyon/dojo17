@@ -1,5 +1,7 @@
 <?php
 
+use FernleafSystems\Wordpress\Services\Services;
+
 class ICWP_WPSF_Processor_CommentsFilter extends ICWP_WPSF_Processor_BaseWpsf {
 
 	/**
@@ -9,32 +11,57 @@ class ICWP_WPSF_Processor_CommentsFilter extends ICWP_WPSF_Processor_BaseWpsf {
 
 	public function onWpInit() {
 		parent::onWpInit();
-
-		if ( $this->loadWpUsers()->isUserLoggedIn() ) {
-			return;
-		}
-
 		/** @var ICWP_WPSF_FeatureHandler_CommentsFilter $oFO */
 		$oFO = $this->getMod();
 
-		if ( $oFO->isEnabledGaspCheck() ) {
-			$oBotSpamProcessor = new ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam( $oFO );
-			$oBotSpamProcessor->run();
-		}
+		$oUser = Services::WpUsers()->getCurrentWpUser();
+		if ( !$oFO->isUserTrusted( $oUser ) ) {
+			if ( $oFO->isEnabledGaspCheck() ) {
+				$this->getSubProGasp()->run();
+			}
+			if ( $oFO->isEnabledHumanCheck() && $this->loadWpComments()->isCommentPost() ) {
+				$this->getSubProHuman()->run();
+			}
+			if ( $oFO->isGoogleRecaptchaEnabled() ) {
+				$this->getSubProRecaptcha()->run();
+			}
 
-		if ( $oFO->isEnabledHumanCheck() && $this->loadWpComments()->isCommentPost() ) {
-			$oHumanSpamProcessor = new ICWP_WPSF_Processor_CommentsFilter_HumanSpam( $oFO );
-			$oHumanSpamProcessor->run();
+			add_filter( 'pre_comment_approved', [ $this, 'doSetCommentStatus' ], 1 );
+			add_filter( 'pre_comment_content', [ $this, 'doInsertCommentStatusExplanation' ], 1, 1 );
+			add_filter( 'comment_notification_recipients', [ $this, 'clearCommentNotificationEmail' ], 100, 1 );
 		}
+	}
 
-		if ( $oFO->isGoogleRecaptchaEnabled() ) {
-			$oReCap = new ICWP_WPSF_Processor_CommentsFilter_GoogleRecaptcha( $oFO );
-			$oReCap->run();
-		}
+	/**
+	 * @return array
+	 */
+	protected function getSubProMap() {
+		return [
+			'gasp'      => 'ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam',
+			'human'     => 'ICWP_WPSF_Processor_CommentsFilter_HumanSpam',
+			'recaptcha' => 'ICWP_WPSF_Processor_CommentsFilter_GoogleRecaptcha',
+		];
+	}
 
-		add_filter( 'pre_comment_approved', array( $this, 'doSetCommentStatus' ), 1 );
-		add_filter( 'pre_comment_content', array( $this, 'doInsertCommentStatusExplanation' ), 1, 1 );
-		add_filter( 'comment_notification_recipients', array( $this, 'clearCommentNotificationEmail' ), 100, 1 );
+	/**
+	 * @return ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam
+	 */
+	private function getSubProGasp() {
+		return $this->getSubPro( 'gasp' );
+	}
+
+	/**
+	 * @return ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam
+	 */
+	private function getSubProHuman() {
+		return $this->getSubPro( 'human' );
+	}
+
+	/**
+	 * @return ICWP_WPSF_Processor_CommentsFilter_AntiBotSpam
+	 */
+	private function getSubProRecaptcha() {
+		return $this->getSubPro( 'recaptcha' );
 	}
 
 	/**
@@ -47,21 +74,21 @@ class ICWP_WPSF_Processor_CommentsFilter extends ICWP_WPSF_Processor_BaseWpsf {
 		// We only warn when the human spam filter is running
 		if ( $oFO->isEnabledHumanCheck() ) {
 
-			$oWpPlugins = $this->loadWpPlugins();
+			$oWpPlugins = Services::WpPlugins();
 			$sPluginFile = $oWpPlugins->findPluginBy( 'Akismet', 'Name' );
 			if ( $oWpPlugins->isActive( $sPluginFile ) ) {
-				$aRenderData = array(
+				$aRenderData = [
 					'notice_attributes' => $aNoticeAttributes,
-					'strings'           => array(
+					'strings'           => [
 						'title'                   => 'Akismet is Running',
-						'appears_running_akismet' => _wpsf__( 'It appears you have Akismet Anti-SPAM running alongside the our human Anti-SPAM filter.' ),
-						'not_recommended'         => _wpsf__( 'This is not recommended and you should disable Akismet.' ),
-						'click_to_deactivate'     => _wpsf__( 'Click to deactivate Akismet now.' ),
-					),
-					'hrefs'             => array(
+						'appears_running_akismet' => __( 'It appears you have Akismet Anti-SPAM running alongside the our human Anti-SPAM filter.', 'wp-simple-firewall' ),
+						'not_recommended'         => __( 'This is not recommended and you should disable Akismet.', 'wp-simple-firewall' ),
+						'click_to_deactivate'     => __( 'Click to deactivate Akismet now.', 'wp-simple-firewall' ),
+					],
+					'hrefs'             => [
 						'deactivate' => $oWpPlugins->getUrl_Deactivate( $sPluginFile )
-					)
-				);
+					]
+				];
 				$this->insertAdminNotice( $aRenderData );
 			}
 		}
@@ -101,8 +128,8 @@ class ICWP_WPSF_Processor_CommentsFilter extends ICWP_WPSF_Processor_BaseWpsf {
 	 */
 	public function clearCommentNotificationEmail( $aEmails ) {
 		$sStatus = apply_filters( $this->getMod()->prefix( 'cf_status' ), '' );
-		if ( in_array( $sStatus, array( 'reject', 'trash' ) ) ) {
-			$aEmails = array();
+		if ( in_array( $sStatus, [ 'reject', 'trash' ] ) ) {
+			$aEmails = [];
 		}
 		return $aEmails;
 	}

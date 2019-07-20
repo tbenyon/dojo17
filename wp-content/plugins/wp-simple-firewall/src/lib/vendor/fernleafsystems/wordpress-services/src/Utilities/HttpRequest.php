@@ -22,7 +22,7 @@ class HttpRequest {
 	 * @param array  $aArg
 	 * @return bool
 	 */
-	public function get( $sUrl, $aArg = array() ) {
+	public function get( $sUrl, $aArg = [] ) {
 		return $this->request( $sUrl, $aArg, 'GET' )->isSuccess();
 	}
 
@@ -31,7 +31,7 @@ class HttpRequest {
 	 * @param array  $aArg
 	 * @return string
 	 */
-	public function getContent( $sUrl, $aArg = array() ) {
+	public function getContent( $sUrl, $aArg = [] ) {
 		return $this->get( $sUrl, $aArg ) ? trim( $this->lastResponse->body ) : '';
 	}
 
@@ -40,7 +40,7 @@ class HttpRequest {
 	 * @param array  $aArg
 	 * @return bool
 	 */
-	public function post( $sUrl, $aArg = array() ) {
+	public function post( $sUrl, $aArg = [] ) {
 		return $this->request( $sUrl, $aArg, 'POST' )->isSuccess();
 	}
 
@@ -58,7 +58,7 @@ class HttpRequest {
 	 * @param string $sMethod
 	 * @return array|false
 	 */
-	public function requestUrl( $sUrl, $aRequestArgs = array(), $sMethod = 'GET' ) {
+	public function requestUrl( $sUrl, $aRequestArgs = [], $sMethod = 'GET' ) {
 		return $this->request( $sUrl, $aRequestArgs, $sMethod )->isSuccess() ?
 			$this->lastResponse->getRawDataAsArray() : false;
 	}

@@ -13,7 +13,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
 
-		add_filter( $oFO->prefix( 'is_plugin_admin' ), array( $this, 'adjustUserAdminPermissions' ) );
+		add_filter( $oFO->prefix( 'is_plugin_admin' ), [ $this, 'adjustUserAdminPermissions' ] );
 
 		if ( $oFO->isWlEnabled() ) {
 			$this->getSubProWhitelabel()->run();
@@ -40,35 +40,35 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 			$oFO = $this->getMod();
 
 			if ( !$oFO->isUpgrading() && !$this->loadWp()->isRequestUserLogin() ) {
-				add_filter( 'pre_update_option', array( $this, 'blockOptionsSaves' ), 1, 3 );
+				add_filter( 'pre_update_option', [ $this, 'blockOptionsSaves' ], 1, 3 );
 			}
 
 			if ( $oFO->isAdminAccessAdminUsersEnabled() ) {
-				add_filter( 'editable_roles', array( $this, 'restrictEditableRoles' ), 100, 1 );
-				add_filter( 'user_has_cap', array( $this, 'restrictAdminUserChanges' ), 100, 3 );
-				add_action( 'delete_user', array( $this, 'restrictAdminUserDelete' ), 100, 1 );
-				add_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100, 2 );
-				add_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100, 2 );
-				add_action( 'set_user_role', array( $this, 'restrictSetUserRole' ), 100, 3 );
+				add_filter( 'editable_roles', [ $this, 'restrictEditableRoles' ], 100, 1 );
+				add_filter( 'user_has_cap', [ $this, 'restrictAdminUserChanges' ], 100, 3 );
+				add_action( 'delete_user', [ $this, 'restrictAdminUserDelete' ], 100, 1 );
+				add_action( 'add_user_role', [ $this, 'restrictAddUserRole' ], 100, 2 );
+				add_action( 'remove_user_role', [ $this, 'restrictRemoveUserRole' ], 100, 2 );
+				add_action( 'set_user_role', [ $this, 'restrictSetUserRole' ], 100, 3 );
 			}
 
 			$aPluginRestrictions = $oFO->getAdminAccessArea_Plugins();
 			if ( !empty( $aPluginRestrictions ) ) {
-				add_filter( 'user_has_cap', array( $this, 'disablePluginManipulation' ), 0, 3 );
+				add_filter( 'user_has_cap', [ $this, 'disablePluginManipulation' ], 0, 3 );
 			}
 
 			$aThemeRestrictions = $oFO->getAdminAccessArea_Themes();
 			if ( !empty( $aThemeRestrictions ) ) {
-				add_filter( 'user_has_cap', array( $this, 'disableThemeManipulation' ), 0, 3 );
+				add_filter( 'user_has_cap', [ $this, 'disableThemeManipulation' ], 0, 3 );
 			}
 
 			$aPostRestrictions = $oFO->getAdminAccessArea_Posts();
 			if ( !empty( $aPostRestrictions ) ) {
-				add_filter( 'user_has_cap', array( $this, 'disablePostsManipulation' ), 0, 3 );
+				add_filter( 'user_has_cap', [ $this, 'disablePostsManipulation' ], 0, 3 );
 			}
 
 			if ( !$this->getCon()->isThisPluginModuleRequest() ) {
-				add_action( 'admin_footer', array( $this, 'printAdminAccessAjaxForm' ) );
+				add_action( 'admin_footer', [ $this, 'printAdminAccessAjaxForm' ] );
 			}
 		}
 	}
@@ -98,11 +98,11 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		$aData = parent::tracking_DataCollect( $aData );
 		$sSlug = $this->getMod()->getSlug();
 
-		$aKeysToBoolean = array(
+		$aKeysToBoolean = [
 			'admin_access_restrict_plugins',
 			'admin_access_restrict_themes',
 			'admin_access_restrict_posts'
-		);
+		];
 		foreach ( $aKeysToBoolean as $sKeyToBoolean ) {
 			$aData[ $sSlug ][ 'options' ][ $sKeyToBoolean ]
 				= empty( $aData[ $sSlug ][ 'options' ][ $sKeyToBoolean ] ) ? 0 : 1;
@@ -115,13 +115,13 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @param string $sRole
 	 */
 	public function restrictAddUserRole( $nUserId, $sRole ) {
-		$oWpUsers = $this->loadWpUsers();
+		$oWpUsers = Services::WpUsers();
 
 		if ( $oWpUsers->getCurrentWpUserId() !== $nUserId && strtolower( $sRole ) === 'administrator' ) {
 			$oModUser = $oWpUsers->getUserById( $nUserId );
-			remove_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100 );
+			remove_action( 'remove_user_role', [ $this, 'restrictRemoveUserRole' ], 100 );
 			$oModUser->remove_role( 'administrator' );
-			add_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100, 2 );
+			add_action( 'remove_user_role', [ $this, 'restrictRemoveUserRole' ], 100, 2 );
 		}
 	}
 
@@ -130,12 +130,12 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @param string $sRole
 	 * @param array  $aOldRoles
 	 */
-	public function restrictSetUserRole( $nUserId, $sRole, $aOldRoles = array() ) {
-		$oWpUsers = $this->loadWpUsers();
+	public function restrictSetUserRole( $nUserId, $sRole, $aOldRoles = [] ) {
+		$oWpUsers = Services::WpUsers();
 
 		$sRole = strtolower( $sRole );
 		if ( !is_array( $aOldRoles ) ) {
-			$aOldRoles = array();
+			$aOldRoles = [];
 		}
 
 		if ( $oWpUsers->getCurrentWpUserId() !== $nUserId ) {
@@ -155,14 +155,14 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 
 			if ( $bRevert ) {
 				$oModUser = $oWpUsers->getUserById( $nUserId );
-				remove_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100 );
-				remove_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100 );
+				remove_action( 'add_user_role', [ $this, 'restrictAddUserRole' ], 100 );
+				remove_action( 'remove_user_role', [ $this, 'restrictRemoveUserRole' ], 100 );
 				$oModUser->remove_role( $sRole );
 				foreach ( $aOldRoles as $sPreExistingRoles ) {
 					$oModUser->add_role( $sPreExistingRoles );
 				}
-				add_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100, 2 );
-				add_action( 'remove_user_role', array( $this, 'restrictRemoveUserRole' ), 100, 2 );
+				add_action( 'add_user_role', [ $this, 'restrictAddUserRole' ], 100, 2 );
+				add_action( 'remove_user_role', [ $this, 'restrictRemoveUserRole' ], 100, 2 );
 			}
 		}
 	}
@@ -172,13 +172,13 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @param string $sRole
 	 */
 	public function restrictRemoveUserRole( $nUserId, $sRole ) {
-		$oWpUsers = $this->loadWpUsers();
+		$oWpUsers = Services::WpUsers();
 
 		if ( $oWpUsers->getCurrentWpUserId() !== $nUserId && strtolower( $sRole ) === 'administrator' ) {
 			$oModUser = $oWpUsers->getUserById( $nUserId );
-			remove_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100 );
+			remove_action( 'add_user_role', [ $this, 'restrictAddUserRole' ], 100 );
 			$oModUser->add_role( 'administrator' );
-			add_action( 'add_user_role', array( $this, 'restrictAddUserRole' ), 100, 2 );
+			add_action( 'add_user_role', [ $this, 'restrictAddUserRole' ], 100, 2 );
 		}
 	}
 
@@ -186,11 +186,11 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @param int $nId
 	 */
 	public function restrictAdminUserDelete( $nId ) {
-		$oWpUsers = $this->loadWpUsers();
+		$oWpUsers = Services::WpUsers();
 		$oUserToDelete = $oWpUsers->getUserById( $nId );
 		if ( $oUserToDelete && $oWpUsers->isUserAdmin( $oUserToDelete ) ) {
-			$this->loadWp()
-				 ->wpDie( 'Sorry, deleting administrators is currently restricted to your Security Admin' );
+			Services::WpGeneral()
+					->wpDie( __( 'Sorry, deleting administrators is currently restricted to your Security Admin', 'wp-simple-firewall' ) );
 		}
 	}
 
@@ -218,14 +218,14 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		/** @var string $sUserCap */
 		$sUserCap = $aArgs[ 0 ];
 
-		$aReleventCaps = array( 'edit_users', 'create_users' );
+		$aReleventCaps = [ 'edit_users', 'create_users' ];
 
 		// If we're registered with Admin Access we don't modify anything
 		if ( in_array( $sUserCap, $aReleventCaps ) ) {
 			$bBlockCapability = false;
 
-			$oReq = $this->loadRequest();
-			$oWpUsers = $this->loadWpUsers();
+			$oReq = Services::Request();
+			$oWpUsers = Services::WpUsers();
 
 			// Find the WP_User for the POST
 			$oPostUser = false;
@@ -276,29 +276,29 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 			return;
 		}
 
-		$sCurrentPage = $this->loadWp()->getCurrentPage();
-		$sCurrentGetPage = $this->loadRequest()->query( 'page' );
+		$sCurrentPage = Services::WpPost()->getCurrentPage();
+		$sCurrentGetPage = Services::Request()->query( 'page' );
 		if ( !in_array( $sCurrentPage, $oFO->getOptionsPagesToRestrict() ) || !empty( $sCurrentGetPage ) ) {
 			return;
 		}
 
 		$sName = $this->getCon()->getHumanName();
-		$aRenderData = array(
+		$aRenderData = [
 			'notice_attributes' => $aNoticeAttributes,
-			'strings'           => array(
-				'title'          => sprintf( _wpsf__( '%s Security Restrictions Applied' ), $sName ),
-				'notice_message' => _wpsf__( 'Altering certain options has been restricted by your WordPress security administrator.' )
-									.' '._wpsf__( 'Repeated failed attempts to authenticate will probably lock you out of this site.' )
-			),
-			'hrefs'             => array(
+			'strings'           => [
+				'title'          => sprintf( __( '%s Security Restrictions Applied', 'wp-simple-firewall' ), $sName ),
+				'notice_message' => __( 'Altering certain options has been restricted by your WordPress security administrator.', 'wp-simple-firewall' )
+									.' '.__( 'Repeated failed attempts to authenticate will probably lock you out of this site.', 'wp-simple-firewall' )
+			],
+			'hrefs'             => [
 				'setting_page' => sprintf(
 					'<a href="%s" title="%s">%s</a>',
 					$oFO->getUrl_AdminPage(),
-					_wpsf__( 'Admin Access Login' ),
-					sprintf( _wpsf__( 'Go here to manage settings and authenticate with the %s plugin.' ), $sName )
+					__( 'Admin Access Login', 'wp-simple-firewall' ),
+					sprintf( __( 'Go here to manage settings and authenticate with the %s plugin.', 'wp-simple-firewall' ), $sName )
 				)
-			)
-		);
+			]
+		];
 		add_thickbox();
 		$this->insertAdminNotice( $aRenderData );
 	}
@@ -316,29 +316,28 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
 
-		$sCurrentPage = $this->loadWp()->getCurrentPage();
-		if ( !in_array( $sCurrentPage, $this->getUserPagesToRestrict() ) ) {
+		if ( !in_array( Services::WpPost()->getCurrentPage(), $this->getUserPagesToRestrict() ) ) {
 			return;
 		}
 
 		$sName = $oCon->getHumanName();
-		$aRenderData = array(
+		$aRenderData = [
 			'notice_attributes' => $aNoticeAttributes,
-			'strings'           => array(
-				'title'          => sprintf( _wpsf__( '%s Security Restrictions Applied' ), $sName ),
-				'notice_message' => _wpsf__( 'Editing existing administrators, promoting existing users to the administrator role, or deleting administrator users is currently restricted.' )
-									.' '._wpsf__( 'Please authenticate with the Security Admin system before attempting any administrator user modifications.' ),
-				'unlock_link'    => $this->getUnlockLinkHtml( _wpsf__( 'Unlock Now' ) ),
-			),
-			'hrefs'             => array(
+			'strings'           => [
+				'title'          => sprintf( __( '%s Security Restrictions Applied', 'wp-simple-firewall' ), $sName ),
+				'notice_message' => __( 'Editing existing administrators, promoting existing users to the administrator role, or deleting administrator users is currently restricted.', 'wp-simple-firewall' )
+									.' '.__( 'Please authenticate with the Security Admin system before attempting any administrator user modifications.', 'wp-simple-firewall' ),
+				'unlock_link'    => $this->getUnlockLinkHtml( __( 'Unlock Now', 'wp-simple-firewall' ) ),
+			],
+			'hrefs'             => [
 				'setting_page' => sprintf(
 					'<a href="%s" title="%s">%s</a>',
 					$oFO->getUrl_AdminPage(),
-					_wpsf__( 'Security Admin Login' ),
-					sprintf( _wpsf__( 'Go here to manage settings and authenticate with the %s plugin.' ), $sName )
+					__( 'Security Admin Login', 'wp-simple-firewall' ),
+					sprintf( __( 'Go here to manage settings and authenticate with the %s plugin.', 'wp-simple-firewall' ), $sName )
 				)
-			)
-		);
+			]
+		];
 		$this->insertAdminNotice( $aRenderData );
 	}
 
@@ -346,11 +345,11 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 * @return array
 	 */
 	protected function getUserPagesToRestrict() {
-		return array(
+		return [
 			/* 'user-new.php', */
 			'user-edit.php',
 			'users.php',
-		);
+		];
 	}
 
 	/**
@@ -409,7 +408,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	public function disablePluginManipulation( $aAllCaps, $cap, $aArgs ) {
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
-		$oReq = $this->loadRequest();
+		$oReq = Services::Request();
 
 		/** @var string $sRequestedCapability */
 		$sRequestedCapability = $aArgs[ 0 ];
@@ -423,7 +422,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 			return $aAllCaps;
 		}
 
-		$aEditCapabilities = array( 'activate_plugins', 'delete_plugins', 'install_plugins', 'update_plugins' );
+		$aEditCapabilities = [ 'activate_plugins', 'delete_plugins', 'install_plugins', 'update_plugins' ];
 
 		if ( in_array( $sRequestedCapability, $aEditCapabilities ) ) {
 			$aAreaRestrictions = $oFO->getAdminAccessArea_Plugins();
@@ -452,13 +451,13 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 
 		/** @var string $sRequestedCapability */
 		$sRequestedCapability = $aArgs[ 0 ];
-		$aEditCapabilities = array(
+		$aEditCapabilities = [
 			'switch_themes',
 			'edit_theme_options',
 			'install_themes',
 			'update_themes',
 			'delete_themes'
-		);
+		];
 
 		if ( in_array( $sRequestedCapability, $aEditCapabilities ) ) {
 			$aAreaRestrictions = $oFO->getAdminAccessArea_Themes();
@@ -486,7 +485,7 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 
 		/** @var string $sRequestedCapability */
 		$sRequestedCapability = $aArgs[ 0 ];
-		$aEditCapabilities = array(
+		$aEditCapabilities = [
 			'edit_post',
 			'publish_post',
 			'delete_post',
@@ -499,14 +498,14 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 			'edit_pages',
 			'publish_pages',
 			'delete_pages'
-		);
+		];
 		if ( in_array( $sRequestedCapability, $aEditCapabilities ) ) {
-			$sRequestedCapabilityTrimmed = str_replace( array(
+			$sRequestedCapabilityTrimmed = str_replace( [
 				'_posts',
 				'_pages',
 				'_post',
 				'_page'
-			), '', $sRequestedCapability ); //Order of items in this array is important!
+			], '', $sRequestedCapability ); //Order of items in this array is important!
 			$aAreaRestrictions = $oFO->getAdminAccessArea_Posts();
 			if ( in_array( $sRequestedCapabilityTrimmed, $aAreaRestrictions ) ) {
 				$aAllCaps[ $sRequestedCapability ] = false;
@@ -531,21 +530,21 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 		/** @var ICWP_WPSF_FeatureHandler_AdminAccessRestriction $oFO */
 		$oFO = $this->getMod();
 
-		$aRenderData = array(
-			'flags'       => array(
+		$aRenderData = [
+			'flags'       => [
 				'restrict_options' => $oFO->getAdminAccessArea_Options()
-			),
-			'strings'     => array(
-				'editing_restricted' => _wpsf__( 'Editing this option is currently restricted.' ),
+			],
+			'strings'     => [
+				'editing_restricted' => __( 'Editing this option is currently restricted.', 'wp-simple-firewall' ),
 				'unlock_link'        => $this->getUnlockLinkHtml(),
-			),
-			'js_snippets' => array(
+			],
+			'js_snippets' => [
 				'options_to_restrict' => "'".implode( "','", $oFO->getOptionsToRestrict() )."'",
-			),
-			'ajax'        => array(
+			],
+			'ajax'        => [
 				'sec_admin_login_box' => $oFO->getAjaxActionData( 'sec_admin_login_box', true )
-			)
-		);
+			]
+		];
 		add_thickbox();
 		echo $oFO->renderTemplate( 'snippets/admin_access_login_box.php', $aRenderData );
 	}
@@ -556,12 +555,12 @@ class ICWP_WPSF_Processor_AdminAccessRestriction extends ICWP_WPSF_Processor_Bas
 	 */
 	protected function getUnlockLinkHtml( $sLinkText = '' ) {
 		if ( empty( $sLinkText ) ) {
-			$sLinkText = _wpsf__( 'Unlock' );
+			$sLinkText = __( 'Unlock', 'wp-simple-firewall' );
 		}
 		return sprintf(
 			'<a href="%1$s" title="%2$s" class="thickbox">%3$s</a>',
 			'#TB_inline?width=400&height=180&inlineId=WpsfAdminAccessLogin',
-			_wpsf__( 'Security Admin Login' ),
+			__( 'Security Admin Login', 'wp-simple-firewall' ),
 			$sLinkText
 		);
 	}

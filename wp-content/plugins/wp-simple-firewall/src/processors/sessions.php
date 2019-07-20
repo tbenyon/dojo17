@@ -29,7 +29,7 @@ class ICWP_WPSF_Processor_Sessions extends ICWP_WPSF_BaseDbProcessor {
 					$this->terminateCurrentSession();
 				}, 0 );
 			}
-			add_filter( 'login_message', array( $this, 'printLinkToAdmin' ) );
+			add_filter( 'login_message', [ $this, 'printLinkToAdmin' ] );
 		}
 	}
 
@@ -101,11 +101,11 @@ class ICWP_WPSF_Processor_Sessions extends ICWP_WPSF_BaseDbProcessor {
 		if ( in_array( Services::Request()->query( 'action' ), [ '', 'login' ] )
 			 && ( $oU instanceof \WP_User ) && $oFO->hasSession() ) {
 			$sMessage .= sprintf( '<p class="message">%s<br />%s</p>',
-				_wpsf__( "You're already logged-in." )
+				__( "You're already logged-in.", 'wp-simple-firewall' )
 				.sprintf( ' <span style="white-space: nowrap">(%s)</span>', $oU->user_login ),
 				( $oU->user_level >= 2 ) ? sprintf( '<a href="%s">%s</a>',
 					Services::WpGeneral()->getAdminUrl(),
-					_wpsf__( "Go To Admin" ).' &rarr;' ) : '' );
+					__( "Go To Admin", 'wp-simple-firewall' ).' &rarr;' ) : '' );
 		}
 		return $sMessage;
 	}
@@ -258,7 +258,7 @@ class ICWP_WPSF_Processor_Sessions extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'sessions_table_columns' );
-		return ( is_array( $aDef ) ? $aDef : array() );
+		return ( is_array( $aDef ) ? $aDef : [] );
 	}
 
 	/**

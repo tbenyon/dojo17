@@ -6,7 +6,7 @@ use FernleafSystems\Utilities\Data\Adapter\StdClassAdapter;
 
 /**
  * Class WpHttpResponseVo
- * @see class-wp-http-requests-response.php to_array()
+ * @see     class-wp-http-requests-response.php to_array()
  * @package FernleafSystems\Wordpress\Services\Core\VOs
  * @property string $body
  * @property string $headers

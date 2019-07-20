@@ -7,7 +7,7 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 	/**
 	 */
 	public function run() {
-		add_filter( 'wp_mail', array( $this, 'auditEmailSend' ), PHP_INT_MAX );
+		add_filter( 'wp_mail', [ $this, 'auditEmailSend' ], PHP_INT_MAX );
 	}
 
 	/**
@@ -25,10 +25,10 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 
 			$aBacktrace = $this->findEmailSenderBacktrace();
 
-			$aMsg = array(
-				sprintf( _wpsf__( 'There was an attempt to send an email using the "%s" function.' ), 'wp_mail' ),
-				sprintf( _wpsf__( 'It was sent to "%s" with the subject "%s".' ), $sTo, $aEmail[ 'subject' ] ),
-			);
+			$aMsg = [
+				sprintf( __( 'There was an attempt to send an email using the "%s" function.', 'wp-simple-firewall' ), 'wp_mail' ),
+				sprintf( __( 'It was sent to "%s" with the subject "%s".', 'wp-simple-firewall' ), $sTo, $aEmail[ 'subject' ] ),
+			];
 
 			// Attempt to capture BCC/CC
 			if ( !empty( $aEmail[ 'headers' ] ) ) {
@@ -49,7 +49,7 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 
 			// Where was the wp_mail function called from
 			if ( !empty( $aBacktrace ) ) {
-				$aMsg[] = sprintf( _wpsf__( 'The "%s" function was called from the file "%s" on line %s.' ),
+				$aMsg[] = sprintf( __( 'The "%s" function was called from the file "%s" on line %s.', 'wp-simple-firewall' ),
 					'wp_mail',
 					$aBacktrace[ 'file' ],
 					$aBacktrace[ 'line' ]
@@ -57,7 +57,7 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 			}
 		}
 		else {
-			$aMsg[] = sprintf( _wpsf__( 'Attempting to log email, but data was not of the correct type (%s)' ), 'array' );
+			$aMsg[] = sprintf( __( 'Attempting to log email, but data was not of the correct type (%s)', 'wp-simple-firewall' ), 'array' );
 		}
 
 		$this->add( 'emails', 'email_attempt_send', 1, implode( " ", $aMsg ) );
@@ -70,10 +70,10 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 	 * @return array
 	 */
 	private function extractCcFromHeaders( $aHeaders ) {
-		$aCCs = array(
+		$aCCs = [
 			'bcc' => [],
 			'cc'  => []
-		);
+		];
 
 		$aHeaders = array_filter( array_map( 'trim', array_map( 'strtolower', $aHeaders ) ) );
 		foreach ( $aHeaders as $sHeader ) {
@@ -91,7 +91,7 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 						$aCCs[ $sHead ],
 						array_filter( $aEmails,
 							function ( $sEmail ) {
-								return \FernleafSystems\Wordpress\Services\Services::Data()->validEmail( $sEmail );
+								return Services::Data()->validEmail( $sEmail );
 							} )
 					) );
 				}
@@ -104,7 +104,7 @@ class ICWP_WPSF_Processor_AuditTrail_Emails extends ICWP_WPSF_AuditTrail_Auditor
 	 * @return array
 	 */
 	private function findEmailSenderBacktrace() {
-		$aBT = array();
+		$aBT = [];
 		foreach ( debug_backtrace( false ) as $aItem ) {
 			if ( isset( $aItem[ 'function' ] ) && 'wp_mail' === strtolower( $aItem[ 'function' ] ) ) {
 				$aBT = $aItem;

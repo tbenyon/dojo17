@@ -65,21 +65,21 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 	 * @return array
 	 */
 	public function addInsightsNoticeData( $aAllNotices ) {
-		$aNotices = array(
-			'title'    => _wpsf__( 'Lockdown' ),
-			'messages' => array()
-		);
+		$aNotices = [
+			'title'    => __( 'WP Lockdown', 'wp-simple-firewall' ),
+			'messages' => []
+		];
 
 		{ //edit plugins
 			$bEditingDisabled = $this->isOptFileEditingDisabled() || !current_user_can( 'edit_plugins' );
 			if ( !$bEditingDisabled ) { //assumes current user is admin
-				$aNotices[ 'messages' ][ 'disallow_file_edit' ] = array(
+				$aNotices[ 'messages' ][ 'disallow_file_edit' ] = [
 					'title'   => 'Code Editor',
-					'message' => _wpsf__( 'Direct editing of plugin/theme files is permitted.' ),
+					'message' => __( 'Direct editing of plugin/theme files is permitted.', 'wp-simple-firewall' ),
 					'href'    => $this->getUrl_DirectLinkToOption( 'disable_file_editing' ),
-					'action'  => sprintf( 'Go To %s', _wpsf__( 'Options' ) ),
-					'rec'     => _wpsf__( 'WP Plugin file editing should be disabled.' )
-				);
+					'action'  => sprintf( 'Go To %s', __( 'Options', 'wp-simple-firewall' ) ),
+					'rec'     => __( 'WP Plugin file editing should be disabled.', 'wp-simple-firewall' )
+				];
 			}
 		}
 
@@ -94,51 +94,51 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 	 * @return array
 	 */
 	public function addInsightsConfigData( $aAllData ) {
-		$aThis = array(
-			'strings'      => array(
-				'title' => _wpsf__( 'WordPress Lockdown' ),
-				'sub'   => _wpsf__( 'Restrict WP Functionality e.g. XMLRPC & REST API' ),
-			),
-			'key_opts'     => array(),
+		$aThis = [
+			'strings'      => [
+				'title' => __( 'WordPress Lockdown', 'wp-simple-firewall' ),
+				'sub'   => __( 'Restrict WP Functionality e.g. XMLRPC & REST API', 'wp-simple-firewall' ),
+			],
+			'key_opts'     => [],
 			'href_options' => $this->getUrl_AdminPage()
-		);
+		];
 
 		if ( !$this->isModOptEnabled() ) {
 			$aThis[ 'key_opts' ][ 'mod' ] = $this->getModDisabledInsight();
 		}
 		else {
 			$bEditingDisabled = $this->isOptFileEditingDisabled() || !current_user_can( 'edit_plugins' );
-			$aThis[ 'key_opts' ][ 'editing' ] = array(
-				'name'    => _wpsf__( 'WP File Editing' ),
+			$aThis[ 'key_opts' ][ 'editing' ] = [
+				'name'    => __( 'WP File Editing', 'wp-simple-firewall' ),
 				'enabled' => $bEditingDisabled,
 				'summary' => $bEditingDisabled ?
-					_wpsf__( 'File editing is disabled' )
-					: _wpsf__( "File editing is permitted through WP admin" ),
+					__( 'File editing is disabled', 'wp-simple-firewall' )
+					: __( "File editing is permitted through WP admin", 'wp-simple-firewall' ),
 				'weight'  => 2,
 				'href'    => $this->getUrl_DirectLinkToOption( 'disable_file_editing' ),
-			);
+			];
 
 			$bXml = $this->isXmlrpcDisabled();
-			$aThis[ 'key_opts' ][ 'xml' ] = array(
-				'name'    => _wpsf__( 'XML-RPC' ),
+			$aThis[ 'key_opts' ][ 'xml' ] = [
+				'name'    => __( 'XML-RPC', 'wp-simple-firewall' ),
 				'enabled' => $bXml,
 				'summary' => $bXml ?
-					_wpsf__( 'XML-RPC is disabled' )
-					: _wpsf__( "XML-RPC is not blocked" ),
+					__( 'XML-RPC is disabled', 'wp-simple-firewall' )
+					: __( "XML-RPC is not blocked", 'wp-simple-firewall' ),
 				'weight'  => 1,
 				'href'    => $this->getUrl_DirectLinkToOption( 'disable_xmlrpc' ),
-			);
+			];
 
 			$bApi = $this->isRestApiAnonymousAccessDisabled();
-			$aThis[ 'key_opts' ][ 'api' ] = array(
-				'name'    => _wpsf__( 'REST API' ),
+			$aThis[ 'key_opts' ][ 'api' ] = [
+				'name'    => __( 'REST API', 'wp-simple-firewall' ),
 				'enabled' => $bApi,
 				'summary' => $bApi ?
-					_wpsf__( 'Anonymous REST API is disabled' )
-					: _wpsf__( "Anonymous REST API is allowed" ),
+					__( 'Anonymous REST API is disabled', 'wp-simple-firewall' )
+					: __( "Anonymous REST API is allowed", 'wp-simple-firewall' ),
 				'weight'  => 1,
 				'href'    => $this->getUrl_DirectLinkToOption( 'disable_anonymous_restapi' ),
-			);
+			];
 		}
 
 		$aAllData[ $this->getSlug() ] = $aThis;
@@ -156,46 +156,46 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 		switch ( $sSectionSlug ) {
 
 			case 'section_enable_plugin_feature_wordpress_lockdown' :
-				$sTitle = sprintf( _wpsf__( 'Enable Module: %s' ), $this->getMainFeatureName() );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Lockdown helps secure-up certain loosely-controlled WordPress settings on your site.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), sprintf( _wpsf__( 'Keep the %s feature turned on.' ), _wpsf__( 'Lockdown' ) ) )
-				);
-				$sTitleShort = sprintf( _wpsf__( '%s/%s Module' ), _wpsf__( 'Enable' ), _wpsf__( 'Disable' ) );
+				$sTitleShort = sprintf( '%s/%s', __( 'On', 'wp-simple-firewall' ), __( 'Off', 'wp-simple-firewall' ) );
+				$sTitle = sprintf( __( 'Enable Module: %s', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Lockdown helps secure-up certain loosely-controlled WordPress settings on your site.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), sprintf( __( 'Keep the %s feature turned on.', 'wp-simple-firewall' ), __( 'Lockdown', 'wp-simple-firewall' ) ) )
+				];
 				break;
 
 			case 'section_apixml' :
-				$sTitle = _wpsf__( 'API & XML-RPC' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Lockdown certain core WordPress system features.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'This depends on your usage and needs for certain WordPress functions and features.' ) )
-				);
-				$sTitleShort = _wpsf__( 'API & XML-RPC' );
+				$sTitle = __( 'API & XML-RPC', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Lockdown certain core WordPress system features.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'This depends on your usage and needs for certain WordPress functions and features.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'API & XML-RPC', 'wp-simple-firewall' );
 				break;
 
 			case 'section_permission_access_options' :
-				$sTitle = _wpsf__( 'Permissions and Access Options' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Provides finer control of certain WordPress permissions.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Only enable SSL if you have a valid certificate installed.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Permissions' );
+				$sTitle = __( 'Permissions and Access Options', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Provides finer control of certain WordPress permissions.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Only enable SSL if you have a valid certificate installed.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Permissions', 'wp-simple-firewall' );
 				break;
 
 			case 'section_wordpress_obscurity_options' :
-				$sTitle = _wpsf__( 'WordPress Obscurity Options' );
-				$aSummary = array(
-					sprintf( '%s - %s', _wpsf__( 'Purpose' ), _wpsf__( 'Obscures certain WordPress settings from public view.' ) ),
-					sprintf( '%s - %s', _wpsf__( 'Recommendation' ), _wpsf__( 'Obscurity is not true security and so these settings are down to your personal tastes.' ) )
-				);
-				$sTitleShort = _wpsf__( 'Obscurity' );
+				$sTitle = __( 'WordPress Obscurity Options', 'wp-simple-firewall' );
+				$aSummary = [
+					sprintf( '%s - %s', __( 'Purpose', 'wp-simple-firewall' ), __( 'Obscures certain WordPress settings from public view.', 'wp-simple-firewall' ) ),
+					sprintf( '%s - %s', __( 'Recommendation', 'wp-simple-firewall' ), __( 'Obscurity is not true security and so these settings are down to your personal tastes.', 'wp-simple-firewall' ) )
+				];
+				$sTitleShort = __( 'Obscurity', 'wp-simple-firewall' );
 				break;
 
 			default:
 				throw new \Exception( sprintf( 'A section slug was defined but with no associated strings. Slug: "%s".', $sSectionSlug ) );
 		}
 		$aOptionsParams[ 'title' ] = $sTitle;
-		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : array();
+		$aOptionsParams[ 'summary' ] = ( isset( $aSummary ) && is_array( $aSummary ) ) ? $aSummary : [];
 		$aOptionsParams[ 'title_short' ] = $sTitleShort;
 		return $aOptionsParams;
 	}
@@ -211,61 +211,61 @@ class ICWP_WPSF_FeatureHandler_Lockdown extends ICWP_WPSF_FeatureHandler_BaseWps
 		switch ( $sKey ) {
 
 			case 'enable_lockdown' :
-				$sName = sprintf( _wpsf__( 'Enable %s Module' ), $this->getMainFeatureName() );
-				$sSummary = sprintf( _wpsf__( 'Enable (or Disable) The %s Module' ), $this->getMainFeatureName() );
-				$sDescription = sprintf( _wpsf__( 'Un-Checking this option will completely disable the %s module.' ), $this->getMainFeatureName() );
+				$sName = sprintf( __( 'Enable %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sSummary = sprintf( __( 'Enable (or Disable) The %s Module', 'wp-simple-firewall' ), $this->getMainFeatureName() );
+				$sDescription = sprintf( __( 'Un-Checking this option will completely disable the %s module.', 'wp-simple-firewall' ), $this->getMainFeatureName() );
 				break;
 
 			case 'disable_xmlrpc' :
-				$sName = sprintf( _wpsf__( 'Disable %s' ), 'XML-RPC' );
-				$sSummary = sprintf( _wpsf__( 'Disable The %s System' ), 'XML-RPC' );
-				$sDescription = sprintf( _wpsf__( 'Checking this option will completely turn off the whole %s system.' ), 'XML-RPC' );
+				$sName = sprintf( __( 'Disable %s', 'wp-simple-firewall' ), 'XML-RPC' );
+				$sSummary = sprintf( __( 'Disable The %s System', 'wp-simple-firewall' ), 'XML-RPC' );
+				$sDescription = sprintf( __( 'Checking this option will completely turn off the whole %s system.', 'wp-simple-firewall' ), 'XML-RPC' );
 				break;
 
 			case 'disable_anonymous_restapi' :
-				$sName = _wpsf__( 'Anonymous Rest API' );
-				$sSummary = sprintf( _wpsf__( 'Disable The %s System' ), _wpsf__( 'Anonymous Rest API' ) );
-				$sDescription = _wpsf__( 'You can choose to completely disable anonymous access to the REST API.' );
+				$sName = __( 'Anonymous Rest API', 'wp-simple-firewall' );
+				$sSummary = sprintf( __( 'Disable The %s System', 'wp-simple-firewall' ), __( 'Anonymous Rest API', 'wp-simple-firewall' ) );
+				$sDescription = __( 'You can choose to completely disable anonymous access to the REST API.', 'wp-simple-firewall' );
 				break;
 
 			case 'api_namespace_exclusions' :
-				$sName = _wpsf__( 'Rest API Exclusions' );
-				$sSummary = _wpsf__( 'Anonymous REST API Exclusions' );
-				$sDescription = _wpsf__( 'Any namespaces provided here will be excluded from the Anonymous API restriction.' );
+				$sName = __( 'Rest API Exclusions', 'wp-simple-firewall' );
+				$sSummary = __( 'Anonymous REST API Exclusions', 'wp-simple-firewall' );
+				$sDescription = __( 'Any namespaces provided here will be excluded from the Anonymous API restriction.', 'wp-simple-firewall' );
 				break;
 
 			case 'disable_file_editing' :
-				$sName = _wpsf__( 'Disable File Editing' );
-				$sSummary = _wpsf__( 'Disable Ability To Edit Files From Within WordPress' );
-				$sDescription = _wpsf__( 'Removes the option to directly edit any files from within the WordPress admin area.' )
-								.'<br />'._wpsf__( 'Equivalent to setting "DISALLOW_FILE_EDIT" to TRUE.' );
+				$sName = __( 'Disable File Editing', 'wp-simple-firewall' );
+				$sSummary = __( 'Disable Ability To Edit Files From Within WordPress', 'wp-simple-firewall' );
+				$sDescription = __( 'Removes the option to directly edit any files from within the WordPress admin area.', 'wp-simple-firewall' )
+								.'<br />'.__( 'Equivalent to setting "DISALLOW_FILE_EDIT" to TRUE.', 'wp-simple-firewall' );
 				break;
 
 			case 'force_ssl_admin' :
-				$sName = _wpsf__( 'Force SSL Admin' );
-				$sSummary = _wpsf__( 'Forces WordPress Admin Dashboard To Be Delivered Over SSL' );
-				$sDescription = _wpsf__( 'Please only enable this option if you have a valid SSL certificate installed.' )
-								.'<br />'._wpsf__( 'Equivalent to setting "FORCE_SSL_ADMIN" to TRUE.' );
+				$sName = __( 'Force SSL Admin', 'wp-simple-firewall' );
+				$sSummary = __( 'Forces WordPress Admin Dashboard To Be Delivered Over SSL', 'wp-simple-firewall' );
+				$sDescription = __( 'Please only enable this option if you have a valid SSL certificate installed.', 'wp-simple-firewall' )
+								.'<br />'.__( 'Equivalent to setting "FORCE_SSL_ADMIN" to TRUE.', 'wp-simple-firewall' );
 				break;
 
 			case 'mask_wordpress_version' :
-				$sName = _wpsf__( 'Mask WordPress Version' );
-				$sSummary = _wpsf__( 'Prevents Public Display Of Your WordPress Version' );
-				$sDescription = _wpsf__( 'Enter how you would like your WordPress version displayed publicly. Leave blank to disable this feature.' )
-								.'<br />'.sprintf( '%s: %s', _wpsf__( 'Warning' ), _wpsf__( 'This may interfere with WordPress plugins that rely on the $wp_version variable.' ) );
+				$sName = __( 'Mask WordPress Version', 'wp-simple-firewall' );
+				$sSummary = __( 'Prevents Public Display Of Your WordPress Version', 'wp-simple-firewall' );
+				$sDescription = __( 'Enter how you would like your WordPress version displayed publicly. Leave blank to disable this feature.', 'wp-simple-firewall' )
+								.'<br />'.sprintf( '%s: %s', __( 'Warning', 'wp-simple-firewall' ), __( 'This may interfere with WordPress plugins that rely on the $wp_version variable.', 'wp-simple-firewall' ) );
 				break;
 
 			case 'hide_wordpress_generator_tag' :
-				$sName = _wpsf__( 'WP Generator Tag' );
-				$sSummary = _wpsf__( 'Remove WP Generator Meta Tag' );
-				$sDescription = _wpsf__( 'Remove a meta tag from your WordPress pages that publicly displays that your site is WordPress and its current version.' );
+				$sName = __( 'WP Generator Tag', 'wp-simple-firewall' );
+				$sSummary = __( 'Remove WP Generator Meta Tag', 'wp-simple-firewall' );
+				$sDescription = __( 'Remove a meta tag from your WordPress pages that publicly displays that your site is WordPress and its current version.', 'wp-simple-firewall' );
 				break;
 
 			case 'block_author_discovery' :
-				$sName = _wpsf__( 'Block Username Fishing' );
-				$sSummary = _wpsf__( 'Block the ability to discover WordPress usernames based on author IDs' );
-				$sDescription = sprintf( _wpsf__( 'When enabled, any URL requests containing "%s" will be killed.' ), 'author=' )
-								.'<br />'.sprintf( '%s - %s', _wpsf__( 'Warning' ), _wpsf__( 'Enabling this option may interfere with expected operations of your site.' ) );
+				$sName = __( 'Block Username Fishing', 'wp-simple-firewall' );
+				$sSummary = __( 'Block the ability to discover WordPress usernames based on author IDs', 'wp-simple-firewall' );
+				$sDescription = sprintf( __( 'When enabled, any URL requests containing "%s" will be killed.', 'wp-simple-firewall' ), 'author=' )
+								.'<br />'.sprintf( '%s - %s', __( 'Warning', 'wp-simple-firewall' ), __( 'Enabling this option may interfere with expected operations of your site.', 'wp-simple-firewall' ) );
 				break;
 
 			default:

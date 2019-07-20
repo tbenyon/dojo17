@@ -38,15 +38,15 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 		}
 
 		if ( $oFO->isPtgReadyToScan() ) {
-			add_action( 'upgrader_process_complete', array( $this, 'updateSnapshotAfterUpgrade' ), 10, 2 );
-			add_action( 'activated_plugin', array( $this, 'onActivatePlugin' ), 10 );
-			add_action( 'deactivated_plugin', array( $this, 'onDeactivatePlugin' ), 10 );
-			add_action( 'switch_theme', array( $this, 'onActivateTheme' ), 10, 0 );
+			add_action( 'upgrader_process_complete', [ $this, 'updateSnapshotAfterUpgrade' ], 10, 2 );
+			add_action( 'activated_plugin', [ $this, 'onActivatePlugin' ], 10 );
+			add_action( 'deactivated_plugin', [ $this, 'onDeactivatePlugin' ], 10 );
+			add_action( 'switch_theme', [ $this, 'onActivateTheme' ], 10, 0 );
 		}
 
 		if ( $oFO->isPtgReinstallLinks() ) {
-			add_filter( 'plugin_action_links', array( $this, 'addActionLinkRefresh' ), 50, 2 );
-			add_action( 'admin_footer', array( $this, 'printPluginReinstallDialogs' ) );
+			add_filter( 'plugin_action_links', [ $this, 'addActionLinkRefresh' ], 50, 2 );
+			add_action( 'admin_footer', [ $this, 'printPluginReinstallDialogs' ] );
 		}
 	}
 
@@ -172,12 +172,12 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 	}
 
 	public function printPluginReinstallDialogs() {
-		$aRenderData = array(
-			'strings'     => array(
-				'editing_restricted' => _wpsf__( 'Editing this option is currently restricted.' ),
-			),
-			'js_snippets' => array()
-		);
+		$aRenderData = [
+			'strings'     => [
+				'editing_restricted' => __( 'Editing this option is currently restricted.', 'wp-simple-firewall' ),
+			],
+			'js_snippets' => []
+		];
 		echo $this->getMod()
 				  ->renderTemplate( 'snippets/hg-plugins-reinstall-dialogs.php', $aRenderData );
 	}
@@ -218,7 +218,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 	public function updateSnapshotAfterUpgrade( $oUpgrader, $aInfo ) {
 
 		$sContext = '';
-		$aSlugs = array();
+		$aSlugs = [];
 
 		// Need to account for single and bulk updates. First bulk
 		if ( !empty( $aInfo[ self::CONTEXT_PLUGINS ] ) ) {
@@ -231,28 +231,28 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 		}
 		else if ( !empty( $aInfo[ 'plugin' ] ) ) {
 			$sContext = self::CONTEXT_PLUGINS;
-			$aSlugs = array( $aInfo[ 'plugin' ] );
+			$aSlugs = [ $aInfo[ 'plugin' ] ];
 		}
 		else if ( !empty( $aInfo[ 'theme' ] ) ) {
 			$sContext = self::CONTEXT_THEMES;
-			$aSlugs = array( $aInfo[ 'theme' ] );
+			$aSlugs = [ $aInfo[ 'theme' ] ];
 		}
 		else if ( isset( $aInfo[ 'action' ] ) && $aInfo[ 'action' ] == 'install' && isset( $aInfo[ 'type' ] )
 				  && !empty( $oUpgrader->result[ 'destination_name' ] ) ) {
 
 			if ( $aInfo[ 'type' ] == 'plugin' ) {
-				$oWpPlugins = $this->loadWpPlugins();
-				$sDir = $oWpPlugins->getFileFromDirName( $oUpgrader->result[ 'destination_name' ] );
-				if ( $sDir && $oWpPlugins->isActive( $sDir ) ) {
+				$oWpPlugins = Services\Services::WpPlugins();
+				$sPluginFile = $oWpPlugins->findPluginFileFromDirName( $oUpgrader->result[ 'destination_name' ] );
+				if ( !empty( $sPluginFile ) && $oWpPlugins->isActive( $sPluginFile ) ) {
 					$sContext = self::CONTEXT_PLUGINS;
-					$aSlugs = array( $sDir );
+					$aSlugs = [ $sPluginFile ];
 				}
 			}
 			else if ( $aInfo[ 'type' ] == 'theme' ) {
 				$sDir = $oUpgrader->result[ 'destination_name' ];
 				if ( Services\Services::WpThemes()->isActive( $sDir ) ) {
 					$sContext = self::CONTEXT_THEMES;
-					$aSlugs = array( $sDir );
+					$aSlugs = [ $sDir ];
 				}
 			}
 		}
@@ -276,7 +276,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 			try {
 				$oStore->removeItemSnapshot( $sBaseName )
 					   ->save();
-				$this->addToAuditEntry( sprintf( _wpsf__( 'File signatures removed for plugin "%s"' ), $sBaseName ) );
+				$this->addToAuditEntry( sprintf( __( 'File signatures removed for plugin "%s"', 'wp-simple-firewall' ), $sBaseName ) );
 			}
 			catch ( \Exception $oE ) {
 			}
@@ -299,7 +299,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 			try {
 				$oStore->addSnapItem( $sBaseName, $this->buildSnapshotPlugin( $sBaseName ) )
 					   ->save();
-				$this->addToAuditEntry( sprintf( _wpsf__( 'File signatures updated for plugin "%s"' ), $sBaseName ) );
+				$this->addToAuditEntry( sprintf( __( 'File signatures updated for plugin "%s"', 'wp-simple-firewall' ), $sBaseName ) );
 			}
 			catch ( \Exception $oE ) {
 			}
@@ -308,7 +308,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 			try {
 				$oStore->removeItemSnapshot( $sBaseName )
 					   ->save();
-				$this->addToAuditEntry( sprintf( _wpsf__( 'File signatures removed for plugin "%s"' ), $sBaseName ) );
+				$this->addToAuditEntry( sprintf( __( 'File signatures removed for plugin "%s"', 'wp-simple-firewall' ), $sBaseName ) );
 			}
 			catch ( \Exception $oE ) {
 			}
@@ -325,7 +325,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 			try {
 				$oStore->addSnapItem( $sSlug, $this->buildSnapshotTheme( $sSlug ) )
 					   ->save();
-				$this->addToAuditEntry( sprintf( _wpsf__( 'File signatures updated for theme "%s"' ), $sSlug ) );
+				$this->addToAuditEntry( sprintf( __( 'File signatures updated for theme "%s"', 'wp-simple-firewall' ), $sSlug ) );
 			}
 			catch ( \Exception $oE ) {
 			}
@@ -334,7 +334,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 			try {
 				$oStore->removeItemSnapshot( $sSlug )
 					   ->save();
-				$this->addToAuditEntry( sprintf( _wpsf__( 'File signatures removed for theme "%s"' ), $sSlug ) );
+				$this->addToAuditEntry( sprintf( __( 'File signatures removed for theme "%s"', 'wp-simple-firewall' ), $sSlug ) );
 			}
 			catch ( \Exception $oE ) {
 			}
@@ -417,15 +417,15 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 	private function buildSnapshotPlugin( $sBaseFile ) {
 		$aPlugin = Services\Services::WpPlugins()->getPlugin( $sBaseFile );
 
-		return array(
-			'meta'   => array(
+		return [
+			'meta'   => [
 				'name'         => $aPlugin[ 'Name' ],
 				'version'      => $aPlugin[ 'Version' ],
 				'ts'           => Services\Services::Request()->ts(),
 				'snap_version' => $this->getCon()->getVersion(),
-			),
+			],
 			'hashes' => $this->getContextScanner( self::CONTEXT_PLUGINS )->hashAssetFiles( $sBaseFile )
-		);
+		];
 	}
 
 	/**
@@ -435,15 +435,15 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 	private function buildSnapshotTheme( $sSlug ) {
 		$oTheme = Services\Services::WpThemes()->getTheme( $sSlug );
 
-		return array(
-			'meta'   => array(
+		return [
+			'meta'   => [
 				'name'         => $oTheme->get( 'Name' ),
 				'version'      => $oTheme->get( 'Version' ),
 				'ts'           => Services\Services::Request()->ts(),
 				'snap_version' => $this->getCon()->getVersion(),
-			),
+			],
 			'hashes' => $this->getContextScanner( self::CONTEXT_THEMES )->hashAssetFiles( $sSlug )
-		);
+		];
 	}
 
 	/**
@@ -475,9 +475,9 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 						  ->deleteSnapshots();
 
 			$oActiveTheme = $oWpThemes->getCurrent();
-			$aThemes = array(
+			$aThemes = [
 				$oActiveTheme->get_stylesheet() => $oActiveTheme
-			);
+			];
 
 			if ( $oWpThemes->isActiveThemeAChild() ) { // is child theme
 				$oParent = $oWpThemes->getCurrentParent();
@@ -568,7 +568,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 		$oWpPlugins = Services\Services::WpPlugins();
 		$oWpThemes = Services\Services::WpThemes();
 
-		$aAllPlugins = array();
+		$aAllPlugins = [];
 		foreach ( $oRes->getResultsForPluginsContext()->getUniqueSlugs() as $sBaseFile ) {
 			$oP = $oWpPlugins->getPluginAsVo( $sBaseFile );
 			if ( !empty( $oP ) ) {
@@ -577,7 +577,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 			}
 		}
 
-		$aAllThemes = array();
+		$aAllThemes = [];
 		foreach ( $oRes->getResultsForThemesContext()->getUniqueSlugs() as $sBaseFile ) {
 			$oTheme = $oWpThemes->getTheme( $sBaseFile );
 			if ( !empty( $oTheme ) ) {
@@ -589,19 +589,19 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 		$sName = $this->getCon()->getHumanName();
 		$sHomeUrl = Services\Services::WpGeneral()->getHomeUrl();
 
-		$aContent = array(
-			sprintf( _wpsf__( '%s has detected at least 1 Plugins/Themes have been modified on your site.' ), $sName ),
+		$aContent = [
+			sprintf( __( '%s has detected at least 1 Plugins/Themes have been modified on your site.', 'wp-simple-firewall' ), $sName ),
 			'',
-			sprintf( '<strong>%s</strong>', _wpsf__( 'You will receive only 1 email notification about these changes in a 1 week period.' ) ),
+			sprintf( '<strong>%s</strong>', __( 'You will receive only 1 email notification about these changes in a 1 week period.', 'wp-simple-firewall' ) ),
 			'',
-			sprintf( '%s: %s', _wpsf__( 'Site URL' ), sprintf( '<a href="%s" target="_blank">%s</a>', $sHomeUrl, $sHomeUrl ) ),
+			sprintf( '%s: %s', __( 'Site URL', 'wp-simple-firewall' ), sprintf( '<a href="%s" target="_blank">%s</a>', $sHomeUrl, $sHomeUrl ) ),
 			'',
-			_wpsf__( 'Details of the problem items are below:' ),
-		);
+			__( 'Details of the problem items are below:', 'wp-simple-firewall' ),
+		];
 
 		if ( !empty( $aAllPlugins ) ) {
 			$aContent[] = '';
-			$aContent[] = sprintf( '<strong>%s</strong>', _wpsf__( 'Modified Plugins:' ) );
+			$aContent[] = sprintf( '<strong>%s</strong>', __( 'Modified Plugins:', 'wp-simple-firewall' ) );
 			foreach ( $aAllPlugins as $sPlugins ) {
 				$aContent[] = ' - '.$sPlugins;
 			}
@@ -609,7 +609,7 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 
 		if ( !empty( $aAllThemes ) ) {
 			$aContent[] = '';
-			$aContent[] = sprintf( '<strong>%s</strong>', _wpsf__( 'Modified Themes:' ) );
+			$aContent[] = sprintf( '<strong>%s</strong>', __( 'Modified Themes:', 'wp-simple-firewall' ) );
 			foreach ( $aAllThemes as $sTheme ) {
 				$aContent[] = ' - '.$sTheme;
 			}
@@ -619,15 +619,15 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 		$aContent[] = '';
 
 		$sTo = $oFO->getPluginDefaultRecipientAddress();
-		$sEmailSubject = sprintf( '%s - %s', _wpsf__( 'Warning' ), _wpsf__( 'Plugins/Themes Have Been Altered' ) );
+		$sEmailSubject = sprintf( '%s - %s', __( 'Warning', 'wp-simple-firewall' ), __( 'Plugins/Themes Have Been Altered', 'wp-simple-firewall' ) );
 		$bSendSuccess = $this->getEmailProcessor()
 							 ->sendEmailWithWrap( $sTo, $sEmailSubject, $aContent );
 
 		if ( $bSendSuccess ) {
-			$this->addToAuditEntry( sprintf( _wpsf__( 'Successfully sent Plugin/Theme Guard email alert to: %s' ), $sTo ) );
+			$this->addToAuditEntry( sprintf( __( 'Successfully sent Plugin/Theme Guard email alert to: %s', 'wp-simple-firewall' ), $sTo ) );
 		}
 		else {
-			$this->addToAuditEntry( sprintf( _wpsf__( 'Failed to send Plugin/Theme Guard email alert to: %s' ), $sTo ) );
+			$this->addToAuditEntry( sprintf( __( 'Failed to send Plugin/Theme Guard email alert to: %s', 'wp-simple-firewall' ), $sTo ) );
 		}
 	}
 
@@ -661,8 +661,8 @@ class ICWP_WPSF_Processor_HackProtect_Ptg extends ICWP_WPSF_Processor_HackProtec
 	 * @param array  $aData
 	 * @return $this
 	 */
-	public function addToAuditEntry( $sMsg = '', $nCategory = 1, $sEvent = '', $aData = array() ) {
-		$sMsg = sprintf( '[%s]: %s', _wpsf__( 'Plugin/Theme Guard' ), $sMsg );
+	public function addToAuditEntry( $sMsg = '', $nCategory = 1, $sEvent = '', $aData = [] ) {
+		$sMsg = sprintf( '[%s]: %s', __( 'Plugin/Theme Guard', 'wp-simple-firewall' ), $sMsg );
 		$this->createNewAudit( 'wpsf', $sMsg, $nCategory, $sEvent, $aData );
 		return $this;
 	}

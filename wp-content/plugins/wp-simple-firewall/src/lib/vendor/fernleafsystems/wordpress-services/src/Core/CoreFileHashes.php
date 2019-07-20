@@ -21,7 +21,7 @@ class CoreFileHashes {
 	public function getHashes() {
 		if ( !isset( $this->aHashes ) ) {
 			$aHash = Services::WpGeneral()->getCoreChecksums();
-			$this->aHashes = is_array( $aHash ) ? $aHash : array();
+			$this->aHashes = is_array( $aHash ) ? $aHash : [];
 		}
 		return $this->aHashes;
 	}

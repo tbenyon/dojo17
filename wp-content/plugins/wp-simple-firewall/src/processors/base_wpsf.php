@@ -1,5 +1,7 @@
 <?php
 
+use FernleafSystems\Wordpress\Services\Services; // TODO: use after Shield 7.5
+
 abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 
 	const RECAPTCHA_JS_HANDLE = 'icwp-google-recaptcha';
@@ -25,8 +27,8 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	public function init() {
 		parent::init();
 		$oFO = $this->getMod();
-		add_filter( $oFO->prefix( 'collect_stats' ), array( $this, 'stats_Collect' ) );
-		add_filter( $oFO->prefix( 'collect_tracking_data' ), array( $this, 'tracking_DataCollect' ) );
+		add_filter( $oFO->prefix( 'collect_stats' ), [ $this, 'stats_Collect' ] );
+		add_filter( $oFO->prefix( 'collect_tracking_data' ), [ $this, 'tracking_DataCollect' ] );
 	}
 
 	/**
@@ -50,7 +52,7 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 		$bIsSubject = false;
 
 		if ( !$oUser instanceof WP_User ) {
-			$oUser = $this->loadWpUsers()->getCurrentWpUser();
+			$oUser = Services::WpUsers()->getCurrentWpUser();
 		}
 		if ( $oUser instanceof WP_User ) {
 			$bIsSubject = apply_filters( $this->prefix( 'user_subject_to_login_intent' ), false, $oUser );
@@ -86,17 +88,19 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 		$sCaptchaResponse = $this->getRecaptchaResponse();
 
 		if ( empty( $sCaptchaResponse ) ) {
-			throw new \Exception( _wpsf__( 'Whoops.' ).' '._wpsf__( 'Google reCAPTCHA was not submitted.' ), 1 );
+			throw new \Exception( __( 'Whoops.', 'wp-simple-firewall' ).' '.__( 'Google reCAPTCHA was not submitted.', 'wp-simple-firewall' ), 1 );
 		}
 		else {
-			$oResponse = $this->loadGoogleRecaptcha()
-							  ->getGoogleRecaptchaLib( $oFO->getGoogleRecaptchaSecretKey() )
-							  ->verify( $sCaptchaResponse, $this->ip() );
+			$oResponse = ( new \ReCaptcha\ReCaptcha( $oFO->getGoogleRecaptchaSecretKey(), new \FernleafSystems\Wordpress\Plugin\Shield\Utilities\WordpressPost() ) )
+				->verify( $sCaptchaResponse, $this->ip() );
 			if ( empty( $oResponse ) || !$oResponse->isSuccess() ) {
-				throw new \Exception(
-					_wpsf__( 'Whoops.' ).' '._wpsf__( 'Google reCAPTCHA verification failed.' )
-					.( $this->loadWp()->isAjax() ? ' '._wpsf__( 'Maybe refresh the page and try again.' ) : '' ),
-					2 );
+				$aMsg = [
+					__( 'Whoops.', 'wp-simple-firewall' ),
+					__( 'Google reCAPTCHA verification failed.', 'wp-simple-firewall' ),
+					Services::WpGeneral()->isAjax() ?
+						__( 'Maybe refresh the page and try again.', 'wp-simple-firewall' ) : ''
+				];
+				throw new \Exception( implode( ' ', $aMsg ), 2 );
 			}
 		}
 		return true;
@@ -105,16 +109,10 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	/**
 	 * @return bool
 	 */
-	protected function getIfIpTransgressed() {
-		return apply_filters( $this->getMod()->prefix( 'ip_black_mark' ), false )
-			   || apply_filters( $this->getMod()->prefix( 'ip_block_it' ), false );
-	}
-
-	/**
-	 * @return bool
-	 */
 	protected function getIfLogRequest() {
-		return isset( $this->bLogRequest ) ? (bool)$this->bLogRequest : !$this->loadWp()->isCron();
+		return isset( $this->bLogRequest ) ?
+			(bool)$this->bLogRequest
+			: !\FernleafSystems\Wordpress\Services\Services::WpGeneral()->isCron();
 	}
 
 	/**
@@ -137,23 +135,23 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 
 	public function registerGoogleRecaptchaJs() {
 		$sJsUri = add_query_arg(
-			array(
+			[
 				'hl'     => $this->getGoogleRecaptchaLocale(),
 				'onload' => 'onLoadIcwpRecaptchaCallback',
 				'render' => 'explicit',
-			),
+			],
 			'https://www.google.com/recaptcha/api.js'
 		);
-		wp_register_script( self::RECAPTCHA_JS_HANDLE, $sJsUri, array(), false, true );
+		wp_register_script( self::RECAPTCHA_JS_HANDLE, $sJsUri, [], false, true );
 		wp_enqueue_script( self::RECAPTCHA_JS_HANDLE );
 
 		// This also gives us the chance to remove recaptcha before it's printed, if it isn't needed
-		add_action( 'wp_footer', array( $this, 'maybeDequeueRecaptcha' ), -100 );
-		add_action( 'login_footer', array( $this, 'maybeDequeueRecaptcha' ), -100 );
+		add_action( 'wp_footer', [ $this, 'maybeDequeueRecaptcha' ], -100 );
+		add_action( 'login_footer', [ $this, 'maybeDequeueRecaptcha' ], -100 );
 
-		$this->loadWpIncludes()
-			 ->addIncludeAttribute( self::RECAPTCHA_JS_HANDLE, 'async', 'async' )
-			 ->addIncludeAttribute( self::RECAPTCHA_JS_HANDLE, 'defer', 'defer' );
+		\FernleafSystems\Wordpress\Services\Services::Includes()
+													->addIncludeAttribute( self::RECAPTCHA_JS_HANDLE, 'async', 'async' )
+													->addIncludeAttribute( self::RECAPTCHA_JS_HANDLE, 'defer', 'defer' );
 		/**
 		 * Change to recaptcha implementation now means
 		 * 1 - the form will not submit unless the recaptcha has been executed (either invisible or manual)
@@ -168,7 +166,7 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	 */
 	public function stats_Collect( $aStats ) {
 		if ( !is_array( $aStats ) ) {
-			$aStats = array();
+			$aStats = [];
 		}
 		$aThisStats = $this->stats_Get();
 		if ( !empty( $aThisStats ) && is_array( $aThisStats ) ) {
@@ -196,7 +194,7 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	 */
 	public function stats_Get() {
 		if ( !isset( $this->aStatistics ) || !is_array( $this->aStatistics ) ) {
-			$this->aStatistics = array();
+			$this->aStatistics = [];
 		}
 		return $this->aStatistics;
 	}
@@ -212,10 +210,10 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	 */
 	public function tracking_DataCollect( $aData ) {
 		if ( !is_array( $aData ) ) {
-			$aData = array();
+			$aData = [];
 		}
 		$oFO = $this->getMod();
-		$aData[ $oFO->getSlug() ] = array( 'options' => $oFO->collectOptionsForTracking() );
+		$aData[ $oFO->getSlug() ] = [ 'options' => $oFO->collectOptionsForTracking() ];
 		return $aData;
 	}
 
@@ -240,7 +238,7 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	 * @param array  $aData
 	 * @return $this
 	 */
-	public function addToAuditEntry( $sMsg = '', $nCategory = 1, $sEvent = '', $aData = array() ) {
+	public function addToAuditEntry( $sMsg = '', $nCategory = 1, $sEvent = '', $aData = [] ) {
 		$this->createNewAudit( 'wpsf', $sMsg, $nCategory, $sEvent, $aData );
 		return $this;
 	}
@@ -258,12 +256,12 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 			echo $this->loadRenderer( $this->getCon()->getPath_Templates() )
 					  ->setTemplateEnginePhp()
 					  ->setRenderVars(
-						  array(
+						  [
 							  'sitekey' => $oFO->getGoogleRecaptchaSiteKey(),
 							  'size'    => $this->isRecaptchaInvisible() ? 'invisible' : '',
 							  'theme'   => $this->getRecaptchaTheme(),
 							  'invis'   => $this->isRecaptchaInvisible(),
-						  )
+						  ]
 					  )
 					  ->setTemplate( 'snippets/google_recaptcha_js' )
 					  ->render();
@@ -289,5 +287,15 @@ abstract class ICWP_WPSF_Processor_BaseWpsf extends ICWP_WPSF_Processor_Base {
 	public function setRecaptchaToEnqueue() {
 		self::$bRecaptchaEnqueue = true;
 		return $this;
+	}
+
+	/**
+	 * @return bool
+	 * @deprecated
+	 */
+	protected function getIfIpTransgressed() {
+		/** @var ICWP_WPSF_FeatureHandler_BaseWpsf $oFO */
+		$oFO = $this->getMod();
+		return $oFO->getIfIpTransgressed();
 	}
 }

@@ -70,11 +70,11 @@ class Themes {
 	 */
 	public function install( $sUrlToInstall, $bOverwrite = true, $bMaintenanceMode = false ) {
 
-		$aResult = array(
+		$aResult = [
 			'successful'  => true,
 			'plugin_info' => '',
-			'errors'      => array()
-		);
+			'errors'      => []
+		];
 
 		$oUpgraderSkin = new Upgrades\UpgraderSkin();
 		$oUpgrader = new Upgrades\ThemeUpgrader( $oUpgraderSkin );
@@ -149,15 +149,15 @@ class Themes {
 	 */
 	public function update( $sFile ) {
 
-		$aResult = array(
+		$aResult = [
 			'successful' => 1,
-			'errors'     => array()
-		);
+			'errors'     => []
+		];
 
 		$oUpgraderSkin = new Upgrades\BulkThemeUpgraderSkin();
 		$oUpgrader = new Upgrades\ThemeUpgrader( $oUpgraderSkin );
 		ob_start();
-		$oUpgrader->bulk_upgrade( array( $sFile ) );
+		$oUpgrader->bulk_upgrade( [ $sFile ] );
 		if ( ob_get_contents() ) {
 			// for some reason this errors with no buffer present
 			ob_end_clean();
@@ -243,7 +243,7 @@ class Themes {
 			$this->checkForUpdates();
 		}
 		$aUpdates = Services::WpGeneral()->getWordpressUpdates( 'themes' );
-		return is_array( $aUpdates ) ? $aUpdates : array();
+		return is_array( $aUpdates ) ? $aUpdates : [];
 	}
 
 	/**
@@ -260,12 +260,12 @@ class Themes {
 	public function getExtendedData( $sBase ) {
 		include_once( ABSPATH.'wp-admin/includes/theme.php' );
 
-		$oApi = themes_api( 'theme_information', array(
+		$oApi = themes_api( 'theme_information', [
 			'slug'   => $sBase,
-			'fields' => array(
+			'fields' => [
 				'sections' => false,
-			),
-		) );
+			],
+		] );
 		return $oApi;
 	}
 
@@ -355,6 +355,6 @@ class Themes {
 	 * @return array
 	 */
 	public function wpmsGetSiteAllowedThemes() {
-		return ( function_exists( 'get_site_allowed_themes' ) ? get_site_allowed_themes() : array() );
+		return ( function_exists( 'get_site_allowed_themes' ) ? get_site_allowed_themes() : [] );
 	}
 }

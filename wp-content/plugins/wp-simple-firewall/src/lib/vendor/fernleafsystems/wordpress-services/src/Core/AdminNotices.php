@@ -24,18 +24,18 @@ class AdminNotices {
 	protected $sActionPrefix = '';
 
 	public function __construct() {
-		add_action( 'admin_notices',			array( $this, 'onWpAdminNotices' ) );
-		add_action( 'network_admin_notices',	array( $this, 'onWpAdminNotices' ) );
-		add_action( 'wp_loaded',				array( $this, 'flushFlashMessage' ) );
+		add_action( 'admin_notices', [ $this, 'onWpAdminNotices' ] );
+		add_action( 'network_admin_notices', [ $this, 'onWpAdminNotices' ] );
+		add_action( 'wp_loaded', [ $this, 'flushFlashMessage' ] );
 
 		if ( Services::WpGeneral()->getIsAjax() ) {
-			add_action( 'wp_ajax_icwp_DismissAdminNotice', array( $this, 'ajaxDismissAdminNotice' ) );
+			add_action( 'wp_ajax_icwp_DismissAdminNotice', [ $this, 'ajaxDismissAdminNotice' ] );
 		}
 	}
 
 	public function onWpAdminNotices() {
 		do_action( $this->getActionPrefix().'generate_admin_notices' );
-		foreach( $this->getNotices() as $sKey => $sAdminNoticeContent ) {
+		foreach ( $this->getNotices() as $sKey => $sAdminNoticeContent ) {
 			echo $sAdminNoticeContent;
 		}
 		$this->flashNotice();
@@ -47,7 +47,7 @@ class AdminNotices {
 		if ( $bSuccess ) {
 			// Get all notices and if this notice exists, we set it to "hidden"
 			$sNoticeId = sanitize_key( Services::Request()->query( 'notice_id', '' ) );
-			$aNotices = apply_filters( $this->getActionPrefix().'register_admin_notices', array() );
+			$aNotices = apply_filters( $this->getActionPrefix().'register_admin_notices', [] );
 			if ( !empty( $sNoticeId ) && array_key_exists( $sNoticeId, $aNotices ) ) {
 				$this->setAdminNoticeAsDismissed( $aNotices[ $sNoticeId ] );
 			}
@@ -76,7 +76,7 @@ class AdminNotices {
 	 * @param array $aNotice
 	 */
 	public function setAdminNoticeAsDismissed( $aNotice ) {
-		Services::WpUsers()->updateUserMeta( $this->getActionPrefix().$aNotice['id'], 'Y' );
+		Services::WpUsers()->updateUserMeta( $this->getActionPrefix().$aNotice[ 'id' ], 'Y' );
 	}
 
 	/**
@@ -97,15 +97,15 @@ class AdminNotices {
 		}
 
 		// At this stage we haven't returned after success so we failed the nonce check
-		$this->sendAjaxResponse( false, array( 'message' => $sMessage ) );
+		$this->sendAjaxResponse( false, [ 'message' => $sMessage ] );
 		return false; //unreachable
 	}
 
 	/**
-	 * @param $bSuccess
+	 * @param       $bSuccess
 	 * @param array $aData
 	 */
-	protected function sendAjaxResponse( $bSuccess, $aData = array() ) {
+	protected function sendAjaxResponse( $bSuccess, $aData = [] ) {
 		$bSuccess ? wp_send_json_success( $aData ) : wp_send_json_error( $aData );
 	}
 
@@ -130,7 +130,7 @@ class AdminNotices {
 	 */
 	protected function getNotices() {
 		if ( !isset( $this->aAdminNotices ) || !is_array( $this->aAdminNotices ) ) {
-			$this->aAdminNotices = array();
+			$this->aAdminNotices = [];
 		}
 		return $this->aAdminNotices;
 	}
@@ -166,9 +166,9 @@ class AdminNotices {
 	/**
 	 * Provides the basic HTML template for printing a WordPress Admin Notices
 	 *
-	 * @param $sNotice - The message to be displayed.
+	 * @param $sNotice       - The message to be displayed.
 	 * @param $sMessageClass - either error or updated
-	 * @param $bPrint - if true, will echo. false will return the string
+	 * @param $bPrint        - if true, will echo. false will return the string
 	 *
 	 * @return boolean|string
 	 */
@@ -178,7 +178,8 @@ class AdminNotices {
 		if ( $bPrint ) {
 			echo $sFullNotice;
 			return true;
-		} else {
+		}
+		else {
 			return $sFullNotice;
 		}
 	}

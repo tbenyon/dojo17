@@ -46,7 +46,7 @@ class IpUtils {
 	 */
 	public static function checkIp( $requestIp, $ips ) {
 		if ( !is_array( $ips ) ) {
-			$ips = array( $ips );
+			$ips = [ $ips ];
 		}
 		$method = substr_count( $requestIp, ':' ) > 1 ? 'checkIp6' : 'checkIp4';
 		foreach ( $ips as $ip ) {
@@ -84,12 +84,12 @@ class IpUtils {
 	/**
 	 * Compares two IPv6 addresses.
 	 * In case a subnet is given, it checks if it contains the request IP.
-	 * @author David Soria Parra <dsp at php dot net>
-	 * @see    https://github.com/dsp/v6tools
 	 * @param string $requestIp IPv6 address to check
 	 * @param string $ip        IPv6 address or subnet in CIDR notation
 	 * @return bool Whether the IP is valid
 	 * @throws \Exception When IPV6 support is not enabled
+	 * @author David Soria Parra <dsp at php dot net>
+	 * @see    https://github.com/dsp/v6tools
 	 */
 	public static function checkIp6( $requestIp, $ip ) {
 		if ( !( ( extension_loaded( 'sockets' ) && defined( 'AF_INET6' ) ) || @inet_pton( '::1' ) ) ) {
@@ -350,17 +350,17 @@ class IpUtils {
 			}
 		}
 
-		return array(
+		return [
 			'source' => $sSource,
 			'ip'     => $sIpToReturn
-		);
+		];
 	}
 
 	/**
 	 * @return string[]
 	 */
 	protected function getIpSourceOptions() {
-		return array(
+		return [
 			'REMOTE_ADDR',
 			'HTTP_CF_CONNECTING_IP',
 			'HTTP_X_FORWARDED_FOR',
@@ -371,14 +371,14 @@ class IpUtils {
 			'HTTP_X_SP_FORWARDED_IP',
 			'HTTP_FORWARDED',
 			'HTTP_CLIENT_IP'
-		);
+		];
 	}
 
 	/**
 	 * @return string[]
 	 */
 	protected function getCloudFlareIpsV4() {
-		return array(
+		return [
 			'103.21.244.0/22',
 			'103.22.200.0/22',
 			'103.31.4.0/22',
@@ -393,14 +393,14 @@ class IpUtils {
 			'190.93.240.0/20',
 			'197.234.240.0/22',
 			'198.41.128.0/17'
-		);
+		];
 	}
 
 	/**
 	 * @return string[]
 	 */
 	protected function getCloudFlareIpsV6() {
-		return array(
+		return [
 			'2400:cb00::/32',
 			'2405:8100::/32',
 			'2405:b500::/32',
@@ -408,7 +408,7 @@ class IpUtils {
 			'2803:f800::/32',
 			'2c0f:f248::/32',
 			'2a06:98c0::/29'
-		);
+		];
 	}
 
 	/**
@@ -424,7 +424,7 @@ class IpUtils {
 	 * @return string[]
 	 */
 	public function getServiceIps_StatusCake() {
-		$aIps = array();
+		$aIps = [];
 		$aData = @json_decode( Services::HttpRequest()
 									   ->getContent( 'https://app.statuscake.com/Workfloor/Locations.php?format=json' ), true );
 		if ( is_array( $aData ) ) {
@@ -464,7 +464,7 @@ class IpUtils {
 
 		// We check the useragent if available
 		if ( is_null( $sUserAgent ) || stripos( $sUserAgent, 'DuckDuckBot' ) !== false ) {
-			$bIsBot = in_array( $sIp, array( '107.20.237.51', '23.21.226.191', '107.21.1.8', '54.208.102.37' ) );
+			$bIsBot = in_array( $sIp, [ '107.20.237.51', '23.21.226.191', '107.21.1.8', '54.208.102.37' ] );
 		}
 		return $bIsBot;
 	}

@@ -17,6 +17,7 @@ return array(
     'MaxMind\\WebService\\' => array($vendorDir . '/maxmind/web-service-common/src/WebService'),
     'MaxMind\\Exception\\' => array($vendorDir . '/maxmind/web-service-common/src/Exception'),
     'MaxMind\\Db\\' => array($vendorDir . '/maxmind-db/reader/src/MaxMind/Db'),
+    'LZCompressor\\' => array($vendorDir . '/nullpunkt/lz-string-php/src/LZCompressor'),
     'Html2Text\\' => array($vendorDir . '/soundasleep/html2text/src'),
     'GeoIp2\\' => array($vendorDir . '/geoip2/geoip2/src'),
     'FernleafSystems\\Wordpress\\Services\\' => array($vendorDir . '/fernleafsystems/wordpress-services/src'),

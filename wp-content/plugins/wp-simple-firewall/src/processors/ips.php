@@ -1,6 +1,7 @@
 <?php
 
 use FernleafSystems\Wordpress\Plugin\Shield\Databases\IPs;
+use FernleafSystems\Wordpress\Plugin\Shield\Modules\IPs\BotTrack;
 use FernleafSystems\Wordpress\Services\Services;
 
 class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
@@ -33,42 +34,54 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 
 		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
 		$oFO = $this->getMod();
-		if ( $oFO->isAutoBlackListFeatureEnabled() ) {
-			add_filter( $oFO->prefix( 'firewall_die_message' ), array( $this, 'fAugmentFirewallDieMessage' ) );
-			add_action( $oFO->prefix( 'pre_plugin_shutdown' ), array( $this, 'doBlackMarkCurrentVisitor' ) );
-			add_action( 'wp_login_failed', array( $oFO, 'setIpTransgressed' ), 10, 0 );
+		if ( $oFO->isAutoBlackListEnabled() ) {
+			add_filter( $oFO->prefix( 'firewall_die_message' ), [ $this, 'fAugmentFirewallDieMessage' ] );
+			add_action( $oFO->prefix( 'pre_plugin_shutdown' ), [ $this, 'doBlackMarkCurrentVisitor' ] );
 		}
-
-		add_filter( 'authenticate', array( $this, 'addLoginFailedWarningMessage' ), 10000, 1 );
-		add_action( 'template_redirect', array( $this, 'doTrack404' ) );
 	}
 
-	public function doTrack404() {
+	public function onWpInit() {
+		parent::onWpInit();
 		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
 		$oFO = $this->getMod();
-		if ( $oFO->is404Tracking() && is_404() && !$oFO->isVerifiedBot() ) {
-			if ( $oFO->getOptTracking404() == 'assign-transgression' ) {
-				$oFO->setIpTransgressed(); // We now black mark this IP
-			}
-			$this->addToAuditEntry(
-				sprintf( _wpsf__( '404 detected at "%s"' ), $this->loadRequest()->getPath() ),
-				2, 'request_tracking_404'
-			);
-		}
-	}
 
-	/**
-	 * @param WP_User|WP_Error $oUserOrError
-	 * @return WP_User|WP_Error
-	 */
-	public function addLoginFailedWarningMessage( $oUserOrError ) {
-		if ( $this->loadWp()->isRequestUserLogin() && is_wp_error( $oUserOrError ) ) {
-			$oUserOrError->add(
-				$this->getMod()->prefix( 'transgression-warning' ),
-				$this->getMod()->getTextOpt( 'text_loginfailed' )
-			);
+		if ( $this->isReadyToRun() && $oFO->isAutoBlackListEnabled() && !Services::WpUsers()->isUserLoggedIn() ) {
+
+			if ( !$oFO->isVerifiedBot() ) {
+				if ( $oFO->isEnabledTrackXmlRpc() ) {
+					( new BotTrack\TrackXmlRpc() )
+						->setMod( $oFO )
+						->run();
+				}
+				if ( $oFO->isEnabledTrack404() ) {
+					( new BotTrack\Track404() )
+						->setMod( $oFO )
+						->run();
+				}
+				if ( $oFO->isEnabledTrackLoginFailed() ) {
+					( new BotTrack\TrackLoginFailed() )
+						->setMod( $oFO )
+						->run();
+				}
+				if ( $oFO->isEnabledTrackLoginInvalid() ) {
+					( new BotTrack\TrackLoginInvalid() )
+						->setMod( $oFO )
+						->run();
+				}
+				if ( $oFO->isEnabledTrackFakeWebCrawler() ) {
+					( new BotTrack\TrackFakeWebCrawler() )
+						->setMod( $oFO )
+						->run();
+				}
+			}
+
+			/** Always run link cheese regardless of the verified bot or not */
+			if ( $oFO->isEnabledTrackLinkCheese() ) {
+				( new BotTrack\TrackLinkCheese() )
+					->setMod( $oFO )
+					->run();
+			}
 		}
-		return $oUserOrError;
 	}
 
 	/**
@@ -79,37 +92,17 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		$oCon = $this->getCon();
 
 		if ( $oCon->getIsPage_PluginAdmin() && $this->isCurrentIpWhitelisted() ) {
-			$aRenderData = array(
+			$aRenderData = [
 				'notice_attributes' => $aNoticeAttributes,
-				'strings'           => array(
-					'title'             => sprintf( _wpsf__( '%s is ignoring you' ), $oCon->getHumanName() ),
-					'your_ip'           => sprintf( _wpsf__( 'Your IP address is: %s' ), $this->ip() ),
-					'notice_message'    => _wpsf__( 'Your IP address is whitelisted and NO features you activate apply to you.' ),
-					'including_message' => _wpsf__( 'Including the hiding the WP Login page.' )
-				)
-			);
+				'strings'           => [
+					'title'             => sprintf( __( '%s is ignoring you', 'wp-simple-firewall' ), $oCon->getHumanName() ),
+					'your_ip'           => sprintf( __( 'Your IP address is: %s', 'wp-simple-firewall' ), $this->ip() ),
+					'notice_message'    => __( 'Your IP address is whitelisted and NO features you activate apply to you.', 'wp-simple-firewall' ),
+					'including_message' => __( 'Including the hiding the WP Login page.', 'wp-simple-firewall' )
+				]
+			];
 			$this->insertAdminNotice( $aRenderData );
 		}
-	}
-
-	/**
-	 * @return array
-	 */
-	public function getAllValidLists() {
-		return array(
-			ICWP_WPSF_FeatureHandler_Ips::LIST_AUTO_BLACK,
-			ICWP_WPSF_FeatureHandler_Ips::LIST_MANUAL_WHITE,
-			ICWP_WPSF_FeatureHandler_Ips::LIST_MANUAL_BLACK
-		);
-	}
-
-	/**
-	 * @param string $sIp
-	 * @return boolean
-	 */
-	protected function isValidIpOrRange( $sIp ) {
-		$oIP = Services::IP();
-		return $oIP->isValidIp_PublicRemote( $sIp ) || $oIP->isValidIpRange( $sIp );
 	}
 
 	/**
@@ -118,52 +111,10 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	public function fAugmentFirewallDieMessage( $aMessages ) {
 		if ( !is_array( $aMessages ) ) {
-			$aMessages = array();
+			$aMessages = [];
 		}
 		$aMessages[] = sprintf( '<p>%s</p>', $this->getTextOfRemainingTransgressions() );
 		return $aMessages;
-	}
-
-	/**
-	 * @param WP_User|WP_Error $oUserOrError
-	 * @param string           $sUsername
-	 * @return WP_User|WP_Error
-	 */
-	public function verifyIfAuthenticationValid( $oUserOrError, $sUsername ) {
-		// Don't concern yourself if visitor is whitelisted
-		if ( $this->isCurrentIpWhitelisted() ) {
-			return $oUserOrError;
-		}
-
-		$bBlackMark = false;
-		$oWp = $this->loadWp();
-		if ( $oWp->isRequestUserLogin() ) {
-
-			// If there's an attempt to login with a non-existent username
-			if ( !empty( $sUsername ) && !in_array( $sUsername, $oWp->getAllUserLoginUsernames() ) ) {
-				$bBlackMark = true;
-			}
-			else {
-				// If the login failed.
-				$bUserLoginSuccess = is_object( $oUserOrError ) && ( $oUserOrError instanceof WP_User );
-				if ( !$bUserLoginSuccess ) {
-					$bBlackMark = true;
-				}
-			}
-		}
-
-		if ( $bBlackMark ) {
-			/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
-			$oFO = $this->getMod();
-			$oFO->setIpTransgressed(); // We now black mark this IP
-
-			if ( !is_wp_error( $oUserOrError ) ) {
-				$oUserOrError = new WP_Error();
-			}
-			$oUserOrError->add( 'wpsf-autoblacklist', $this->getTextOfRemainingTransgressions() );
-		}
-
-		return $oUserOrError;
 	}
 
 	/**
@@ -212,12 +163,12 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		// TODO: *Maybe* Have a manual black list process first.
 
 		// now try auto black list
-		if ( !$bKill && $oFO->isAutoBlackListFeatureEnabled() ) {
+		if ( !$bKill && $oFO->isAutoBlackListEnabled() ) {
 			$bKill = $this->isIpToBeBlocked( $sIp );
 		}
 
 		if ( $bKill ) {
-			$sAuditMessage = sprintf( _wpsf__( 'Visitor found on the Black List and their connection was killed.' ), $sIp );
+			$sAuditMessage = sprintf( __( 'Visitor found on the Black List and their connection was killed.', 'wp-simple-firewall' ), $sIp );
 			$this->setIfLogRequest( false )// don't log traffic from killed requests
 				 ->doStatIncrement( 'ip.connection.killed' )
 				 ->addToAuditEntry( $sAuditMessage, 3, 'black_list_connection_killed' );
@@ -275,7 +226,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			/** @var IPs\Delete $oDel */
 			$oDel = $this->getDbHandler()->getQueryDeleter();
 			$oDel->deleteIpFromBlacklists( $sIp );
-			Services::WpGeneral()->redirectToHome();
+			Services::Response()->redirectToHome();
 		}
 
 		return false;
@@ -294,54 +245,54 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		$sIp = $this->ip();
 		$nTimeRemaining = max( floor( $oFO->getAutoExpireTime()/60 ), 0 );
 		$aData = [
-			'strings' => array(
-				'title'   => sprintf( _wpsf__( "You've been blocked by the %s plugin" ),
+			'strings' => [
+				'title'   => sprintf( __( "You've been blocked by the %s plugin", 'wp-simple-firewall' ),
 					sprintf( '<a href="%s" target="_blank">%s</a>',
 						$oCon->getPluginSpec()[ 'meta' ][ 'url_repo_home' ],
 						$oCon->getHumanName()
 					)
 				),
-				'lines'   => array(
-					sprintf( _wpsf__( 'Time remaining on black list: %s' ),
+				'lines'   => [
+					sprintf( __( 'Time remaining on black list: %s', 'wp-simple-firewall' ),
 						sprintf( _n( '%s minute', '%s minutes', $nTimeRemaining, 'wp-simple-firewall' ), $nTimeRemaining )
 					),
-					sprintf( _wpsf__( 'You tripped the security plugin defenses a total of %s times making you a suspect.' ), $oFO->getOptTransgressionLimit() ),
-					sprintf( _wpsf__( 'If you believe this to be in error, please contact the site owner and quote your IP address below.' ) ),
-				),
+					sprintf( __( 'You tripped the security plugin defenses a total of %s times making you a suspect.', 'wp-simple-firewall' ), $oFO->getOptTransgressionLimit() ),
+					sprintf( __( 'If you believe this to be in error, please contact the site owner and quote your IP address below.', 'wp-simple-firewall' ) ),
+				],
 				'your_ip' => 'Your IP address',
 				'unblock' => [
-					'title'   => _wpsf__( 'Auto-Unblock Your IP' ),
-					'you_can' => _wpsf__( 'You can automatically unblock your IP address by clicking the button below.' ),
-					'button'  => _wpsf__( 'Unblock My IP Address' ),
+					'title'   => __( 'Auto-Unblock Your IP', 'wp-simple-firewall' ),
+					'you_can' => __( 'You can automatically unblock your IP address by clicking the button below.', 'wp-simple-firewall' ),
+					'button'  => __( 'Unblock My IP Address', 'wp-simple-firewall' ),
 				],
-			),
-			'vars'    => array(
+			],
+			'vars'    => [
 				'nonce'        => $oFO->getNonceActionData( 'uau' ),
 				'ip'           => $sIp,
 				'gasp_element' => $oFO->renderTemplate(
 					'snippets/gasp_js.php',
-					array(
+					[
 						'sCbName'   => $oLoginFO->getGaspKey(),
 						'sLabel'    => $oLoginFO->getTextImAHuman(),
 						'sAlert'    => $oLoginFO->getTextPleaseCheckBox(),
-						'sMustJs'   => _wpsf__( 'You MUST enable Javascript to be able to login' ),
+						'sMustJs'   => __( 'You MUST enable Javascript to be able to login', 'wp-simple-firewall' ),
 						'sUniqId'   => $sUniqId,
 						'sUniqElem' => 'icwp_wpsf_login_p'.$sUniqId,
-						'strings'   => array(
-							'loading' => _wpsf__( 'Loading' )
-						)
-					)
+						'strings'   => [
+							'loading' => __( 'Loading', 'wp-simple-firewall' )
+						]
+					]
 				),
-			),
-			'flags'   => array(
+			],
+			'flags'   => [
 				'is_autorecover'   => $oFO->isEnabledAutoUserRecover(),
 				'is_uau_permitted' => $oFO->getCanIpRequestAutoUnblock( $sIp ),
-			),
+			],
 		];
-		$this->loadWp()
-			 ->wpDie(
-				 $oFO->renderTemplate( '/snippets/blacklist_die.twig', $aData, true )
-			 );
+		Services::WpGeneral()
+				->wpDie(
+					$oFO->renderTemplate( '/snippets/blacklist_die.twig', $aData, true )
+				);
 	}
 
 	/**
@@ -350,8 +301,8 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 		/** @var ICWP_WPSF_FeatureHandler_Ips $oFO */
 		$oFO = $this->getMod();
 
-		if ( $oFO->isAutoBlackListFeatureEnabled() && !$this->getCon()->isPluginDeleting()
-			 && $this->getIfIpTransgressed() && !$oFO->isVerifiedBot() && !$this->isCurrentIpWhitelisted() ) {
+		if ( $oFO->isAutoBlackListEnabled() && !$this->getCon()->isPluginDeleting()
+			 && $oFO->getIfIpTransgressed() && !$oFO->isVerifiedBot() && !$this->isCurrentIpWhitelisted() ) {
 
 			$this->processTransgression();
 		}
@@ -372,8 +323,8 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			$nLimit = $oFO->getOptTransgressionLimit();
 			$nCurrentTrans = $oBlackIp->transgressions;
 			// At this stage we know it's a transgression. But is it an outright block?
-			$bBlock = apply_filters( $oFO->prefix( 'ip_block_it' ), false ) || ( $nLimit - $nCurrentTrans == 1 );
-			$nToIncrement = $bBlock ? ( $nLimit - $nCurrentTrans ) : 1;
+			$bBlock = ( $oFO->getIpAction() == 'block' ) || ( $nLimit - $nCurrentTrans == 1 );
+			$nToIncrement = $bBlock ? ( $nLimit - $nCurrentTrans ) : $oFO->getIpAction();
 
 			/** @var IPs\Update $oUp */
 			$oUp = $this->getDbHandler()->getQueryUpdater();
@@ -385,7 +336,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			if ( $bBlock ) {
 				$oFO->setOptInsightsAt( 'last_ip_block_at' );
 				$sAuditMessage = sprintf(
-					_wpsf__( 'IP blocked after incrementing transgressions from %s to %s.' ),
+					__( 'IP blocked after incrementing transgressions from %s to %s.', 'wp-simple-firewall' ),
 					$nCurrentTrans,
 					$oBlackIp->transgressions
 				);
@@ -393,7 +344,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			}
 			else {
 				$sAuditMessage = sprintf(
-					_wpsf__( 'Auto Black List transgression counter was incremented from %s to %s.' ),
+					__( 'Auto Black List transgression counter was incremented from %s to %s.', 'wp-simple-firewall' ),
 					$nCurrentTrans,
 					$oBlackIp->transgressions
 				);
@@ -415,35 +366,6 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 	/**
 	 * @return IPs\EntryVO[]
 	 */
-	public function getAutoBlacklistIpsData() {
-		/** @var IPs\Select $oSelect */
-		$oSelect = $this->getDbHandler()->getQuerySelector();
-		return $oSelect->allFromList( ICWP_WPSF_FeatureHandler_Ips::LIST_AUTO_BLACK );
-	}
-
-	/**
-	 * @return IPs\EntryVO[]
-	 */
-	public function getBlacklistIpData( $sIpAddress ) {
-		/** @var IPs\Select $oSelect */
-		$oSelect = $this->getDbHandler()->getQuerySelector();
-		return $oSelect->allFromList( ICWP_WPSF_FeatureHandler_Ips::LIST_AUTO_BLACK );
-	}
-
-	/**
-	 * @return string[]
-	 */
-	public function getAutoBlacklistIps() {
-		$aIps = array();
-		foreach ( $this->getAutoBlacklistIpsData() as $oIp ) {
-			$aIps[] = $oIp->ip;
-		}
-		return $aIps;
-	}
-
-	/**
-	 * @return IPs\EntryVO[]
-	 */
 	public function getWhitelistIpsData() {
 		/** @var IPs\Select $oSelect */
 		$oSelect = $this->getDbHandler()->getQuerySelector();
@@ -454,7 +376,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 	 * @return string[]
 	 */
 	public function getWhitelistIps() {
-		$aIps = array();
+		$aIps = [];
 		foreach ( $this->getWhitelistIpsData() as $oIp ) {
 			$aIps[] = $oIp->ip;
 		}
@@ -583,7 +505,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 			$oTempIp = $oDbh->getVo();
 			$oTempIp->ip = $sIp;
 			$oTempIp->list = $sList;
-			$oTempIp->label = empty( $sLabel ) ? _wpsf__( 'No Label' ) : trim( $sLabel );
+			$oTempIp->label = empty( $sLabel ) ? __( 'No Label', 'wp-simple-firewall' ) : trim( $sLabel );
 
 			if ( $oDbh->getQueryInserter()->insert( $oTempIp ) ) {
 				/** @var IPs\EntryVO $oIp */
@@ -678,7 +600,7 @@ class ICWP_WPSF_Processor_Ips extends ICWP_WPSF_BaseDbProcessor {
 	 */
 	protected function getTableColumnsByDefinition() {
 		$aDef = $this->getMod()->getDef( 'ip_list_table_columns' );
-		return is_array( $aDef ) ? $aDef : array();
+		return is_array( $aDef ) ? $aDef : [];
 	}
 
 	/**

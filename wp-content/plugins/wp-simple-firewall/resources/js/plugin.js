@@ -7,26 +7,9 @@ var iCWP_WPSF_OptionsPages = new function () {
 		iCWP_WPSF_BodyOverlay.show();
 	};
 
-	var moveCarousel0 = function ( event ) {
-		moveCarousel( 0 );
-	};
-	var moveCarousel1 = function ( event ) {
-		moveCarousel( 1 );
-	};
-	var moveCarousel2 = function ( event ) {
-		moveCarousel( 2 );
-	};
-
-	var moveCarousel = function ( nSlide ) {
-		jQuery( '.icwp-carousel' ).carousel( nSlide );
-	};
-
 	this.initialise = function () {
 		jQuery( document ).ready( function () {
 			jQuery( document ).on( "click", "a.nav-link.module", showWaiting );
-			jQuery( document ).on( "click", "a.icwp-carousel-0", moveCarousel0 );
-			jQuery( document ).on( "click", "a.icwp-carousel-1", moveCarousel1 );
-			jQuery( document ).on( "click", "a.icwp-carousel-2", moveCarousel2 );
 
 			/** Track active tab */
 			jQuery( document ).on( "click", "#ModuleOptionsNav a.nav-link", function ( e ) {
@@ -38,13 +21,35 @@ var iCWP_WPSF_OptionsPages = new function () {
 				window.location.hash = jQuery( e.target ).attr( "href" ).substr( 1 );
 			} );
 
-			var sActiveTabHash = window.location.hash;
-			if ( sActiveTabHash ) {
-				jQuery( '#ModuleOptionsNav a[href="' + window.location.hash + '"]' ).tab( 'show' );
-			}
+			jQuery( document ).on( "odp-optsrender", focusTab );
 		} );
 	};
 
+	var focusTab = function ( evt ) {
+		var sActiveTabHash = window.location.hash;
+		if ( typeof sActiveTabHash !== 'undefined' ) {
+			jQuery( '#ModuleOptionsNav a[href="' + sActiveTabHash + '"]' ).tab( 'show' );
+		}
+	};
+
+}();
+
+let iCWP_WPSF_OptsPageRender = new function () {
+	this.renderForm = function ( aAjaxReqData ) {
+		iCWP_WPSF_BodyOverlay.show();
+		jQuery.post( ajaxurl, aAjaxReqData,
+			function ( oResponse ) {
+				jQuery( '#ColumnOptions .content-options' ).html( oResponse.data.html )
+														   .trigger( 'odp-optsrender' );
+			}
+		).fail(
+			function () {
+			}
+		).always( function () {
+				iCWP_WPSF_BodyOverlay.hide();
+			}
+		);
+	};
 }();
 
 var iCWP_WPSF_Toaster = new function () {
@@ -74,6 +79,7 @@ iCWP_WPSF_Toaster.initialise();
 var iCWP_WPSF_OptionsFormSubmit = new function () {
 
 	var bRequestCurrentlyRunning = false;
+	var aAjaxReqParams = icwp_wpsf_vars_base.ajax.mod_options;
 
 	this.submit = function ( sMessage, bSuccess ) {
 		var $oDiv = createDynDiv( bSuccess ? 'success' : 'failed' );
@@ -82,6 +88,10 @@ var iCWP_WPSF_OptionsFormSubmit = new function () {
 			$oDiv.fadeOut( 5000 );
 			$oDiv.remove();
 		}, 4000 );
+	};
+
+	this.updateAjaxReqParams = function ( aParams ) {
+		aAjaxReqParams = aParams;
 	};
 
 	/**
@@ -111,10 +121,19 @@ var iCWP_WPSF_OptionsFormSubmit = new function () {
 		} );
 
 		if ( $bPasswordsReady ) {
+			/**
+			 * First try with base64 and failover to lz-string upon abject failure.
+			 * This works around mod_security rules that even unpack b64 encoded params and look
+			 * for patterns within them.
+			 */
 			var aReq = jQuery.extend(
-				icwp_wpsf_vars_base.ajax.mod_options,
-				{ 'form_params': btoa( $oForm.serialize() ) }
+				aAjaxReqParams,
+				{
+					'form_params': Base64.encode( $oForm.serialize() ),
+					'enc_params': 'b64'
+				}
 			);
+
 			jQuery.post( ajaxurl, aReq,
 				function ( oResponse ) {
 					var sMessage;
@@ -128,11 +147,35 @@ var iCWP_WPSF_OptionsFormSubmit = new function () {
 					iCWP_WPSF_Toaster.showMessage( sMessage, oResponse.success );
 					// iCWP_WPSF_Growl.showMessage( sMessage, oResponse.success );
 				}
+			).fail(
+				function () {
+					iCWP_WPSF_Toaster.showMessage( 'The request was blocked. Retrying an alternative...', false );
+					aReq = jQuery.extend(
+						aAjaxReqParams,
+						{
+							'form_params': Base64.encode( LZString.compress( $oForm.serialize() ) ),
+							'enc_params': 'lz-string'
+						}
+					);
+					jQuery.post( ajaxurl, aReq,
+						function ( oResponse ) {
+							var sMessage;
+							if ( oResponse === null || typeof oResponse.data === 'undefined'
+								|| typeof oResponse.data.message === 'undefined' ) {
+								sMessage = oResponse.success ? 'Success' : 'Failure';
+							}
+							else {
+								sMessage = oResponse.data.message;
+							}
+							iCWP_WPSF_Toaster.showMessage( sMessage, oResponse.success );
+						}
+					)
+				}
 			).always( function () {
 					bRequestCurrentlyRunning = false;
 					setTimeout( function () {
-						location.reload( true );
-					}, 2000 );
+						location.reload();
+					}, 1000 );
 				}
 			);
 		}
@@ -144,7 +187,7 @@ var iCWP_WPSF_OptionsFormSubmit = new function () {
 
 	this.initialise = function () {
 		jQuery( document ).ready( function () {
-			jQuery( document ).on( "submit", "form.icwpOptionsForm", submitOptionsForm );
+			jQuery( document ).on( "submit", 'form.icwpOptionsForm', submitOptionsForm );
 		} );
 	};
 }();

@@ -36,7 +36,7 @@ class Checksums {
 		$aCs = $oWp->getTransient( $sKey );
 		if ( empty( $aCs ) || !is_array( $aCs ) ) {
 			$aCs = $this->buildChecksums();
-			$oWp->setTransient( $sKey, $aCs, WEEK_IN_SECONDS * 6 );
+			$oWp->setTransient( $sKey, $aCs, WEEK_IN_SECONDS*6 );
 		}
 
 		return $aCs;

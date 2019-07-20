@@ -50,16 +50,16 @@ class Email {
 	 */
 	protected function emailFilters( $bAdd ) {
 		if ( $bAdd ) {
-			add_action( 'phpmailer_init', array( $this, 'onPhpMailerInit' ), PHP_INT_MAX, 1 );
-			add_filter( 'wp_mail_from', array( $this, 'filterMailFrom' ), 100 );
-			add_filter( 'wp_mail_from_name', array( $this, 'filterMailFromName' ), 100 );
-			add_filter( 'wp_mail_content_type', array( $this, 'filterMailContentType' ), 100, 0 );
+			add_action( 'phpmailer_init', [ $this, 'onPhpMailerInit' ], PHP_INT_MAX, 1 );
+			add_filter( 'wp_mail_from', [ $this, 'filterMailFrom' ], 100 );
+			add_filter( 'wp_mail_from_name', [ $this, 'filterMailFromName' ], 100 );
+			add_filter( 'wp_mail_content_type', [ $this, 'filterMailContentType' ], 100, 0 );
 		}
 		else {
-			remove_action( 'phpmailer_init', array( $this, 'onPhpMailerInit' ), PHP_INT_MAX );
-			remove_filter( 'wp_mail_from', array( $this, 'filterMailFrom' ), 100 );
-			remove_filter( 'wp_mail_from_name', array( $this, 'filterMailFromName' ), 100 );
-			remove_filter( 'wp_mail_content_type', array( $this, 'filterMailContentType' ), 100 );
+			remove_action( 'phpmailer_init', [ $this, 'onPhpMailerInit' ], PHP_INT_MAX );
+			remove_filter( 'wp_mail_from', [ $this, 'filterMailFrom' ], 100 );
+			remove_filter( 'wp_mail_from_name', [ $this, 'filterMailFromName' ], 100 );
+			remove_filter( 'wp_mail_content_type', [ $this, 'filterMailContentType' ], 100 );
 		}
 		return $this;
 	}
@@ -142,12 +142,12 @@ class Email {
 	 */
 	protected function getContentFooter() {
 		$sUrl = Services::WpGeneral()->getHomeUrl();
-		return array(
+		return [
 			'----',
 			sprintf( __( 'Email sent from %s' ), sprintf( '<a href="%s">%s</a>', $sUrl, $sUrl ) ),
 			__( 'Note: Email delays are caused by website hosting and email providers.' ),
 			sprintf( __( 'Time Sent: %s' ), Services::WpGeneral()->getTimeStampForDisplay() )
-		);
+		];
 	}
 
 	/**

@@ -9,11 +9,11 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
 
-		add_action( $this->prefix( 'importexport_notify' ), array( $this, 'runWhitelistNotify' ) );
+		add_action( $this->prefix( 'importexport_notify' ), [ $this, 'runWhitelistNotify' ] );
 
 		if ( $oFO->hasImportExportMasterImportUrl() ) {
 			// For auto update whitelist notifications:
-			add_action( $oFO->prefix( 'importexport_updatenotified' ), array( $this, 'runImport' ) );
+			add_action( $oFO->prefix( 'importexport_updatenotified' ), [ $this, 'runImport' ] );
 		}
 	}
 
@@ -24,19 +24,19 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		/** @var ICWP_WPSF_FeatureHandler_HackProtect $oMod */
 		$oMod = $this->getMod();
 		$aData = [
-			'vars'  => array(
+			'vars'  => [
 				'form_nonce'  => $oMod->getNonceActionData( 'import_file_upload' ),
 				'form_action' => $oMod->getUrl_AdminPage()
-			),
-			'ajax'  => array(
+			],
+			'ajax'  => [
 				'import_from_site' => $oMod->getAjaxActionData( 'import_from_site', true ),
-			),
-			'flags' => array(
+			],
+			'flags' => [
 				'can_importexport' => $this->getCon()->isPremiumActive(),
-			),
-			'hrefs' => array(
+			],
+			'hrefs' => [
 				'export_file_download' => $this->createExportFileDownloadLink()
-			)
+			]
 		];
 
 		return $aData;
@@ -55,21 +55,20 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 	public function runWhitelistNotify() {
 		/** @var ICWP_WPSF_FeatureHandler_Plugin $oFO */
 		$oFO = $this->getMod();
+		$oHttpReq = Services::HttpRequest();
 
 		if ( $oFO->hasImportExportWhitelistSites() ) {
 
+			$aQuery = [
+				'blocking' => false,
+				'body'     => [ 'shield_action' => 'importexport_updatenotified' ]
+			];
 			foreach ( $oFO->getImportExportWhitelist() as $sUrl ) {
-				$this->loadFS()->getUrl(
-					$sUrl,
-					array(
-						'blocking' => false,
-						'body'     => array( 'shield_action' => 'importexport_updatenotified' )
-					)
-				);
+				$oHttpReq->get( $sUrl, $aQuery );
 			}
 
 			$this->addToAuditEntry(
-				_wpsf__( 'Sent notifications to whitelisted sites for required options import.' ),
+				__( 'Sent notifications to whitelisted sites for required options import.', 'wp-simple-firewall' ),
 				1,
 				'options_import_notify'
 			);
@@ -186,7 +185,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		}
 
 		if ( Services::Request()->post( 'confirm' ) != 'Y' ) {
-			throw new \Exception( _wpsf__( 'Please check the box to confirm your intent to overwrite settings' ) );
+			throw new \Exception( __( 'Please check the box to confirm your intent to overwrite settings', 'wp-simple-firewall' ) );
 		};
 
 		$oFs = Services::WpFs();
@@ -225,7 +224,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 			}
 		}
 
-		$this->processDataImport( $aData, _wpsf__( 'uploaded file' ) );
+		$this->processDataImport( $aData, __( 'uploaded file', 'wp-simple-firewall' ) );
 		$oFs->deleteFile( $_FILES[ 'import_file' ][ 'tmp_name' ] );
 	}
 
@@ -233,7 +232,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 	 * @return array
 	 */
 	private function getExportData() {
-		$aD = apply_filters( $this->getMod()->prefix( 'gather_options_for_export' ), array() );
+		$aD = apply_filters( $this->getMod()->prefix( 'gather_options_for_export' ), [] );
 		return is_array( $aD ) ? $aD : [];
 	}
 
@@ -246,12 +245,12 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 
 		if ( !$oFO->isPremium() ) {
 			throw new \Exception(
-				sprintf( _wpsf__( 'Not currently running %s Pro.' ), $this->getCon()->getHumanName() ),
+				sprintf( __( 'Not currently running %s Pro.', 'wp-simple-firewall' ), $this->getCon()->getHumanName() ),
 				1
 			);
 		}
 		if ( !$oFO->isImportExportPermitted() ) {
-			throw new \Exception( _wpsf__( 'Export of options is currently disabled.' ), 2 );
+			throw new \Exception( __( 'Export of options is currently disabled.', 'wp-simple-firewall' ), 2 );
 		}
 	}
 
@@ -265,7 +264,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		$oFO = $this->getMod();
 		if ( $oFO->isPremium() && $oFO->isImportExportPermitted() &&
 			 ( Services::Request()->ts() < $oFO->getImportExportHandshakeExpiresAt() ) ) {
-			echo json_encode( array( 'success' => true ) );
+			echo json_encode( [ 'success' => true ] );
 			die();
 		}
 		else {
@@ -302,8 +301,8 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 			}
 
 			$this->addToAuditEntry(
-				_wpsf__( 'Received notification that options import required.' )
-				.' '.sprintf( _wpsf__( 'Current master site: %s' ), $oFO->getImportExportMasterImportUrl() ),
+				__( 'Received notification that options import required.', 'wp-simple-firewall' )
+				.' '.sprintf( __( 'Current master site: %s', 'wp-simple-firewall' ), $oFO->getImportExportMasterImportUrl() ),
 				1,
 				'options_import_notified',
 				$sUrl
@@ -329,19 +328,20 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		}
 
 		$bSuccess = false;
-		$aData = array();
+		$aData = [];
 
 		if ( !$oFO->isPremium() ) {
 			$nCode = 1;
-			$sMessage = sprintf( _wpsf__( 'Not currently running %s Pro.' ), $this->getCon()->getHumanName() );
+			$sMessage = sprintf( __( 'Not currently running %s Pro.', 'wp-simple-firewall' ), $this->getCon()
+																								   ->getHumanName() );
 		}
 		else if ( !$oFO->isImportExportPermitted() ) {
 			$nCode = 2;
-			$sMessage = _wpsf__( 'Export of options is currently disabled.' );
+			$sMessage = __( 'Export of options is currently disabled.', 'wp-simple-firewall' );
 		}
 		else if ( !$this->verifyUrlWithHandshake( $sUrl ) ) {
 			$nCode = 3;
-			$sMessage = _wpsf__( 'Handshake verification failed.' );
+			$sMessage = __( 'Handshake verification failed.', 'wp-simple-firewall' );
 		}
 		else {
 			$nCode = 0;
@@ -350,14 +350,14 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 			$sMessage = 'Options Exported Successfully';
 
 			$this->addToAuditEntry(
-				sprintf( _wpsf__( 'Options exported to site %s.' ), $sUrl ), 1, 'options_exported'
+				sprintf( __( 'Options exported to site %s.', 'wp-simple-firewall' ), $sUrl ), 1, 'options_exported'
 			);
 
 			if ( $bDoNetwork ) {
 				if ( $sNetworkOpt === 'Y' ) {
 					$oFO->addUrlToImportExportWhitelistUrls( $sUrl );
 					$this->addToAuditEntry(
-						sprintf( _wpsf__( 'Site added to export white list: %s.' ), $sUrl ),
+						sprintf( __( 'Site added to export white list: %s.', 'wp-simple-firewall' ), $sUrl ),
 						1,
 						'export_whitelist_site_added'
 					);
@@ -365,7 +365,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 				else {
 					$oFO->removeUrlFromImportExportWhitelistUrls( $sUrl );
 					$this->addToAuditEntry(
-						sprintf( _wpsf__( 'Site removed from export white list: %s.' ), $sUrl ),
+						sprintf( __( 'Site removed from export white list: %s.', 'wp-simple-firewall' ), $sUrl ),
 						1,
 						'export_whitelist_site_removed'
 					);
@@ -373,12 +373,12 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 			}
 		}
 
-		$aResponse = array(
+		$aResponse = [
 			'success' => $bSuccess,
 			'code'    => $nCode,
 			'message' => $sMessage,
 			'data'    => $aData,
-		);
+		];
 		echo json_encode( $aResponse );
 		die();
 	}
@@ -401,7 +401,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		$bVerified = false;
 
 		if ( !empty( $sUrl ) ) {
-			$sReqUrl = add_query_arg( array( 'shield_action' => 'importexport_handshake' ), $sUrl );
+			$sReqUrl = add_query_arg( [ 'shield_action' => 'importexport_handshake' ], $sUrl );
 			$aResp = @json_decode( Services::HttpRequest()->getContent( $sReqUrl ), true );
 			$bVerified = is_array( $aResp ) && isset( $aResp[ 'success' ] ) && ( $aResp[ 'success' ] === true );
 		}
@@ -449,7 +449,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		}
 		else {
 			$bReady = true;
-			$aEssential = array( 'scheme', 'host' );
+			$aEssential = [ 'scheme', 'host' ];
 			foreach ( $aEssential as $sKey ) {
 				$bReady = $bReady && !empty( $aParts[ $sKey ] );
 			}
@@ -462,11 +462,11 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 			else {
 				$oFO->startImportExportHandshake();
 
-				$aData = array(
+				$aData = [
 					'shield_action' => 'importexport_export',
 					'secret'        => $sSecretKey,
 					'url'           => Services::WpGeneral()->getHomeUrl()
-				);
+				];
 				// Don't send the network setup request if it's the cron.
 				if ( !is_null( $bEnableNetwork ) && !Services::WpGeneral()->isCron() ) {
 					$aData[ 'network' ] = $bEnableNetwork ? 'Y' : 'N';
@@ -504,7 +504,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 					}
 					else if ( $bEnableNetwork === true ) {
 						$this->addToAuditEntry(
-							sprintf( _wpsf__( 'Master Site URL set to %s.' ), $sMasterSiteUrl ),
+							sprintf( __( 'Master Site URL set to %s.', 'wp-simple-firewall' ), $sMasterSiteUrl ),
 							1,
 							'options_master_set'
 						);
@@ -534,7 +534,7 @@ class ICWP_WPSF_Processor_Plugin_ImportExport extends ICWP_WPSF_Processor_BaseWp
 		if ( md5( serialize( $aImportData ) ) != $oFO->getImportExportLastImportHash() ) {
 			do_action( $oFO->prefix( 'import_options' ), $aImportData );
 			$this->addToAuditEntry(
-				sprintf( _wpsf__( 'Options imported from %s.' ), $sImportSource ),
+				sprintf( __( 'Options imported from %s.', 'wp-simple-firewall' ), $sImportSource ),
 				1, 'options_imported'
 			);
 			$oFO->setImportExportLastImportHash( md5( serialize( $aImportData ) ) );

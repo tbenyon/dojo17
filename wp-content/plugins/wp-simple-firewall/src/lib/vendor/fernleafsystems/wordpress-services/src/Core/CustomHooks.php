@@ -11,7 +11,7 @@ class CustomHooks {
 	const HOOK_PREFIX = 'odp_';
 
 	public function __construct() {
-		add_action( 'upgrader_process_complete', array( $this, 'onUpgraderProcessComplete' ), 100, 2 );
+		add_action( 'upgrader_process_complete', [ $this, 'onUpgraderProcessComplete' ], 100, 2 );
 	}
 
 	/**
